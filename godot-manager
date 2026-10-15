@@ -259,6 +259,66 @@ cmd_install() {
     fi
 }
 
+confirm() {
+    local answer
+    read -r -p "$1 [s/N] " answer || true
+    [[ "$answer" =~ ^[sSyY]$ ]]
+}
+
+# Carpeta de export templates que usa un binario. Godot la nombra con
+# "<version>.<status>[.mono]", que es su --version sin ".<build>.<hash>"
+# (o sin ".<build>" si se compilo fuera de git). Imprime la que exista.
+templates_dir_for() {
+    local full base="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates"
+    full=$("$1" --headless --version 2>/dev/null | tail -n1) || return 0
+    [ -n "$full" ] || return 0
+    local candidate
+    for candidate in "${full%.*.*}" "${full%.*}"; do
+        if [ -d "$base/$candidate" ]; then
+            echo "$base/$candidate"
+            return
+        fi
+    done
+}
+
+cmd_remove() {
+    local name="$1"
+    [ -n "$name" ] || die "uso: godot-manager remove <version>"
+    local bin
+    bin=$(require_installed "$name")
+    local dir="$VERSIONS_DIR/$name"
+
+    # hay que resolverlo antes de borrar el binario
+    local templates
+    templates=$(templates_dir_for "$bin")
+
+    local is_default=false
+    [ "$(readlink -f "$GODOT_DIR/current" 2>/dev/null)" = "$(readlink -f "$bin")" ] && is_default=true
+
+    echo "Se va a borrar $dir ($(du -sh "$dir" 2>/dev/null | cut -f1))"
+    [ "$is_default" = true ] && echo "Aviso: '$name' es la version default; va a quedar sin default."
+    confirm "¿Borrar '$name'?" || { echo "Cancelado."; return; }
+
+    rm -rf "$dir"
+    [ "$is_default" = true ] && rm -f "$GODOT_DIR/current"
+    echo "Borrada '$name'"
+
+    [ -n "$templates" ] || return 0
+    # otra version instalada puede usar la misma carpeta de templates
+    local v
+    for v in "$VERSIONS_DIR"/*/; do
+        [ -x "$v/godot" ] || continue
+        if [ "$(templates_dir_for "$v/godot")" = "$templates" ]; then
+            echo "Aviso: $(basename "$v") tambien usa $templates"
+            break
+        fi
+    done
+    if confirm "¿Borrar tambien los export templates en $templates ($(du -sh "$templates" | cut -f1))?"; then
+        rm -rf "$templates"
+        echo "Templates borrados"
+    fi
+}
+
 usage() {
     cat <<EOF
 Uso: godot-manager <comando> [args]
@@ -270,6 +330,7 @@ Comandos:
                                     Descarga, verifica checksum e instala una version oficial
   symbols <ver>                     Agrega los simbolos de debug a una version oficial instalada (>= 4.8-beta1)
   add <nombre> <path> [--symlink]   Agrega un binario custom (build propio)
+  remove <ver>                      Borra una version (y pregunta si borrar sus export templates)
   set <ver>                         Setea la version default global
   set-local <ver>                   Setea la version para el proyecto actual (.godot-version)
   which                             Muestra que binario usaria 'godot' en el directorio actual
@@ -289,6 +350,7 @@ case "$cmd" in
     install)     cmd_install "$@" ;;
     symbols)     cmd_symbols "$1" ;;
     add)         cmd_add "$@" ;;
+    remove)      cmd_remove "$1" ;;
     set)         cmd_set "$1" ;;
     set-local)   cmd_set_local "$1" ;;
     which)       cmd_which ;;
