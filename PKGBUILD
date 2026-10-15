@@ -1,6 +1,6 @@
 # Maintainer: Dann Roda <contact@dann.com.ar>
 pkgname=godot-manager
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Instala y selecciona versiones de Godot (stable, dev, mono, simbolos de debug) por proyecto"
 arch=('any')
