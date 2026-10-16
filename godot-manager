@@ -393,7 +393,13 @@ install_template_symbols() {
     [ "$mono" = true ] && prefix="mono_"
     local dest
     dest="$TEMPLATES_BASE/$(templates_name "$ver" "$mono")"
-    [ -f "$dest/version.txt" ] || die "los export templates de '$ver' no estan instalados"
+    # el editor no escribe version.txt al instalar por plataforma: alcanza con
+    # que haya algun template
+    local p any=false
+    for p in $TEMPLATE_PLATFORMS; do
+        platform_installed "$dest" "$p" && any=true && break
+    done
+    [ "$any" = true ] || die "los export templates de '$ver' no estan instalados en $dest"
 
     local release available
     release=$(curl -s "${GITHUB_API}/releases/tags/${ver}")
