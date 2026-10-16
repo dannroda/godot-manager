@@ -11,6 +11,10 @@ VERSIONS_DIR="$GODOT_DIR/versions"
 BUILDS_REPO="godotengine/godot-builds"
 GITHUB_API="https://api.github.com/repos/${BUILDS_REPO}"
 GITHUB_DL="https://github.com/${BUILDS_REPO}/releases/download"
+TEMPLATES_BASE="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates"
+# simbolos de templates que baja --debugsymbols sin lista explicita
+DEFAULT_TEMPLATE_SYMBOLS="linux_debug.x86_64,linux_release.x86_64"
+TEMPLATE_PLATFORMS="android ios linux macos visionos web windows"
 
 die() {
     echo "Error: $*" >&2
@@ -72,7 +76,7 @@ download_verified() {
 manifest_checksum() {
     local tag="$1" asset="$2"
     curl -s "https://raw.githubusercontent.com/${BUILDS_REPO}/main/releases/godot-${tag}.json" \
-        | jq -r --arg f "$asset" '.files[]? | select(.filename==$f) | .checksum // empty'
+        | jq -r --arg f "$asset" '.files[]? | select(.filename==$f) | .checksum // empty' 2>/dev/null
 }
 
 # Digest que expone la API de GitHub para un asset ("sha256:<hex>").
@@ -203,18 +207,216 @@ cmd_symbols() {
     echo "Simbolos de debug: ~470 MB de descarga, ~1.3 GB en disco"
     download_verified "${GITHUB_DL}/${ver}/${asset}" "$TMP/symbols.zip" sha256 "$digest"
     unzip -q "$TMP/symbols.zip" "$symfile" -d "$VERSIONS_DIR/$name/"
+    rm -rf "$TMP"
+    trap - EXIT
     echo "Simbolos de debug instalados en $VERSIONS_DIR/$name/$symfile"
+}
+
+# Carpeta de templates que espera el editor para un tag oficial:
+# "4.8-beta1" -> "4.8.beta1", "4.3-stable" -> "4.3.stable", + ".mono".
+templates_name() {
+    local name="${1/-/.}"
+    [ "$2" = true ] && name="$name.mono"
+    echo "$name"
+}
+
+# Valida una lista "linux,web" de plataformas y la imprime separada por espacios.
+parse_platforms() {
+    local p out=()
+    for p in ${1//,/ }; do
+        [[ " $TEMPLATE_PLATFORMS " == *" $p "* ]] \
+            || die "plataforma desconocida '$p' (validas: $TEMPLATE_PLATFORMS)"
+        out+=("$p")
+    done
+    [ ${#out[@]} -gt 0 ] || die "--platforms necesita al menos una plataforma"
+    echo "${out[*]}"
+}
+
+# Los archivos de cada plataforma en el tpz empiezan con su nombre
+# (linux_debug.x86_64, macos.zip, web_release.zip...).
+platform_installed() {
+    find "$1" -maxdepth 1 -name "$2*" ! -name '*.debugsymbols' 2>/dev/null | grep -q .
+}
+
+# Export templates oficiales (.tpz). Se instalan donde los busca el editor,
+# $TEMPLATES_BASE/<version.txt del tpz>. El tpz es un solo archivo con todas
+# las plataformas: se baja entero (para poder verificarlo) y se extraen solo
+# las pedidas que falten.
+install_templates() {
+    local ver="$1" mono="$2" platforms="$3" prefix=""
+    [ "$mono" = true ] && prefix="mono_"
+    local name dest p missing=()
+    name=$(templates_name "$ver" "$mono")
+    dest="$TEMPLATES_BASE/$name"
+    for p in $platforms; do
+        platform_installed "$dest" "$p" || missing+=("$p")
+    done
+    if [ ${#missing[@]} -eq 0 ]; then
+        echo "Los export templates de '$ver' ($platforms) ya estan instalados en $dest"
+        return
+    fi
+    local asset="Godot_v${ver}_${prefix}export_templates.tpz"
+
+    mkdir -p "$TEMPLATES_BASE"
+    # se baja al lado del destino y no a /tmp: pesa demasiado para un tmpfs
+    TMP=$(mktemp -d -p "$TEMPLATES_BASE" .godot-manager.XXXXXX)
+    trap 'rm -rf "$TMP"' EXIT
+    echo "Export templates (${missing[*]}): ~1.4 GB de descarga, el tpz trae todas las plataformas"
+    download_verified "${GITHUB_DL}/${ver}/${asset}" "$TMP/templates.tpz" \
+        sha512 "$(manifest_checksum "$ver" "$asset")"
+
+    local patterns=('templates/version.txt' 'templates/icudt_godot.dat')
+    for p in "${missing[@]}"; do patterns+=("templates/${p}*"); done
+    # 11 = algun patron no matcheo (p.ej. visionos o icudt en versiones viejas)
+    unzip -q -o "$TMP/templates.tpz" "${patterns[@]}" -d "$TMP" || [ $? -eq 11 ]
+    local got
+    got=$(tr -d '[:space:]' < "$TMP/templates/version.txt")
+    [ "$got" = "$name" ] || die "el tpz es de la version '$got', se esperaba '$name'"
+    mkdir -p "$dest"
+    mv -f "$TMP/templates/"* "$dest/"
+    rm -rf "$TMP"
+    trap - EXIT
+    for p in "${missing[@]}"; do
+        platform_installed "$dest" "$p" || echo "Aviso: '$ver' no trae templates de $p" >&2
+    done
+    echo "Export templates instalados en $dest ($(du -sh "$dest" | cut -f1))"
+}
+
+# Si esta instalado el template al que corresponden unos simbolos.
+symbols_template_installed() {
+    local dest="$1" id="$2"
+    case "$id" in
+        macos_*)   [ -f "$dest/macos.zip" ] ;;
+        android_*) [ -f "$dest/$id.apk" ] ;;
+        *)         [ -f "$dest/$id" ] ;;
+    esac
+}
+
+# Desde 4.8-beta1 hay simbolos de debug por template:
+# Godot_v<ver>_[mono_]debugsymbols_<id>.zip, con <id> = linux_debug.x86_64,
+# windows_release_x86_64.exe, macos_debug.arm64, android_release, etc.
+# Los de linux/windows son un <id>.debugsymbols que el template referencia por
+# nombre (.gnu_debuglink): sirven dejandolos al lado del template, y tambien
+# copiandolos al lado de un juego exportado con el. Verificados contra el
+# digest sha256 de la API de GitHub.
+#
+# spec: lista "a,b" de ids, plataformas (todos los ids de esa plataforma) o
+# "all". Solo se bajan los de templates instalados.
+install_template_symbols() {
+    local ver="$1" mono="$2" spec="$3" prefix=""
+    [ "$mono" = true ] && prefix="mono_"
+    local dest
+    dest="$TEMPLATES_BASE/$(templates_name "$ver" "$mono")"
+    [ -f "$dest/version.txt" ] || die "los export templates de '$ver' no estan instalados"
+
+    local release available
+    release=$(curl -s "${GITHUB_API}/releases/tags/${ver}")
+    available=$(jq -r --arg p "Godot_v${ver}_${prefix}debugsymbols_" '
+        .assets[]? | .name | select(startswith($p) and endswith(".zip"))
+        | ltrimstr($p) | rtrimstr(".zip")' <<<"$release")
+    [ -n "$available" ] \
+        || die "la release '$ver' no tiene simbolos de debug para los templates (existen desde 4.8-beta1)"
+
+    local item id ids=()
+    for item in ${spec//,/ }; do
+        if [ "$item" = all ]; then
+            ids+=($available)
+        elif [[ " $TEMPLATE_PLATFORMS " == *" $item "* ]]; then
+            ids+=($(grep "^${item}_" <<<"$available" || true))
+        elif grep -qxF "$item" <<<"$available"; then
+            if symbols_template_installed "$dest" "$item"; then
+                ids+=("$item")
+            else
+                echo "Aviso: el template de '$item' no esta instalado, se omiten sus simbolos" >&2
+            fi
+        else
+            die "no hay simbolos '$item'. Disponibles: $(tr '\n' ' ' <<<"$available")"
+        fi
+    done
+
+    local todo=() total=0 size
+    for id in $(printf '%s\n' "${ids[@]}" | sort -u); do
+        symbols_template_installed "$dest" "$id" || continue
+        if [ -e "$dest/$id.debugsymbols" ] || [ -e "$dest/godot_$id.dSYM" ]; then
+            echo "'$id' ya tiene los simbolos de debug."
+            continue
+        fi
+        todo+=("$id")
+        size=$(jq -r --arg f "Godot_v${ver}_${prefix}debugsymbols_${id}.zip" \
+            '.assets[] | select(.name==$f) | .size' <<<"$release")
+        total=$((total + size))
+    done
+    if [ ${#todo[@]} -eq 0 ]; then
+        echo "No hay simbolos de templates para descargar."
+        return
+    fi
+
+    echo "Simbolos de debug a descargar: ${todo[*]}"
+    echo "Total: $(numfmt --to=iec "$total") de descarga, ~3x en disco"
+    if [ "$total" -gt $((1024 ** 3)) ]; then
+        confirm "¿Continuar?" || { echo "Cancelado."; return; }
+    fi
+
+    TMP=$(mktemp -d -p "$TEMPLATES_BASE" .godot-manager.XXXXXX)
+    trap 'rm -rf "$TMP"' EXIT
+    for id in "${todo[@]}"; do
+        local asset="Godot_v${ver}_${prefix}debugsymbols_${id}.zip" digest
+        digest=$(jq -r --arg f "$asset" \
+            '.assets[] | select(.name==$f) | .digest // "" | sub("^sha256:"; "")' <<<"$release")
+        download_verified "${GITHUB_DL}/${ver}/${asset}" "$TMP/$id.zip" sha256 "$digest"
+        # el de android trae una carpeta por ABI; va aparte para no mezclarla
+        local into="$dest"
+        [[ "$id" == android* ]] && into="$dest/$id.debugsymbols"
+        unzip -q -o "$TMP/$id.zip" -d "$into"
+        rm -f "$TMP/$id.zip"
+        echo "Simbolos de $id instalados en $into"
+    done
+    rm -rf "$TMP"
+    trap - EXIT
+}
+
+cmd_templates() {
+    local ver="$1"
+    [ -n "$ver" ] || die "uso: godot-manager templates <version> [--mono] [--platforms=<p>,...] [--debugsymbols[=<id|plataforma>,...|all]] [--debugsymbolsonly]"
+    shift
+    local mono=false platforms="" symbols="" only=false
+    for opt in "$@"; do
+        case "$opt" in
+            --mono) mono=true ;;
+            --platforms=*) platforms=$(parse_platforms "${opt#*=}") ;;
+            --debugsymbols) symbols=default ;;
+            --debugsymbols=*) symbols="${opt#*=}" ;;
+            --debugsymbolsonly) only=true ;;
+            *) die "opcion desconocida '$opt'" ;;
+        esac
+    done
+    # sin lista explicita, los simbolos siguen a --platforms; si no se eligieron:
+    # linux x86_64, o con --debugsymbolsonly todo lo instalado
+    if [ "$symbols" = default ] || { [ "$only" = true ] && [ -z "$symbols" ]; }; then
+        if [ -n "$platforms" ]; then
+            symbols="${platforms// /,}"
+        elif [ "$only" = true ]; then
+            symbols=all
+        else
+            symbols="$DEFAULT_TEMPLATE_SYMBOLS"
+        fi
+    fi
+
+    [ "$only" = true ] || install_templates "$ver" "$mono" "${platforms:-$TEMPLATE_PLATFORMS}"
+    [ -z "$symbols" ] || install_template_symbols "$ver" "$mono" "$symbols"
 }
 
 cmd_install() {
     local ver="$1"
-    [ -n "$ver" ] || die "uso: godot-manager install <version> [--mono] [--debugsymbols]"
+    [ -n "$ver" ] || die "uso: godot-manager install <version> [--mono] [--debugsymbols] [--templates] [--platforms=<p>,...]"
     shift
-    local mono=false symbols=false
+    local mono=false symbols=false templates=false platforms=""
     for opt in "$@"; do
         case "$opt" in
             --mono) mono=true ;;
             --debugsymbols) symbols=true ;;
+            --templates) templates=true ;;
+            --platforms=*) templates=true; platforms="$opt" ;;
             *) die "opcion desconocida '$opt'" ;;
         esac
     done
@@ -257,6 +459,13 @@ cmd_install() {
     if [ "$symbols" = true ]; then
         cmd_symbols "$dest_name"
     fi
+    if [ "$templates" = true ]; then
+        local targs=()
+        [ "$mono" = true ] && targs+=(--mono)
+        [ -n "$platforms" ] && targs+=("$platforms")
+        [ "$symbols" = true ] && targs+=(--debugsymbols)
+        cmd_templates "$ver" "${targs[@]}"
+    fi
 }
 
 confirm() {
@@ -269,7 +478,7 @@ confirm() {
 # "<version>.<status>[.mono]", que es su --version sin ".<build>.<hash>"
 # (o sin ".<build>" si se compilo fuera de git). Imprime la que exista.
 templates_dir_for() {
-    local full base="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates"
+    local full base="$TEMPLATES_BASE"
     full=$("$1" --headless --version 2>/dev/null | tail -n1) || return 0
     [ -n "$full" ] || return 0
     local candidate
@@ -326,9 +535,23 @@ Uso: godot-manager <comando> [args]
 Comandos:
   list                              Lista versiones instaladas
   list-remote [stable|dev|latest]   Lista versiones disponibles en GitHub (todas, filtradas, o la ultima de cada una)
-  install <ver> [--mono] [--debugsymbols]
+  install <ver> [--mono] [--debugsymbols] [--templates] [--platforms=<p>,...]
                                     Descarga, verifica checksum e instala una version oficial
+                                    (--templates/--platforms agregan los export templates, como
+                                    'templates'; --debugsymbols aplica al editor y a los templates)
   symbols <ver>                     Agrega los simbolos de debug a una version oficial instalada (>= 4.8-beta1)
+  templates <ver> [--mono] [--platforms=<p>,...] [--debugsymbols[=<id|plataforma>,...|all]]
+            [--debugsymbolsonly]
+                                    Instala los export templates oficiales de una version y,
+                                    opcionalmente, sus simbolos de debug (>= 4.8-beta1).
+                                    --platforms: $TEMPLATE_PLATFORMS
+                                      (default: todas; el tpz se baja entero igual)
+                                    --debugsymbols sin lista: los de --platforms, o
+                                      $DEFAULT_TEMPLATE_SYMBOLS
+                                      Ids: linux_debug.arm64, windows_release_x86_64.exe,
+                                      macos_debug.arm64, android_release...
+                                    --debugsymbolsonly: no toca los templates, solo baja los
+                                      simbolos de los ya instalados (todos, o los filtrados)
   add <nombre> <path> [--symlink]   Agrega un binario custom (build propio)
   remove <ver>                      Borra una version (y pregunta si borrar sus export templates)
   set <ver>                         Setea la version default global
@@ -349,6 +572,7 @@ case "$cmd" in
     list-remote) cmd_list_remote "$1" ;;
     install)     cmd_install "$@" ;;
     symbols)     cmd_symbols "$1" ;;
+    templates)   cmd_templates "$@" ;;
     add)         cmd_add "$@" ;;
     remove)      cmd_remove "$1" ;;
     set)         cmd_set "$1" ;;
