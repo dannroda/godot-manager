@@ -1,16 +1,21 @@
 # Maintainer: Dann Roda <contact@dann.com.ar>
 pkgname=godot-manager
-pkgver=1.3.1
+pkgver=2.0.0
 pkgrel=1
 pkgdesc="Instala y selecciona versiones de Godot (stable, dev, mono, export templates, simbolos de debug) por proyecto"
-arch=('any')
+arch=('x86_64' 'aarch64')
 license=('unknown')
-depends=('bash' 'coreutils' 'curl' 'wget' 'jq' 'unzip' 'findutils' 'python')
+makedepends=('go')
 optdepends=('gdb: usar los simbolos de debug (godot-manager symbols)')
 provides=('godot')
 conflicts=('godot' 'godot-mono')
-source=('godot-manager' 'godot')
-sha256sums=('SKIP' 'SKIP')
+
+build() {
+    cd "$startdir"
+    export CGO_ENABLED=0
+    export GOFLAGS="-trimpath -mod=readonly -modcacherw"
+    go build -ldflags "-X main.version=$pkgver" -o "$srcdir/" ./cmd/...
+}
 
 package() {
     install -Dm755 "$srcdir/godot-manager" "$pkgdir/usr/bin/godot-manager"
