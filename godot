@@ -1,4 +1,0 @@
-#!/bin/bash
-# Corre la version de Godot que corresponde al directorio actual
-# (.godot-version del proyecto, o la default global).
-exec godot-manager run "$@"

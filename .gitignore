@@ -1,3 +1,5 @@
 /src/
 /pkg/
 *.pkg.tar.*
+/bin/
+/dist/
