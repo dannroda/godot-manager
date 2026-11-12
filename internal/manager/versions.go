@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -53,11 +52,11 @@ func versionBinary(name string) (string, bool) {
 // Binario de una version instalada, o error si no existe.
 func requireInstalled(name string) (string, error) {
 	if name == "" {
-		return "", errors.New("falta el nombre de la version")
+		return "", errf(codeInvalidArgs, "falta el nombre de la version")
 	}
 	bin, ok := versionBinary(name)
 	if !ok {
-		return "", fmt.Errorf("'%s' no esta instalada (ver 'godot-manager list')", name)
+		return "", errf(codeNotInstalled, "'%s' no esta instalada (ver 'godot-manager list')", name)
 	}
 	return bin, nil
 }
@@ -140,7 +139,11 @@ func resolve() (*resolution, error) {
 			ver := strings.TrimSpace(string(data))
 			bin, ok := versionBinary(ver)
 			if !ok {
-				return nil, fmt.Errorf("version '%s' (de %s) no esta instalada", ver, f)
+				return nil, &cliError{
+					Code:    codeNotInstalled,
+					Msg:     fmt.Sprintf("version '%s' (de %s) no esta instalada", ver, f),
+					Details: map[string]any{"version": ver, "source": f},
+				}
 			}
 			return &resolution{bin, ver, f}, nil
 		}
@@ -152,11 +155,15 @@ func resolve() (*resolution, error) {
 	}
 	ver := defaultVersion()
 	if ver == "" {
-		return nil, errors.New("no hay version default (usa 'godot-manager set <ver>')")
+		return nil, errf(codeNoDefault, "no hay version default (usa 'godot-manager set <ver>')")
 	}
 	bin, ok := versionBinary(ver)
 	if !ok {
-		return nil, fmt.Errorf("la version default '%s' no esta instalada", ver)
+		return nil, &cliError{
+			Code:    codeNotInstalled,
+			Msg:     fmt.Sprintf("la version default '%s' no esta instalada", ver),
+			Details: map[string]any{"version": ver, "source": "default"},
+		}
 	}
 	return &resolution{bin, ver, "default"}, nil
 }

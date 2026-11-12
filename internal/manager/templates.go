@@ -1,8 +1,6 @@
 package manager
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,12 +25,12 @@ func parsePlatforms(list string) ([]string, error) {
 	var out []string
 	for _, p := range splitList(list) {
 		if !slices.Contains(templatePlatforms, p) {
-			return nil, fmt.Errorf("plataforma desconocida '%s' (validas: %s)", p, strings.Join(templatePlatforms, " "))
+			return nil, errf(codeInvalidArgs, "plataforma desconocida '%s' (validas: %s)", p, strings.Join(templatePlatforms, " "))
 		}
 		out = append(out, p)
 	}
 	if len(out) == 0 {
-		return nil, errors.New("--platforms necesita al menos una plataforma")
+		return nil, errf(codeInvalidArgs, "--platforms necesita al menos una plataforma")
 	}
 	return out, nil
 }
@@ -59,6 +57,17 @@ func platformInstalled(dest, platform string) bool {
 	return false
 }
 
+// Plataformas con templates en dest (nunca nil, para el JSON).
+func installedPlatforms(dest string) []string {
+	out := []string{}
+	for _, p := range templatePlatforms {
+		if platformInstalled(dest, p) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // Export templates oficiales. Se instalan donde los busca el editor,
 // templatesBase/<version.txt del tpz>. El tpz es un solo zip con todas las
 // plataformas; se bajan solo los archivos de las pedidas que falten.
@@ -72,22 +81,19 @@ func installTemplates(ver string, mono bool, platforms []string) error {
 		}
 	}
 	if len(missing) == 0 {
-		fmt.Printf("Los export templates de '%s' (%s) ya estan instalados en %s\n", ver, strings.Join(platforms, " "), dest)
+		out.step("Los export templates de '%s' (%s) ya estan instalados en %s", ver, strings.Join(platforms, " "), dest)
 		return nil
 	}
 	url := githubDL + "/" + ver + "/" + assetPrefix(ver, mono) + "export_templates.tpz"
 
-	if err := os.MkdirAll(templatesBase, 0o755); err != nil {
-		return err
-	}
 	// al lado del destino, para que el rename final no copie entre filesystems
-	tmp, err := os.MkdirTemp(templatesBase, ".godot-manager.")
+	tmp, err := makeTemp(templatesBase)
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmp)
 
-	fmt.Printf("Export templates (%s) desde %s\n", strings.Join(missing, " "), url)
+	out.step("Export templates (%s) desde %s", strings.Join(missing, " "), url)
 	prefixes := []string{"templates/version.txt", "templates/icudt_godot.dat"}
 	for _, p := range missing {
 		prefixes = append(prefixes, "templates/"+p)
@@ -98,20 +104,20 @@ func installTemplates(ver string, mono bool, platforms []string) error {
 
 	data, err := os.ReadFile(filepath.Join(tmp, "templates", "version.txt"))
 	if err != nil {
-		return errors.New("el tpz no tiene version.txt")
+		return errf(codeNotAvailable, "el tpz no tiene version.txt")
 	}
 	if got := strings.TrimSpace(string(data)); got != name {
-		return fmt.Errorf("el tpz es de la version '%s', se esperaba '%s'", got, name)
+		return errf(codeNotAvailable, "el tpz es de la version '%s', se esperaba '%s'", got, name)
 	}
 	if err := moveContents(filepath.Join(tmp, "templates"), dest); err != nil {
 		return err
 	}
 	for _, p := range missing {
 		if !platformInstalled(dest, p) {
-			warn("'%s' no trae templates de %s", ver, p)
+			out.warn("'%s' no trae templates de %s", ver, p)
 		}
 	}
-	fmt.Printf("Export templates instalados en %s (%s)\n", dest, humanSize(dirSize(dest)))
+	out.step("Export templates instalados en %s (%s)", dest, humanSize(dirSize(dest)))
 	return nil
 }
 
@@ -149,8 +155,8 @@ func installTemplateSymbols(ver string, mono bool, spec []string) error {
 	dest := filepath.Join(templatesBase, templatesName(ver, mono))
 	// el editor no escribe version.txt al instalar por plataforma: alcanza con
 	// que haya algun template
-	if !slices.ContainsFunc(templatePlatforms, func(p string) bool { return platformInstalled(dest, p) }) {
-		return fmt.Errorf("los export templates de '%s' no estan instalados en %s", ver, dest)
+	if len(installedPlatforms(dest)) == 0 {
+		return errf(codeNotInstalled, "los export templates de '%s' no estan instalados en %s", ver, dest)
 	}
 
 	rel, err := getRelease(ver)
@@ -165,7 +171,7 @@ func installTemplateSymbols(ver string, mono bool, spec []string) error {
 		}
 	}
 	if len(available) == 0 {
-		return fmt.Errorf("la release '%s' no tiene simbolos de debug para los templates (existen desde 4.8-beta1)", ver)
+		return errf(codeNotAvailable, "la release '%s' no tiene simbolos de debug para los templates (existen desde 4.8-beta1)", ver)
 	}
 
 	var ids []string
@@ -183,10 +189,10 @@ func installTemplateSymbols(ver string, mono bool, spec []string) error {
 			if symbolsTemplateInstalled(dest, item) {
 				ids = append(ids, item)
 			} else {
-				warn("el template de '%s' no esta instalado, se omiten sus simbolos", item)
+				out.warn("el template de '%s' no esta instalado, se omiten sus simbolos", item)
 			}
 		default:
-			return fmt.Errorf("no hay simbolos '%s'. Disponibles: %s", item, strings.Join(available, " "))
+			return errf(codeNotAvailable, "no hay simbolos '%s'. Disponibles: %s", item, strings.Join(available, " "))
 		}
 	}
 	slices.Sort(ids)
@@ -199,25 +205,31 @@ func installTemplateSymbols(ver string, mono bool, spec []string) error {
 			continue
 		}
 		if exists(filepath.Join(dest, id+".debugsymbols")) || exists(filepath.Join(dest, "godot_"+id+".dSYM")) {
-			fmt.Printf("'%s' ya tiene los simbolos de debug.\n", id)
+			out.step("'%s' ya tiene los simbolos de debug.", id)
 			continue
 		}
 		todo = append(todo, id)
 		total += rel.asset(prefix + id + ".zip").Size
 	}
 	if len(todo) == 0 {
-		fmt.Println("No hay simbolos de templates para descargar.")
+		out.step("No hay simbolos de templates para descargar.")
 		return nil
 	}
 
-	fmt.Printf("Simbolos de debug a descargar: %s\n", strings.Join(todo, " "))
-	fmt.Printf("Total: %s de descarga, ~3x en disco\n", humanSize(total))
-	if total > 1<<30 && !confirm("¿Continuar?") {
-		fmt.Println("Cancelado.")
-		return nil
+	out.step("Simbolos de debug a descargar: %s", strings.Join(todo, " "))
+	out.step("Total: %s de descarga, ~3x en disco", humanSize(total))
+	if total > 1<<30 {
+		ok, err := confirm("¿Continuar?")
+		if err != nil {
+			return err
+		}
+		if !ok {
+			out.step("Cancelado.")
+			return nil
+		}
 	}
 
-	tmp, err := os.MkdirTemp(templatesBase, ".godot-manager.")
+	tmp, err := makeTemp(templatesBase)
 	if err != nil {
 		return err
 	}
@@ -237,14 +249,14 @@ func installTemplateSymbols(ver string, mono bool, spec []string) error {
 			return err
 		}
 		os.Remove(zipPath)
-		fmt.Printf("Simbolos de %s instalados en %s\n", id, into)
+		out.step("Simbolos de %s instalados en %s", id, into)
 	}
 	return nil
 }
 
-func cmdTemplates(args []string) error {
+func cmdTemplates(args []string) (map[string]any, error) {
 	if len(args) == 0 {
-		return errors.New("uso: godot-manager templates <version> [--mono] [--platforms=<p>,...] [--debugsymbols[=<id|plataforma>,...|all]] [--debugsymbolsonly]")
+		return nil, errf(codeInvalidArgs, "uso: godot-manager templates <version> [--mono] [--platforms=<p>,...] [--debugsymbols[=<id|plataforma>,...|all]] [--debugsymbolsonly] [--yes]")
 	}
 	ver := args[0]
 	var mono, only, symbolsDefault bool
@@ -256,7 +268,7 @@ func cmdTemplates(args []string) error {
 		case strings.HasPrefix(opt, "--platforms="):
 			p, err := parsePlatforms(strings.TrimPrefix(opt, "--platforms="))
 			if err != nil {
-				return err
+				return nil, err
 			}
 			platforms = p
 		case opt == "--debugsymbols":
@@ -266,7 +278,7 @@ func cmdTemplates(args []string) error {
 		case opt == "--debugsymbolsonly":
 			only = true
 		default:
-			return fmt.Errorf("opcion desconocida '%s'", opt)
+			return nil, errf(codeInvalidArgs, "opcion desconocida '%s'", opt)
 		}
 	}
 	// sin lista explicita, los simbolos siguen a --platforms; si no se eligieron:
@@ -288,24 +300,27 @@ func cmdTemplates(args []string) error {
 			p = templatePlatforms
 		}
 		if err := installTemplates(ver, mono, p); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if len(symbols) > 0 {
-		return installTemplateSymbols(ver, mono, symbols)
+		if err := installTemplateSymbols(ver, mono, symbols); err != nil {
+			return nil, err
+		}
 	}
-	return nil
+	dest := filepath.Join(templatesBase, templatesName(ver, mono))
+	return map[string]any{"version": ver, "templates_dir": dest, "platforms": installedPlatforms(dest)}, nil
 }
 
 // Carpeta de export templates que usa un binario. Godot la nombra con
 // "<version>.<status>[.mono]", que es su --version sin ".<build>.<hash>"
 // (o sin ".<build>" si se compilo fuera de git). Devuelve la que exista.
 func templatesDirFor(bin string) string {
-	out, err := exec.Command(consoleBinary(bin), "--headless", "--version").Output()
+	b, err := exec.Command(consoleBinary(bin), "--headless", "--version").Output()
 	if err != nil {
 		return ""
 	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
 	full := strings.TrimSpace(lines[len(lines)-1])
 	if full == "" {
 		return ""
@@ -330,4 +345,18 @@ func trimDotSuffixes(s string, n int) string {
 		s = s[:i]
 	}
 	return s
+}
+
+// Directorio de templates de una version instalada oficial (sin correr el
+// binario), o "" si no hay.
+func officialTemplatesDir(name string) string {
+	tag := versionTag(name)
+	if tag == "" {
+		return ""
+	}
+	d := filepath.Join(templatesBase, templatesName(tag, strings.HasSuffix(name, "-mono")))
+	if !exists(d) {
+		return ""
+	}
+	return d
 }

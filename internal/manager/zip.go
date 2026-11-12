@@ -138,11 +138,14 @@ func remoteUnzip(url, dest string, prefixes []string) error {
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("no se pudo descargar %s: %w", url, err)
+		return errf(codeNetwork, "no se pudo descargar %s: %v", url, err)
 	}
 	resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return errf(codeNotAvailable, "no existe %s", url)
+	}
 	if resp.StatusCode != http.StatusOK || resp.ContentLength <= 0 {
-		return fmt.Errorf("no se pudo descargar %s (HTTP %d)", url, resp.StatusCode)
+		return errf(codeNetwork, "no se pudo descargar %s (HTTP %d)", url, resp.StatusCode)
 	}
 	size := resp.ContentLength
 
@@ -155,7 +158,7 @@ func remoteUnzip(url, dest string, prefixes []string) error {
 	}
 	zr, err := zip.NewReader(ra, size)
 	if err != nil {
-		return fmt.Errorf("no se pudo leer el indice del zip: %w", err)
+		return errf(codeNetwork, "no se pudo leer el indice del zip: %v", err)
 	}
 
 	var entries []*zip.File
@@ -173,7 +176,7 @@ func remoteUnzip(url, dest string, prefixes []string) error {
 		entries = append(entries, f)
 		total += int64(f.CompressedSize64)
 	}
-	fmt.Printf("%d archivos, %.0f MB a descargar\n", len(entries), float64(total)/(1<<20))
+	out.step("%d archivos, %.0f MB a descargar", len(entries), float64(total)/(1<<20))
 
 	p := newProgress(total)
 	for _, f := range entries {
@@ -229,11 +232,11 @@ func remoteEntry(ra *httpReaderAt, f *zip.File, dest string, p *progress) error 
 		}
 		written, err = io.Copy(io.MultiWriter(w, crc), r)
 		if err != nil {
-			return fmt.Errorf("%s: %w", f.Name, err)
+			return errf(codeNetwork, "%s: %v", f.Name, err)
 		}
 	}
 	if crc.Sum32() != f.CRC32 || uint64(written) != f.UncompressedSize64 {
-		return fmt.Errorf("%s llego corrupto (CRC32 no coincide)", f.Name)
+		return errf(codeChecksum, "%s llego corrupto (CRC32 no coincide)", f.Name)
 	}
 	return w.Close()
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -27,13 +28,26 @@ var (
 	errNotFound = errors.New("no encontrado")
 )
 
-func newRequest(method, url string) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, nil)
+// Si url es de la API de GitHub (la real, o la de githubAPI en los tests).
+func isAPI(u string) bool {
+	return strings.HasPrefix(u, "https://api.github.com/") || strings.HasPrefix(u, apiOrigin())
+}
+
+func apiOrigin() string {
+	p, err := url.Parse(githubAPI)
+	if err != nil {
+		return githubAPI
+	}
+	return p.Scheme + "://" + p.Host + "/"
+}
+
+func newRequest(method, u string) (*http.Request, error) {
+	req, err := http.NewRequest(method, u, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "godot-manager/"+Version)
-	if strings.HasPrefix(url, "https://api.github.com/") {
+	if isAPI(u) {
 		req.Header.Set("Accept", "application/vnd.github+json")
 		// opcional: sube el limite de 60 pedidos/hora de la API anonima
 		if t := os.Getenv("GITHUB_TOKEN"); t != "" {
@@ -43,14 +57,14 @@ func newRequest(method, url string) (*http.Request, error) {
 	return req, nil
 }
 
-func httpGet(url string) (*http.Response, error) {
-	req, err := newRequest("GET", url)
+func httpGet(u string) (*http.Response, error) {
+	req, err := newRequest("GET", u)
 	if err != nil {
 		return nil, err
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("no se pudo descargar %s: %w", url, err)
+		return nil, errf(codeNetwork, "no se pudo descargar %s: %v", u, err)
 	}
 	if resp.StatusCode == http.StatusOK {
 		return resp, nil
@@ -59,23 +73,23 @@ func httpGet(url string) (*http.Response, error) {
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
 		return nil, errNotFound
-	case (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests) &&
-		strings.HasPrefix(url, "https://api.github.com/"):
-		return nil, errors.New("la API de GitHub limito los pedidos; espera un rato o defini GITHUB_TOKEN")
+	case (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests) && isAPI(u):
+		return nil, errf(codeRateLimited, "la API de GitHub limito los pedidos; espera un rato o defini GITHUB_TOKEN")
 	}
-	return nil, fmt.Errorf("no se pudo descargar %s (HTTP %d)", url, resp.StatusCode)
+	return nil, errf(codeNetwork, "no se pudo descargar %s (HTTP %d)", u, resp.StatusCode)
 }
 
-func getJSON(url string, v any) error {
-	resp, err := httpGet(url)
+// Decodifica el JSON de u en v; devuelve los headers de la respuesta.
+func getJSON(u string, v any) (http.Header, error) {
+	resp, err := httpGet(u)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
-		return fmt.Errorf("respuesta invalida de %s: %w", url, err)
+		return nil, errf(codeNetwork, "respuesta invalida de %s: %v", u, err)
 	}
-	return nil
+	return resp.Header, nil
 }
 
 type asset struct {
@@ -110,9 +124,9 @@ func (r *release) asset(name string) *asset {
 
 func getRelease(tag string) (*release, error) {
 	var r release
-	err := getJSON(githubAPI+"/releases/tags/"+tag, &r)
+	_, err := getJSON(githubAPI+"/releases/tags/"+tag, &r)
 	if errors.Is(err, errNotFound) {
-		return nil, fmt.Errorf("no existe la release '%s'. Revisa el tag exacto con 'godot-manager list-remote'", tag)
+		return nil, errf(codeNoRelease, "no existe la release '%s'. Revisa el tag exacto con 'godot-manager list-remote'", tag)
 	}
 	if err != nil {
 		return nil, err
@@ -120,13 +134,41 @@ func getRelease(tag string) (*release, error) {
 	return &r, nil
 }
 
-// godot-builds mezcla stables y pre-releases (dev/beta/rc) en el mismo repo,
-// se distinguen por el flag "prerelease". La API las devuelve ordenadas por
-// fecha de creacion, la mas nueva primero.
+// Todas las releases, siguiendo la paginacion (header Link). godot-builds
+// mezcla stables y pre-releases (dev/beta/rc) en el mismo repo, se distinguen
+// por el flag "prerelease". La API las devuelve ordenadas por fecha de
+// creacion, la mas nueva primero.
 func listReleases() ([]release, error) {
-	var rs []release
-	err := getJSON(githubAPI+"/releases?per_page=60", &rs)
-	return rs, err
+	var all []release
+	next := githubAPI + "/releases?per_page=100"
+	for next != "" {
+		var page []release
+		h, err := getJSON(next, &page)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		next = nextLink(h.Get("Link"))
+		if next != "" && !isAPI(next) {
+			return nil, fmt.Errorf("paginacion inesperada: %s", next)
+		}
+	}
+	return all, nil
+}
+
+// URL con rel="next" de un header Link, o "".
+func nextLink(link string) string {
+	for _, part := range strings.Split(link, ",") {
+		u, params, ok := strings.Cut(part, ";")
+		if !ok || !strings.Contains(params, `rel="next"`) {
+			continue
+		}
+		u = strings.TrimSpace(u)
+		if strings.HasPrefix(u, "<") && strings.HasSuffix(u, ">") {
+			return u[1 : len(u)-1]
+		}
+	}
+	return ""
 }
 
 // sha512 del manifest oficial releases/godot-<tag>.json de godot-builds, o "".
@@ -137,8 +179,8 @@ func manifestChecksum(tag, file string) string {
 			Checksum string `json:"checksum"`
 		} `json:"files"`
 	}
-	url := "https://raw.githubusercontent.com/" + buildsRepo + "/main/releases/godot-" + tag + ".json"
-	if getJSON(url, &m) != nil {
+	u := "https://raw.githubusercontent.com/" + buildsRepo + "/main/releases/godot-" + tag + ".json"
+	if _, err := getJSON(u, &m); err != nil {
 		return ""
 	}
 	for _, f := range m.Files {
@@ -150,19 +192,19 @@ func manifestChecksum(tag, file string) string {
 }
 
 // Cuerpo de un pedido HTTP Range [start, end].
-func rangeGet(url string, start, end int64) (io.ReadCloser, error) {
-	req, err := newRequest("GET", url)
+func rangeGet(u string, start, end int64) (io.ReadCloser, error) {
+	req, err := newRequest("GET", u)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("no se pudo descargar %s: %w", url, err)
+		return nil, errf(codeNetwork, "no se pudo descargar %s: %v", u, err)
 	}
 	if resp.StatusCode != http.StatusPartialContent {
 		resp.Body.Close()
-		return nil, fmt.Errorf("el servidor no soporta descargas parciales (HTTP %d)", resp.StatusCode)
+		return nil, errf(codeNetwork, "el servidor no soporta descargas parciales (HTTP %d)", resp.StatusCode)
 	}
 	return resp.Body, nil
 }
