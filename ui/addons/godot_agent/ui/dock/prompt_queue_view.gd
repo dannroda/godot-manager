@@ -1,0 +1,125 @@
+@tool
+extends PanelContainer
+## Prompts en cola, arriba del composer: "En cola (N)", una fila por prompt (enviar ahora, editar o
+## quitar) y, si la cola está en pausa, el motivo con «Enviar ahora». Solo muestra y edita la
+## PromptQueue; el envío lo decide el dock.
+
+## El usuario quiere seguir editando un prompt encolado (ya salió de la cola).
+signal edit_requested(text: String)
+signal send_now_requested
+## «Enviar ahora» de una fila: el dock corta el turno en curso y manda ese prompt (m7-33).
+signal send_item_now_requested(index: int)
+
+const AgentTheme := preload("../agent_theme.gd")
+const PromptQueue := preload("../../session/prompt_queue.gd")
+const I18n := preload("../../core/i18n.gd")
+
+## Caracteres de cada fila (el texto completo va en el tooltip).
+const ROW_CHARS := 120
+
+## Callable(text: String) -> String: la etiqueta de un prompt del harness ("" = del usuario, m12-44).
+var harness_label_of: Callable
+var _queue: PromptQueue
+var _title: Label
+var _reason: Label
+var _send_now: Button
+var _rows: VBoxContainer
+var _send_available: bool = true
+
+
+func setup(queue: PromptQueue) -> void:
+	_queue = queue
+
+
+func _ready() -> void:
+	visible = false
+	add_theme_stylebox_override(&"panel", AgentTheme.panel(Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.12), 6, 4))
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override(&"separation", AgentTheme.px(2))
+	add_child(column)
+	var header := HBoxContainer.new()
+	column.add_child(header)
+	_title = Label.new()
+	_title.add_theme_color_override(&"font_color", AgentTheme.MUTED)
+	_title.add_theme_font_size_override(&"font_size", AgentTheme.px(12))
+	header.add_child(_title)
+	_reason = _row_label(AgentTheme.WARNING)
+	_reason.add_theme_font_size_override(&"font_size", AgentTheme.px(12))
+	header.add_child(_reason)
+	_send_now = _small_button(I18n.t("Send now"), I18n.t("Resume the queue: sends the next prompt"))
+	_send_now.pressed.connect(func() -> void: send_now_requested.emit())
+	header.add_child(_send_now)
+	var discard := _small_button(I18n.t("Discard"), I18n.t("Empty the queue"))
+	discard.pressed.connect(func() -> void: _queue.clear())
+	header.add_child(discard)
+	_rows = VBoxContainer.new()
+	_rows.add_theme_constant_override(&"separation", 0)
+	column.add_child(_rows)
+	_queue.changed.connect(_refresh)
+	_refresh()
+
+
+## «Enviar ahora» solo con una sesión lista (si la sesión se cerró, primero hay que abrir otra).
+func set_send_available(available: bool) -> void:
+	_send_available = available
+	_send_now.disabled = not available
+	for row: Node in _rows.get_children():
+		if row.has_meta(&"send"):
+			(row.get_meta(&"send") as Button).disabled = not available
+	_send_now.tooltip_text = I18n.t("Resume the queue: sends the next prompt") if available else I18n.t("A ready session is needed: open a new one or retry")
+
+
+func _refresh() -> void:
+	visible = not _queue.is_empty()
+	_title.text = I18n.t("Queued (%d)") % _queue.size()
+	_reason.text = I18n.t("· paused: %s") % _queue.pause_reason if _queue.paused else ""
+	_reason.tooltip_text = _queue.pause_reason
+	_send_now.visible = _queue.paused
+	for child: Node in _rows.get_children():
+		child.queue_free()
+	for i in _queue.size():
+		var text := str(_queue.items[i].text)
+		var row := HBoxContainer.new()
+		_rows.add_child(row)
+		var harness: String = harness_label_of.call(text) if harness_label_of.is_valid() else ""
+		var label := _row_label(AgentTheme.MUTED if not harness.is_empty() else AgentTheme.font_color())
+		label.text = "⚙ " + I18n.t(harness) if not harness.is_empty() else text.replace("\n", " ⏎ ").left(ROW_CHARS)
+		label.tooltip_text = text
+		label.mouse_filter = Control.MOUSE_FILTER_PASS
+		row.add_child(label)
+		var send := _small_button("➤", I18n.t("Send now: stops the agent's current turn and sends this message"))
+		send.disabled = not _send_available
+		send.pressed.connect(func() -> void: send_item_now_requested.emit(i))
+		row.add_child(send)
+		row.set_meta(&"send", send)
+		var edit := _small_button("✎", I18n.t("Edit: moves it back to the composer"))
+		edit.pressed.connect(_on_edit.bind(i))
+		row.add_child(edit)
+		var remove := _small_button("✕", I18n.t("Remove from the queue"))
+		remove.pressed.connect(func() -> void: _queue.discard_at(i))
+		row.add_child(remove)
+
+
+func _on_edit(index: int) -> void:
+	var item := _queue.discard_at(index)
+	if not item.is_empty():
+		edit_requested.emit(str(item.text))
+
+
+## Una línea que se recorta con "…" en lugar de agrandar el dock (sin autowrap: ver MinSizeGuard).
+static func _row_label(color: Color) -> Label:
+	var label := Label.new()
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.add_theme_color_override(&"font_color", color)
+	return label
+
+
+static func _small_button(text: String, tooltip: String) -> Button:
+	var button := Button.new()
+	button.flat = true
+	button.text = text
+	button.tooltip_text = tooltip
+	button.add_theme_font_size_override(&"font_size", AgentTheme.px(12))
+	return button

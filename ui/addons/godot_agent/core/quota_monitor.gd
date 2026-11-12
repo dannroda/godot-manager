@@ -1,0 +1,632 @@
+@tool
+extends RefCounted
+## Cuota del plan del usuario (spec §10.1).
+## Fuentes, en orden:
+## 1. los `usage_update` con `_meta["_claude/rateLimit"]` (D22), o el `/usage` de Antigravity, que
+##    no manda la cuota en usage_update (ver `parse_antigravity_usage`);
+## 2. avisos y errores de límite en el texto del agente o en session/prompt, con los patrones de
+##    config/quota_patterns.txt;
+## 3. sin datos, el estado queda "desconocido".
+## Nunca estima la cuota a partir de tokens, no consulta endpoints y no lee archivos del agente.
+## Cada cambio de estado se loguea en el canal `quota`.
+
+signal changed
+
+const AgentLog := preload("agent_log.gd")
+const I18n := preload("i18n.gd")
+
+enum QuotaState { UNKNOWN, NORMAL, WARNING, PAUSE_SCHEDULED, LIMITED }
+
+const STATE_LABELS: Dictionary = {
+	QuotaState.UNKNOWN: "unknown",  # i18n
+	QuotaState.NORMAL: "normal",  # i18n
+	QuotaState.WARNING: "warning",  # i18n
+	QuotaState.PAUSE_SCHEDULED: "pause scheduled",  # i18n
+	QuotaState.LIMITED: "limited",  # i18n
+}
+const PATTERNS_PATH := "res://addons/godot_agent/config/quota_patterns.txt"
+## Clave de `_meta` donde claude-agent-acp manda el SDKRateLimitInfo en los usage_update (D22).
+const CLAUDE_RATE_LIMIT_KEY := "_claude/rateLimit"
+## Clave de `_meta` donde OpenCode avisa reintentos programados en `session_info_update` (m11-20).
+const OPENCODE_RETRY_KEY := "opencode/retry"
+## Códigos/tipos de error estructurados que los agentes ACP reportan al alcanzar un límite (m11-20).
+const LIMIT_ERROR_KINDS: PackedStringArray = [
+	"rate_limit", "billing_error", "rate_limit_error", "insufficient_quota",
+	"usageLimitExceeded", "rateLimitExceeded", "quota_exhausted", "rate_limited",
+	"budget_exhausted", "user_model_rate_limited",
+]
+## Códigos que Copilot, Codex y OpenAI ponen en el mensaje de error de un límite.
+const LIMIT_CODES_IN_ERRORS: PackedStringArray = [
+	"user_model_rate_limited", "insufficient_quota", "usageLimitExceeded", "rateLimitExceeded",
+]
+## Ventanas que se muestran, en orden: la actual y la semanal (D22).
+const WINDOW_CURRENT := "five_hour"
+const WINDOW_WEEKLY := "seven_day"
+const WINDOW_LABELS: Dictionary = {
+	WINDOW_CURRENT: "Window",  # i18n
+	WINDOW_WEEKLY: "Week",  # i18n
+}
+const MONTHS: PackedStringArray = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+const MONTHS_ES: PackedStringArray = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+## Reintentos sin hora de reinicio (minutos): 5, 10, 20 y después cada 60.
+const BACKOFF_MINUTES: Array[int] = [5, 10, 20, 60]
+const DEFAULT_WARN := 0.75
+const DEFAULT_PAUSE := 0.9
+
+var agent_log: AgentLog
+## Umbrales (fracción 0–1). `pause_enabled` false = el One-shot nunca pausa por cuota.
+var warn_threshold: float = DEFAULT_WARN
+var pause_threshold: float = DEFAULT_PAUSE
+var pause_enabled: bool = true
+## () -> int, unix en segundos. Reemplazable en los tests.
+var now_provider: Callable = func() -> int: return int(Time.get_unix_time_from_system())
+
+var state: QuotaState = QuotaState.UNKNOWN
+## {nombre: {utilization: 0–1, resets_at: unix (0 = desconocida)}}
+var windows: Dictionary = {}
+## Cuota por grupo de modelos cuando el agente informa varios (Antigravity `/usage`, m11-21):
+## `{grupo: {five_hour: {utilization, resets_at}, seven_day: {…}}}`.
+var groups: Dictionary = {}
+var last_usage_update: Dictionary = {}
+## Último SDKRateLimitInfo: {status, resetsAt, rateLimitType, utilization, surpassedThreshold,
+## unifiedWindows: {five_hour: {utilization 0–1, resetsAt}, seven_day: {…}}, …} (D22).
+var last_rate_limit: Dictionary = {}
+## Último aviso o error de límite: {source: "texto"|"error"|"cuota", text, at (unix)}.
+var last_limit_event: Dictionary = {}
+## En "limitado": desde cuándo, hasta cuándo (0 = sin hora) y cuándo toca el próximo intento.
+var limited_since: int = 0
+var limited_until: int = 0
+var next_retry_at: int = 0
+
+var _patterns: Array[RegEx] = []
+var _retries: int = 0
+var _limited: bool = false
+
+
+func setup(log_sink: AgentLog, patterns_path: String = PATTERNS_PATH) -> void:
+	agent_log = log_sink
+	_patterns = load_patterns(patterns_path)
+
+
+func configure(warn: float, pause: float, pause_on: bool) -> void:
+	warn_threshold = clampf(warn, 0.0, 1.0)
+	pause_threshold = clampf(pause, 0.0, 1.0)
+	pause_enabled = pause_on
+	_recompute()
+
+
+## Una regex por línea (sin mayúsculas/minúsculas); `#` comenta. Las inválidas se saltean.
+static func load_patterns(path: String) -> Array[RegEx]:
+	var patterns: Array[RegEx] = []
+	for line: String in FileAccess.get_file_as_string(path).split("\n"):
+		var source := line.strip_edges()
+		if source.is_empty() or source.begins_with("#"):
+			continue
+		var regex := RegEx.create_from_string("(?i)" + source, false)
+		if regex and regex.is_valid():
+			patterns.append(regex)
+	return patterns
+
+
+# --- fuentes ---------------------------------------------------------------------------------------
+
+func observe_update(update: Dictionary) -> void:
+	last_usage_update = update.duplicate(true)
+	var raw := JSON.stringify(update)
+	var info := rate_limit_info(update)
+	if info.is_empty():
+		_log("usage_update: %s/%s context tokens, no quota data" % [update.get("used", "?"), update.get("size", "?")], raw)
+		return
+	last_rate_limit = info
+	groups.clear()
+	_log("plan quota: %s" % describe_rate_limit(info), raw)
+	_read_windows(info)
+	if str(info.get("status", "")) == "rejected":
+		_enter_limited("cuota", "status rejected", _number(info.get("resetsAt")))
+	elif _limited and str(info.get("status", "")).begins_with("allowed"):
+		_leave_limited("the agent reports available quota again")
+	_recompute()
+
+
+## true si el texto de un error trae uno de LIMIT_CODES_IN_ERRORS como palabra. En la prosa del
+## agente no se buscan: hablaría de ellos al trabajar en código que los maneja.
+static func _mentions_limit_kind(text: String) -> bool:
+	for code: String in LIMIT_CODES_IN_ERRORS:
+		if RegEx.create_from_string("\\b%s\\b" % code).search(text) != null:
+			return true
+	return false
+
+
+## Texto del agente en un turno: si coincide con un patrón de límite, se pasa a "limitado".
+func observe_agent_text(text: String) -> bool:
+	var match_text := matching_line(text)
+	if match_text.is_empty():
+		return false
+	_log("limit notice in the agent text: %s" % match_text, JSON.stringify({"text": text.left(2000)}))
+	_enter_limited("texto", match_text, parse_reset_time(match_text, _now()))
+	_recompute()
+	return true
+
+
+## Error de session/prompt. Se loguean todos (para ver la forma real); devuelve si parece de límite.
+func observe_prompt_error(error: Dictionary) -> bool:
+	var data: Variant = error.get("data")
+	var kind := ""
+	if data is Dictionary:
+		for key: String in ["errorKind", "type", "code", "errorName", "reason"]:
+			if data.get(key) is String and not str(data[key]).is_empty():
+				kind = str(data[key])
+				break
+	var text := "%s %s" % [error.get("message", ""), JSON.stringify(data) if data != null else ""]
+	var line := matching_line(str(error.get("message", "")))
+	var is_limit := kind in LIMIT_ERROR_KINDS or not matching_line(text).is_empty() or _mentions_limit_kind(text)
+	_log("session/prompt error%s: %s" % [" (limit)" if is_limit else "", str(error.get("message", "")).left(300)], JSON.stringify(error))
+	if is_limit:
+		_enter_limited("error", str(error.get("message", "")), parse_reset_time(line if not line.is_empty() else text, _now()))
+		_recompute()
+	return is_limit
+
+
+## `session_info_update`: OpenCode avisa reintentos por límite en `_meta["opencode/retry"]` y los
+## limpia con `null` cuando arranca el paso siguiente (m11-20).
+func observe_session_info(update: Dictionary) -> void:
+	var meta: Variant = update.get("_meta")
+	if not meta is Dictionary or not meta.has(OPENCODE_RETRY_KEY):
+		return
+	var retry: Variant = meta.get(OPENCODE_RETRY_KEY)
+	if retry == null:
+		if _limited:
+			_leave_limited("the agent started the next step")
+			_recompute()
+		return
+	if not retry is Dictionary:
+		return
+	var err: Variant = retry.get("error")
+	# OpenCode manda {type: "provider.rate-limit", message: "Rate limit exceeded", status: 429}.
+	var err_type := str(err.get("type", "")).to_lower().replace("-", "_").replace(".", "_") if err is Dictionary else ""
+	var status := int(err.get("status", 0)) if err is Dictionary and (err.get("status") is int or err.get("status") is float) else 0
+	var msg := str(err.get("message", err)) if err is Dictionary else str(err)
+	if not (status == 429 or err_type in LIMIT_ERROR_KINDS or "rate_limit" in err_type or "quota" in err_type or not matching_line(msg).is_empty()):
+		return
+	var reset := 0
+	var next_at := str(retry.get("nextRetryAt", ""))
+	if not next_at.is_empty():
+		reset = Time.get_unix_time_from_datetime_string(next_at)
+	_log("scheduled retry in session_info_update: %s" % msg, JSON.stringify(update))
+	_enter_limited("cuota", msg, reset)
+	_recompute()
+
+
+## Un turno terminó bien: si estaba "limitado", la cuota volvió.
+func observe_turn_ok() -> void:
+	if _limited:
+		_leave_limited("a turn finished fine")
+		_recompute()
+
+
+## Ventanas de otra fuente que `usage_update` ({five_hour: {utilization, resets_at}, seven_day: …}).
+## `new_groups` guarda el desglose por grupo de modelos (Antigravity) para el tooltip y cambios de modelo.
+func observe_windows(new_windows: Dictionary, raw: String, new_groups: Dictionary = {}) -> void:
+	if new_windows.is_empty():
+		_log("/usage: no quota windows in the agent's answer", raw)
+		return
+	windows = new_windows.duplicate(true)
+	groups = new_groups.duplicate(true)
+	var parts: PackedStringArray = []
+	for window_name: String in windows:
+		parts.append("%s %s" % [window_name, _percent(windows[window_name].utilization)])
+	_log("plan quota (/usage): %s" % " · ".join(parts), raw)
+	_recompute()
+
+
+## Actualiza las ventanas activas cuando cambia el modelo elegido en un agente con grupos (Antigravity).
+func select_antigravity_model(model_name: String) -> void:
+	if groups.is_empty():
+		return
+	var selected := antigravity_windows(groups, model_name)
+	if not selected.is_empty() and selected != windows:
+		windows = selected
+		_recompute()
+
+
+## Se cambió de cuenta: lo medido era de la anterior. Queda sin datos hasta que el agente informe.
+func forget_account() -> void:
+	windows.clear()
+	groups.clear()
+	last_rate_limit = {}
+	last_usage_update = {}
+	if _limited:
+		_leave_limited("account switched")
+	_recompute()
+
+
+# --- consultas -------------------------------------------------------------------------------------
+
+func has_data() -> bool:
+	return not windows.is_empty()
+
+
+func utilization(window: String) -> float:
+	return float(windows.get(window, {}).get("utilization", -1.0))
+
+
+func resets_at(window: String) -> int:
+	return int(windows.get(window, {}).get("resets_at", 0))
+
+
+## La mayor utilización informada (cualquiera de las ventanas puede cortar), o -1 sin datos.
+func max_utilization() -> float:
+	var best := -1.0
+	for window: String in windows:
+		best = maxf(best, utilization(window))
+	return best
+
+
+## Cuándo se libera la cuota que motivó la pausa: el reinicio de la ventana más llena.
+func pause_resets_at() -> int:
+	var best_window := ""
+	for window: String in windows:
+		if best_window.is_empty() or utilization(window) > utilization(best_window):
+			best_window = window
+	return resets_at(best_window) if not best_window.is_empty() else 0
+
+
+func is_limited() -> bool:
+	return state == QuotaState.LIMITED
+
+
+## Segundos hasta el próximo intento en "limitado" (0 si ya toca).
+func seconds_until_retry() -> int:
+	return maxi(next_retry_at - _now(), 0) if state == QuotaState.LIMITED else 0
+
+
+func retry_due() -> bool:
+	return state == QuotaState.LIMITED and _now() >= next_retry_at
+
+
+## Se mandó un intento de reanudación: si vuelve a fallar, el próximo espera más.
+func note_retry() -> void:
+	_retries += 1
+	_log("resume attempt %d" % _retries, "")
+
+
+## "se pausa al 90 %, al terminar la tarea o el turno", para la barra del One-shot.
+func rule_text() -> String:
+	if state == QuotaState.LIMITED:
+		if limited_until > 0:
+			return I18n.t("Limited: resumes when the window resets")
+		return I18n.t("Limited: resumes with retries (5, 10, 20 and then every 60 min)")
+	if not pause_enabled:
+		return I18n.t("No quota pause · warning at %d %%") % roundi(warn_threshold * 100.0)
+	if state == QuotaState.PAUSE_SCHEDULED:
+		return I18n.t("Quota at %d %%: pauses when the current task or turn finishes") % roundi(max_utilization() * 100.0)
+	return I18n.t("Pauses at %d %%, when the current task or turn finishes") % roundi(pause_threshold * 100.0)
+
+
+## "Window 63 % · resets in 2 h 10 min".
+func describe_window(window: String) -> String:
+	return _describe_window_data(window, windows.get(window, {}))
+
+
+## Una línea por grupo de modelos ("Gemini Models: Window 0 % · resets in 1 h · Week 14 % · resets in 4 days").
+func describe_groups() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for group_name: String in groups:
+		var group: Dictionary = groups[group_name]
+		var parts: PackedStringArray = []
+		for window: String in [WINDOW_CURRENT, WINDOW_WEEKLY]:
+			if group.get(window) is Dictionary:
+				parts.append(_describe_window_data(window, group[window]))
+		if not parts.is_empty():
+			lines.append("%s: %s" % [group_name, " · ".join(parts)])
+	return lines
+
+
+## «en 1 h» hasta el reinicio de una ventana ({utilization, resets_at}), o "" si no lo informa.
+func reset_in(data: Dictionary) -> String:
+	var reset := int(data.get("resets_at", 0))
+	return format_duration(reset - _now()) if reset > 0 else ""
+
+
+func _describe_window_data(window: String, data: Dictionary) -> String:
+	var label := I18n.t(WINDOW_LABELS[window]) if WINDOW_LABELS.has(window) else window
+	var percent := roundi(float(data.get("utilization", 0.0)) * 100.0)
+	var reset := int(data.get("resets_at", 0))
+	if reset > 0:
+		return I18n.t("%s %d %% · resets in %s") % [label, percent, format_duration(reset - _now())]
+	return "%s %d %%" % [label, percent]
+
+
+func matching_line(text: String) -> String:
+	for line: String in text.split("\n"):
+		var trimmed := line.strip_edges()
+		for regex: RegEx in _patterns:
+			if regex.search(trimmed):
+				return trimmed
+	return ""
+
+
+static func rate_limit_info(update: Dictionary) -> Dictionary:
+	var meta: Variant = update.get("_meta")
+	if meta is Dictionary and meta.get(CLAUDE_RATE_LIMIT_KEY) is Dictionary:
+		return meta[CLAUDE_RATE_LIMIT_KEY]
+	return {}
+
+
+## Hora de reinicio en un aviso de límite, como unix (0 si no tiene). Acepta el formato viejo
+## "…|<unix>" y "resets 3pm", "resets 3:30 pm", "resets 15:00", "reinicia a las 15:00" (hora local:
+## la próxima vez que llegue esa hora).
+## El `/usage` de Antigravity lista, por grupo de modelos, cuánto queda de cada ventana:
+##   - **Gemini Models**
+##     - **Weekly Limit Remaining:** 86% remaining (resets Nov 02, 2026, 00:41 UTC)
+##     - **Five Hour Limit Remaining:** 100% remaining (resets Oct 29, 2026, 00:09 UTC)
+## Devuelve {grupo: {five_hour: {utilization 0–1, resets_at}, seven_day: {…}}}.
+static func parse_antigravity_usage(text: String) -> Dictionary:
+	var groups: Dictionary = {}
+	var group := ""
+	var heading := RegEx.create_from_string("^- \\*\\*(.+?)\\*\\*\\s*$")
+	var limit := RegEx.create_from_string("^\\s+- \\*\\*(.+?)\\*\\*\\s*(\\d+(?:\\.\\d+)?)% remaining(?: \\(resets (\\w+) (\\d+), (\\d+), (\\d+):(\\d+) UTC\\))?")
+	for line: String in text.split("\n"):
+		var found := heading.search(line)
+		if found:
+			group = found.get_string(1)
+			groups[group] = {}
+			continue
+		found = limit.search(line)
+		if found == null or group.is_empty():
+			continue
+		var label := found.get_string(1).to_lower()
+		var window := WINDOW_WEEKLY if "week" in label else (WINDOW_CURRENT if "five hour" in label else "")
+		if window.is_empty():
+			continue
+		var reset := 0
+		var month := MONTHS.find(found.get_string(3).left(3).to_lower()) + 1
+		if month > 0:
+			reset = Time.get_unix_time_from_datetime_dict({"year": int(found.get_string(5)), "month": month, "day": int(found.get_string(4)), "hour": int(found.get_string(6)), "minute": int(found.get_string(7)), "second": 0})
+		groups[group][window] = {"utilization": 1.0 - float(found.get_string(2)) / 100.0, "resets_at": reset}
+	return groups
+
+
+## Las ventanas del grupo del modelo en uso: Argon tiene su semana aparte y comparte las 5 h con el
+## grupo de Gemini; Claude y GPT van juntos; el resto es el grupo de Gemini.
+static func antigravity_windows(groups: Dictionary, model_name: String) -> Dictionary:
+	var name := model_name.to_lower()
+	var key := "argon" if "argon" in name else ("claude" if "claude" in name or "gpt" in name else "gemini")
+	var result: Dictionary = _usage_group(groups, key).duplicate(true)
+	if key == "argon":
+		var gemini := _usage_group(groups, "gemini")
+		for window: String in gemini:
+			if not result.has(window):
+				result[window] = gemini[window].duplicate()
+	return result
+
+
+static func _usage_group(groups: Dictionary, key: String) -> Dictionary:
+	for group: String in groups:
+		var lower := group.to_lower()
+		if key in lower and (key != "gemini" or not "argon" in lower):
+			return groups[group]
+	return {}
+
+
+## El `/status` de `codex-acp` (local, sin gastar tokens) lista las ventanas de `RateLimitsMap`:
+##   **codex 5h limit:** 82% left (resets 18:30)
+##   **codex Weekly limit:** 64% left (resets 12:00 on 3 Nov)
+##   **codex individual spend limit:** 75% left (25 of 100 credits used; resets Nov 3)
+## También acepta el formato de barra del CLI (`│ 5h limit: [██░░] 40% left (resets 16:10) │`).
+## Devuelve `{grupo: {five_hour: {utilization 0–1, resets_at}, seven_day: {…}}}`.
+static func parse_codex_status(text: String, now: int) -> Dictionary:
+	var parsed: Dictionary = {}
+	var pattern := RegEx.create_from_string("(?i)^(?:\\*\\*)?(?:(?!weekly\\s+limit|individual\\s+spend|\\d+[mhd]\\s+limit)([\\w.-]+(?:\\s+(?!weekly\\s+limit|individual\\s+spend|\\d+[mhd]\\s+limit)[\\w.-]+)*?)\\s+)?(weekly\\s+limit|individual\\s+spend\\s+limit|\\d+[mhd]\\s+limit|limit):(?:\\*\\*)?\\s*(?:\\[[^\\]]*\\]\\s*)?(\\d+(?:\\.\\d+)?)%\\s+left(?:\\s*\\((?:[^)]*;\\s*)?resets\\s+([^)]+)\\))?")
+	for raw_line: String in text.split("\n"):
+		var cleaned := raw_line.strip_edges().trim_prefix("│").trim_suffix("│").strip_edges()
+		var found := pattern.search(cleaned)
+		if found == null:
+			continue
+		var group := found.get_string(1) if not found.get_string(1).is_empty() else "codex"
+		var label := found.get_string(2).to_lower()
+		if "spend" in label:  # gasto de créditos del asiento, no una ventana: pisaría la semanal
+			continue
+		var window := WINDOW_WEEKLY if ("week" in label or "d limit" in label) else WINDOW_CURRENT
+		var used := clampf(1.0 - float(found.get_string(3)) / 100.0, 0.0, 1.0)
+		var reset := _parse_codex_reset(found.get_string(4).strip_edges(), now)
+		if not parsed.has(group):
+			parsed[group] = {}
+		parsed[group][window] = {"utilization": used, "resets_at": reset}
+	return parsed
+
+
+## Elige las ventanas activas de `parse_codex_status` para el modelo en uso (o el grupo `codex`).
+static func codex_windows(parsed_groups: Dictionary, model_name: String = "") -> Dictionary:
+	if parsed_groups.is_empty():
+		return {}
+	if not model_name.is_empty() and parsed_groups.has(model_name):
+		return parsed_groups[model_name].duplicate(true)
+	if parsed_groups.has("codex"):
+		return parsed_groups["codex"].duplicate(true)
+	return parsed_groups[parsed_groups.keys()[0]].duplicate(true)
+
+
+## Extrae `{email, org, plan, method}` de la línea `**Account:** ChatGPT pro (email)` de `/status`.
+static func parse_codex_account(text: String) -> Dictionary:
+	var chatgpt := RegEx.create_from_string("(?i)\\*\\*Account:\\*\\*\\s*ChatGPT\\s+(\\w+)\\s*\\(([^)]+)\\)").search(text)
+	if chatgpt:
+		return {"email": chatgpt.get_string(2).strip_edges(), "org": "", "plan": chatgpt.get_string(1).strip_edges(), "method": "ChatGPT"}
+	var api_key := RegEx.create_from_string("(?i)\\*\\*Account:\\*\\*\\s*API key").search(text)
+	if api_key:
+		return {"email": "", "org": "", "plan": "", "method": "API key"}
+	return {}
+
+
+static func _parse_codex_reset(reset_text: String, now: int) -> int:
+	if reset_text.is_empty():
+		return 0
+	# codex-acp formatea la fecha con el locale del sistema: "Nov 3", "3 nov." o "3 de nov.".
+	var date_match := RegEx.create_from_string("(?i)(?:(\\d{1,2}):(\\d{2})\\s+(?:on|el)\\s+)?(?:(\\d{1,2})\\s+(?:de\\s+)?(\\p{L}{3,})\\.?|(\\p{L}{3,})\\.?\\s+(\\d{1,2}))").search(reset_text)
+	if date_match:
+		var day := int(date_match.get_string(3) if not date_match.get_string(3).is_empty() else date_match.get_string(6))
+		var mon_str := (date_match.get_string(4) if not date_match.get_string(4).is_empty() else date_match.get_string(5)).to_lower().left(3)
+		var month := MONTHS.find(mon_str) + 1
+		if month == 0:
+			month = MONTHS_ES.find(mon_str) + 1
+		if month > 0 and day >= 1 and day <= 31:
+			var hour := int(date_match.get_string(1)) if not date_match.get_string(1).is_empty() else 0
+			var minute := int(date_match.get_string(2)) if not date_match.get_string(2).is_empty() else 0
+			var offset := _utc_offset_s()
+			var year := int(Time.get_datetime_dict_from_unix_time(now + offset).get("year", 2026))
+			var candidate := Time.get_unix_time_from_datetime_dict({"year": year, "month": month, "day": day, "hour": hour, "minute": minute, "second": 0}) - offset
+			if candidate <= now:
+				candidate = Time.get_unix_time_from_datetime_dict({"year": year + 1, "month": month, "day": day, "hour": hour, "minute": minute, "second": 0}) - offset
+			return candidate
+	return parse_reset_time("resets " + reset_text, now)
+
+
+static func parse_reset_time(text: String, now: int) -> int:
+	var unix := RegEx.create_from_string("\\|\\s*(\\d{9,11})\\b").search(text)
+	if unix:
+		return int(unix.get_string(1))
+	var clock := RegEx.create_from_string("(?i)(?:resets?|reinicia|se reinicia)\\s+(?:at\\s+|a las\\s+|el\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?").search(text)
+	if clock == null:
+		return 0
+	var hour := int(clock.get_string(1))
+	var minute := int(clock.get_string(2)) if not clock.get_string(2).is_empty() else 0
+	var meridiem := clock.get_string(3).to_lower()
+	if meridiem == "pm" and hour < 12:
+		hour += 12
+	elif meridiem == "am" and hour == 12:
+		hour = 0
+	if hour == 24:  # toLocaleTimeString con hour12: false escribe 24:05 pasada la medianoche
+		hour = 0
+	if hour > 23 or minute > 59:
+		return 0
+	var offset := _utc_offset_s()
+	var local_now := now + offset
+	var local_midnight := local_now - posmod(local_now, 86400)
+	var candidate := local_midnight + hour * 3600 + minute * 60
+	if candidate <= local_now:
+		candidate += 86400
+	return candidate - offset
+
+
+## "2 h 10 min", "4 min", "35 s".
+static func format_duration(seconds: int) -> String:
+	seconds = maxi(seconds, 0)
+	if seconds < 60:
+		return "%d s" % seconds
+	var minutes := seconds / 60
+	if minutes < 60:
+		return "%d min" % minutes
+	if minutes < 48 * 60:
+		return "%d h %d min" % [minutes / 60, minutes % 60] if minutes % 60 else "%d h" % (minutes / 60)
+	return I18n.t("%d days") % (minutes / 1440)
+
+
+## "allowed · five_hour · resets 2026-10-21 05:40:00 · five_hour 63 % until … · seven_day 47 % until …".
+static func describe_rate_limit(info: Dictionary) -> String:
+	var parts: PackedStringArray = [str(info.get("status", "?"))]
+	if info.has("rateLimitType"):
+		parts.append(str(info.rateLimitType))
+	if info.get("utilization") is float or info.get("utilization") is int:
+		parts.append(_percent(info.utilization))
+	if info.get("surpassedThreshold") is float or info.get("surpassedThreshold") is int:
+		parts.append("threshold " + _percent(info.surpassedThreshold))
+	if info.get("resetsAt") is float or info.get("resetsAt") is int:
+		parts.append("resets " + Time.get_datetime_string_from_unix_time(int(info.resetsAt) + _utc_offset_s(), true))
+	if info.get("isUsingOverage") == true:
+		parts.append("using extra credits")
+	var unified: Variant = info.get("unifiedWindows")
+	if unified is Dictionary:
+		for window_name: String in unified:
+			var window: Variant = unified[window_name]
+			if window is Dictionary and (window.get("utilization") is float or window.get("utilization") is int):
+				var reset := ""
+				if window.get("resetsAt") is float or window.get("resetsAt") is int:
+					reset = " until " + Time.get_datetime_string_from_unix_time(int(window.resetsAt) + _utc_offset_s(), true)
+				parts.append("%s %s%s" % [window_name, _percent(window.utilization), reset])
+	return " · ".join(parts)
+
+
+# --- estado ----------------------------------------------------------------------------------------
+
+func _read_windows(info: Dictionary) -> void:
+	var unified: Variant = info.get("unifiedWindows")
+	if unified is Dictionary:
+		for window_name: String in unified:
+			var window: Variant = unified[window_name]
+			if window is Dictionary and _number(window.get("utilization"), -1) >= 0:
+				windows[window_name] = {"utilization": _fraction(window.utilization), "resets_at": _number(window.get("resetsAt"))}
+	elif _number(info.get("utilization"), -1) >= 0:
+		windows[str(info.get("rateLimitType", WINDOW_CURRENT))] = {"utilization": _fraction(info.utilization), "resets_at": _number(info.get("resetsAt"))}
+
+
+func _enter_limited(source: String, text: String, reset_at: int) -> void:
+	var now := _now()
+	# El resetsAt de una cuota "rejected" es exacto; el del texto viene redondeado a la hora.
+	if _number(last_rate_limit.get("resetsAt")) > now and str(last_rate_limit.get("status", "")) == "rejected":
+		reset_at = _number(last_rate_limit.resetsAt)
+	last_limit_event = {"source": source, "text": text, "at": now}
+	if not _limited:
+		limited_since = now
+	limited_until = reset_at if reset_at > now else (limited_until if limited_until > now else 0)
+	var backoff_min: int = BACKOFF_MINUTES[mini(_retries, BACKOFF_MINUTES.size() - 1)]
+	next_retry_at = limited_until if limited_until > 0 else now + backoff_min * 60
+	_limited = true
+
+
+func _leave_limited(reason: String) -> void:
+	_log("end of \"limited\": %s" % reason, "")
+	_limited = false
+	limited_until = 0
+	next_retry_at = 0
+	_retries = 0
+
+
+func _recompute() -> void:
+	var previous := state
+	if _limited:
+		state = QuotaState.LIMITED
+	else:
+		var used := max_utilization()
+		if used < 0.0:
+			state = QuotaState.UNKNOWN
+		elif pause_enabled and used >= pause_threshold:
+			state = QuotaState.PAUSE_SCHEDULED
+		elif used >= warn_threshold:
+			state = QuotaState.WARNING
+		else:
+			state = QuotaState.NORMAL
+	if state != previous:
+		var detail := ""
+		if state == QuotaState.LIMITED:
+			detail = " until " + Time.get_datetime_string_from_unix_time(limited_until + _utc_offset_s(), true) if limited_until > 0 else " no reset time: next attempt in %s" % format_duration(next_retry_at - _now())
+		elif max_utilization() >= 0.0:
+			detail = " (%d %%)" % roundi(max_utilization() * 100.0)
+		_log("quota state: %s → %s%s" % [STATE_LABELS[previous], STATE_LABELS[state], detail], "")
+	changed.emit()
+
+
+func _now() -> int:
+	return int(now_provider.call())
+
+
+static func _number(value: Variant, fallback: int = 0) -> int:
+	return int(value) if value is float or value is int else fallback
+
+
+## Claude Code manda fracciones 0–1 (D22); >1 se toma como porcentaje.
+static func _fraction(value: Variant) -> float:
+	var number := float(value)
+	return number / 100.0 if number > 1.0 else number
+
+
+static func _percent(value: float) -> String:
+	return "%d %%" % roundi(value * 100.0 if value <= 1.0 else value)
+
+
+static func _utc_offset_s() -> int:
+	return int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+
+
+func _log(message: String, raw: String) -> void:
+	if agent_log:
+		agent_log.add(AgentLog.CH_QUOTA, message, raw)

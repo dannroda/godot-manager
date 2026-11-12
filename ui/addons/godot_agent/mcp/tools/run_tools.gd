@@ -1,0 +1,1488 @@
+@tool
+extends RefCounted
+## Tools de ejecución (spec §6): run_scene, stop_scene, capture_game_frame y, con el juego
+## corriendo, game_tree, game_get, game_set, game_call, game_wait y game_input (m4-07, D54), más
+## game_find, game_ui, game_ui_act, game_script, game_pause, game_step, game_watch y game_frames (M13).
+## El juego es otro proceso: el probe de playtest (autoload temporal) captura frames, reproduce
+## inputs y contesta pedidos (`request` → `reply` con id) por el canal del debugger. El autoload se da de alta en EditorPlugin._build() solo si el
+## run lo pidió el harness (`harness_requested`) y de baja cuando el juego ya leyó project.godot.
+
+## Terminó una tanda de regresiones (del panel o de godot.run_regressions): los resultados de tally (m11-24).
+signal regressions_finished(results: Array)
+
+const McpTool := preload("../mcp_tool.gd")
+const WriteTargets := preload("../write_targets.gd")
+const CameraViews := preload("../../playtest/runtime/camera_views.gd")
+const UntrustedText := preload("../untrusted_text.gd")
+const ErrorCollector := preload("../../editor/error_collector.gd")
+const PlaytestDebugger := preload("../../playtest/playtest_debugger.gd")
+const PermissionPolicy := preload("../../session/permission_policy.gd")
+const RegressionsWorkflow := preload("../../review/regressions_workflow.gd")
+const PlaytestMemory := preload("../../review/playtest_memory.gd")
+const PlaytestRegressions := preload("../../review/playtest_regressions.gd")
+const RealGamepads := preload("../../playtest/real_gamepads.gd")
+const DeviceSim := preload("../../playtest/runtime/device_sim.gd")
+const PlaytestLoopGuard := preload("playtest_loop_guard.gd")
+const GameEmbedding := preload("../../playtest/game_embedding.gd")
+const GameInstances := preload("../../playtest/game_instances.gd")
+const ProjectTools := preload("project_tools.gd")
+const AgentLog := preload("../../core/agent_log.gd")
+
+## El ciclo de vida del juego que lanza run_scene (m13-11), tal como lo cuenta el debugger.
+enum GameRunState {
+	IDLE,  ## ningún juego desde que arrancó el editor
+	LAUNCHING,  ## run_scene pidió el play y espera que arranque
+	STARTED,  ## el juego abrió su sesión de debugger (la probe todavía no avisó)
+	PROBE_READY,  ## la probe de playtest está lista: inputs, capturas y pedidos
+	BREAKED,  ## parado en el debugger por un error o un breakpoint
+	STOPPED,  ## el juego terminó
+}
+
+## Para el agente tal cual (describe_run_state) y para el usuario con I18n.t() (tooltip, m13-29).
+## Motivo con el que el debugger para en un breakpoint (m11-56).
+const BREAKPOINT_REASON := "Breakpoint"
+const GAME_RUN_STATE_NAMES: Dictionary = {
+	GameRunState.IDLE: "no game launched",  # i18n
+	GameRunState.LAUNCHING: "launching",  # i18n
+	GameRunState.STARTED: "started, waiting for the playtest probe",  # i18n
+	GameRunState.PROBE_READY: "running",  # i18n
+	GameRunState.BREAKED: "stopped in the debugger",  # i18n
+	GameRunState.STOPPED: "ended",  # i18n
+}
+## STARTED en un run manual: no espera nada, la probe llega solo con el ajuste de runs manuales (y
+## entonces pasa enseguida a PROBE_READY). Revisión next2 #12.
+const MANUAL_STARTED_NAME := "running, started by hand without the playtest probe"  # i18n
+
+## Transiciones esperadas. Una que no está se avisa en el Agent Log y se aplica igual.
+## LAUNCHING vale desde cualquier estado (un run_scene nuevo reemplaza al anterior) y STARTED desde
+## IDLE o STOPPED (un run manual) y desde BREAKED (se continuó un juego sin probe).
+const GAME_RUN_STATE_TRANSITIONS: Dictionary = {
+	GameRunState.IDLE: [GameRunState.LAUNCHING, GameRunState.STARTED],
+	GameRunState.LAUNCHING: [GameRunState.STARTED, GameRunState.STOPPED],
+	GameRunState.STARTED: [GameRunState.LAUNCHING, GameRunState.PROBE_READY, GameRunState.BREAKED, GameRunState.STOPPED],
+	GameRunState.PROBE_READY: [GameRunState.LAUNCHING, GameRunState.BREAKED, GameRunState.STOPPED],
+	GameRunState.BREAKED: [GameRunState.LAUNCHING, GameRunState.STARTED, GameRunState.PROBE_READY, GameRunState.STOPPED],
+	GameRunState.STOPPED: [GameRunState.LAUNCHING, GameRunState.STARTED],
+}
+
+## Las del juego en ejecución: extendidas con tools/list compacto (D56).
+const GAME_TOOLS: PackedStringArray = ["game_tree", "game_get", "game_set", "game_call", "game_wait", "game_input", "game_find", "game_ui", "game_ui_act", "game_script", "game_pause", "game_step", "game_watch", "game_frames", "game_monitors", "game_breakpoint", "game_stack", "game_debug"]
+const MAX_SECONDS := 120.0
+const STARTUP_TIMEOUT_S := 20.0
+const FRAME_TIMEOUT_S := 5.0
+const STOP_TIMEOUT_S := 5.0
+## Margen para que lleguen al editor los últimos errores y el Output del juego.
+const SETTLE_S := 0.5
+const OUTPUT_LINE_LIMIT := 150
+const ERROR_LIMIT := 100
+## Margen para que el juego conteste un pedido, además de lo que dure (game_wait, game_input).
+const REQUEST_TIMEOUT_S := 5.0
+const WAIT_MAX_S := 60.0
+const INPUT_MAX_STEPS := 200
+## Pulsación por defecto de un paso sin `pressed` (tecla, acción, click): apretar y soltar.
+const TAP_HOLD_S := 0.1
+## Pausa por defecto entre pasos sin `t`.
+const STEP_GAP_S := 0.05
+## Con `frame` (m14-01): pulsación por defecto en frames de física, y el máximo de frames.
+const TAP_HOLD_FRAMES := 6
+## Grabación de un run (m14-03): carpeta, fps fijos del Movie Maker y la espera a que el juego cierre.
+const RECORD_DIR := "res://.godot_agent/playtests"
+const RECORD_FPS := 30
+const RECORD_CLOSE_S := 10.0
+const MOVIE_FILE_SETTING := "editor/movie_writer/movie_file"
+const MOVIE_FPS_SETTING := "editor/movie_writer/fps"
+const FRAME_MAX := 60 * 60
+const SCRIPT_MAX_S := 60.0
+const REGRESSION_SETTLE_S := 0.5
+const REGRESSION_TIMEOUT_S := 30.0
+const WATCH_MAX_S := 60.0
+const MONITORS_MAX_S := 30.0
+## Pausas del debugger seguidas que se saltean antes de dejar el juego parado (m15-05): un error por
+## frame frenaría todo igual.
+const CONTINUE_MAX := 30
+## Un frame largo justo después de salir de una pausa del debugger no es del juego.
+const HITCH_AFTER_BREAK_MS := 1500
+## Filmación (m15-22): frames por carpeta y carpetas que se guardan.
+const FILM_MAX_FRAMES := 900
+const FILM_KEEP_RUNS := 5
+const FRAMES_MAX_SHOWN := 12
+const FINDING_FRAMES_KEPT := 50
+## Cuándo se acaba el tiempo del playtest en curso (m15-19), como meta de Engine porque hay un solo juego
+## corriendo a la vez. No es un `static var`: asignarlo desde otro script es un set sobre el recurso
+## GDScript, que en el editor lo marca como editado; el play siguiente guarda los recursos editados,
+## reescribe este archivo y lo recarga con _run_scene a mitad de camino, y el editor se cae (m16-03, m16-08).
+const DEADLINE_META := &"godot_agent_playtest_deadline_ms"
+## m11-49: quién recibe el corte de un playtest en loop (Callable(seen: Dictionary)), puesto por la
+## sesión que corre el playtest; meta de Engine por lo mismo que DEADLINE_META. Sin él, no se vigila.
+const LOOP_HANDLER_META := &"godot_agent_playtest_loop_handler"
+const LOOP_SERIAL_META := &"godot_agent_playtest_loop_serial"
+## Las tools del juego que mira el detector de loops (m11-49).
+const LOOP_GUARDED: PackedStringArray = ["capture_game_frame", "game_tree", "game_get", "game_set", "game_call", "game_wait", "game_input", "game_find", "game_ui", "game_ui_act", "game_script", "game_step", "game_watch"]
+const LOOP_WARNING := "You made the same call%s %d times in a row and the game answered the same every time: it is not changing. Try something different (other input, wait, read the tree or the UI) or answer with verdict blocked and why. If you repeat it once more, the harness stops the playtest as could not test."
+const LOOP_STOPPED := "Stopped: you made the same call%s %d times in a row with the same result. The harness ended the playtest as could not test; do not call more tools."
+## Las tools que traen texto del juego en sobres (m11-45).
+## Las tools que eligen la instancia del juego con `instance` (m11-50): las game_* de este archivo y la captura.
+const INSTANCE_TOOLS: PackedStringArray = ["capture_game_frame", "game_tree", "game_get", "game_set", "game_call", "game_wait", "game_input", "game_find", "game_ui", "game_ui_act", "game_script", "game_pause", "game_step", "game_watch", "game_monitors"]
+const INSTANCE_SCHEMA := {"type": "integer", "description": "Which game instance (run_scene `instances`, game_instance list): 1 is the one the editor launched (default)."}
+const ENVELOPED: PackedStringArray = ["run_scene", "game_tree", "game_get", "game_set", "game_call", "game_wait", "game_input", "game_find", "game_ui", "game_ui_act", "game_script", "game_pause", "game_step", "game_watch", "game_monitors", "run_regressions"]
+const NO_PROBE := "No game is running with the playtest probe: launch it with run_scene (manual runs have it only with «Use the playtest autoload also when running the game manually» in Settings → MCP servers → Advanced)."
+const REGRESSIONS_BUSY := "The saved regressions are running (from the findings panel or a run_regressions call) and the game is theirs: wait for them to finish."
+const STEPS_HELP := "Each step is one of {action: \"jump\"}, {key: \"Space\" | \"Ctrl+S\"}, {event: \"joy_button:a\" | \"joy_axis:left_x:-\"}, {click: [x, y], button: \"left|right|middle\"}, {move: [x, y]} (window pixels), {look: [dx, dy]} (relative mouse motion: first-person aim) or {text: \"abc\"} (types it, into the focused LineEdit), with optional t (seconds from the start; default: right after the previous step), pressed (true: only press, false: only release; default: press and release after `hold` seconds, 0.1) and strength (0–1, actions only). For reproducible input use frame instead of t in every step: physics frames from the start (default: right after the previous step), with hold_frames (default 6) instead of hold; the same sequence then plays the same at any framerate."
+
+## El detector de loops del playtest en curso (m11-49) y el número del playtest que mira.
+var _loop_guard := PlaytestLoopGuard.new()
+var _loop_serial: int = -1
+var errors: ErrorCollector
+var debugger: PlaytestDebugger
+var max_image_side: int = 1280
+## Lo lee EditorPlugin._build(): este run lo pidió el harness y lleva el autoload de playtest.
+var harness_requested: bool = false
+## Quita el autoload si el juego no llegó a arrancar (lo inyecta el plugin).
+var cleanup: Callable
+## Hay una tanda de regresiones corriendo (run_saved_regressions).
+var regressions_running: bool = false
+
+## Dónde avisar de una transición del juego que no está en GAME_RUN_STATE_TRANSITIONS (la pone el plugin).
+var agent_log: AgentLog
+
+## El juego visto por el debugger desde el último run_scene (m13-11). Lo cambia solo
+## _set_run_state(); los avisos del debugger pueden llegar también de un run manual.
+var run_state: GameRunState = GameRunState.IDLE
+## El run en curso lo lanzó run_scene (true) o el usuario a mano (false): se decide al arrancar la
+## sesión de debug, según venga de LAUNCHING o no (m11-55).
+var harness_run: bool = false
+## Hay un run_scene en curso (solo uno a la vez) y desde cuándo. Es aparte de run_state: el juego
+## sigue corriendo después de que run_scene contesta.
+var _busy: bool = false
+var _busy_since_ms: int = 0
+var _run_state_since_ms: int = 0
+## Los estados por los que pasó el run actual (bits 1 << GameRunState): el informe necesita saber
+## si la probe llegó a estar lista aunque el juego ya haya terminado.
+var _reached_states: int = 0
+## Lo que el juego mandó en este run: inputs_done, problems y el último frame.
+var _state: Dictionary = {}
+var _replies: Dictionary = {}
+## Ids de los pedidos que esperan respuesta: una que llega tarde (después del timeout o de la pausa
+## del debugger) se descarta en vez de quedar en _replies (revisión de next2 #23).
+var _waiting: Dictionary = {}
+var _next_request: int = 1
+## Saltear las pausas del debugger por errores (m15-05): solo en el run que lo pidió y en game_script.
+var _continue_errors: bool = false
+var _breaks: int = 0
+var _last_break_ms: int = -HITCH_AFTER_BREAK_MS
+var _continued: PackedStringArray = []
+## firma → hallazgo de los detectores (m15-07); `_findings_new`: firmas sin reportar todavía.
+var _findings: Dictionary = {}
+var _findings_new: PackedStringArray = []
+## Las instancias extra del juego (m11-50) y la escena del run, para game_instance add.
+var instances := GameInstances.new()
+var _run_scene_path: String = ""
+## Tool calls en curso hacia debugger.target_instance: otra instancia espera a que terminen.
+var _target_calls: int = 0
+## `(first: bool) -> void`: registra el autoload de playtest antes de lanzar una instancia extra (lo
+## pone el plugin; se saca en el session_started de esa instancia, como el del editor).
+var register_autoload: Callable
+## Carpeta y frames ({number, t, path}) de la filmación del run (m15-22).
+var _film_dir: String = ""
+var _film_frames: Array[Dictionary] = []
+
+
+func setup(collector: ErrorCollector, playtest_debugger: PlaytestDebugger) -> void:
+	errors = collector
+	debugger = playtest_debugger
+	# Métodos y no lambdas: una lambda captura a RunTools, el debugger la guarda en su señal y
+	# RunTools guarda al debugger; el ciclo no se libera al deshabilitar el plugin (m13-10).
+	debugger.session_started.connect(_on_session_started)
+	debugger.session_stopped.connect(_on_session_stopped)
+	debugger.session_breaked.connect(_on_session_breaked)
+	debugger.probe_ready.connect(_on_probe_ready)
+	debugger.session_continued.connect(_on_session_continued)
+	debugger.inputs_done.connect(_on_inputs_done)
+	debugger.problem_reported.connect(_on_problem_reported)
+	debugger.frame_received.connect(_on_frame_received)
+	debugger.reply_received.connect(_on_reply_received)
+	debugger.finding_received.connect(_on_finding_received)
+	debugger.finding_frame_received.connect(_on_finding_frame_received)
+	debugger.film_frame_received.connect(_on_film_frame_received)
+	debugger.instance_event.connect(_on_instance_event)
+	if collector:
+		collector.instance_of = debugger.instance_of
+
+
+## El único lugar que cambia run_state. LAUNCHING empieza un run nuevo: borra lo que mandó el anterior.
+func _set_run_state(value: GameRunState) -> void:
+	if value == run_state and value != GameRunState.LAUNCHING:
+		return
+	if value != run_state and not value in GAME_RUN_STATE_TRANSITIONS.get(run_state, []):
+		var message := "game run: unexpected transition %s -> %s" % [GameRunState.keys()[run_state], GameRunState.keys()[value]]
+		if agent_log:
+			agent_log.add(AgentLog.CH_STATE, message)
+		else:
+			push_warning("Godot Agent: " + message)
+	if value == GameRunState.LAUNCHING:
+		_reached_states = 0
+		_state = {}
+	if value == GameRunState.STARTED:
+		harness_run = run_state == GameRunState.LAUNCHING
+	run_state = value
+	_run_state_since_ms = Time.get_ticks_msec()
+	_reached_states |= 1 << value
+
+
+## El run actual pasó por `state` (aunque ya esté en otro).
+func reached(state: GameRunState) -> bool:
+	return _reached_states & (1 << state) != 0
+
+
+## Segundos desde el último cambio de estado del juego.
+func run_state_age_seconds() -> int:
+	return (Time.get_ticks_msec() - _run_state_since_ms) / 1000
+
+
+## El nombre del estado actual, en inglés (para el usuario va por I18n.t()).
+func run_state_name() -> String:
+	if run_state == GameRunState.STARTED and not harness_run:
+		return MANUAL_STARTED_NAME
+	return GAME_RUN_STATE_NAMES[run_state]
+
+
+## El estado del juego para el agente: «game: running (3 s)».
+func describe_run_state() -> String:
+	return "game: %s (%d s)" % [run_state_name(), run_state_age_seconds()]
+
+
+func _on_session_started() -> void:
+	_set_run_state(GameRunState.STARTED)
+
+
+func _on_probe_ready() -> void:
+	_set_run_state(GameRunState.PROBE_READY)
+
+
+## Salió de la pausa del debugger (m11-56: game_debug, o el usuario desde el panel): vuelve a correr,
+## con la probe o sin ella (un run manual sin el autoload; revisión next2 #12).
+func _on_session_continued() -> void:
+	if run_state == GameRunState.BREAKED:
+		_set_run_state(GameRunState.PROBE_READY if debugger and debugger.has_probe() else GameRunState.STARTED)
+
+
+func _on_session_stopped() -> void:
+	_continue_errors = false
+	_set_run_state(GameRunState.STOPPED)
+	instances.stop_all()  # el juego del editor terminó (o Stop): las demás instancias también
+
+
+## Una instancia extra que termina sola (se cerró o se cayó) deja de contar.
+func _on_instance_event(instance: int, event: String) -> void:
+	if event == "stopped":
+		instances.stop(instance)
+
+
+## Un error del juego: se saltea si este run lo pidió, guardando el motivo (el panel se llena un
+## momento después de la pausa).
+func _on_session_breaked() -> void:
+	# Los monitores del probe no cuentan la pausa como un frame lento (revisión de next2 #11). El
+	# mensaje lo atiende el bucle del debugger, con el juego parado.
+	if debugger:
+		debugger.send("paused", [], 1)
+	if not _continue_errors or _breaks >= CONTINUE_MAX:
+		if _continue_errors:
+			_continued.append("Stopped skipping errors after %d in this run: the game is stopped in the debugger." % CONTINUE_MAX)
+			_continue_errors = false
+		_set_run_state(GameRunState.BREAKED)
+		return
+	_breaks += 1
+	var tree := Engine.get_main_loop() as SceneTree
+	var reason := ""
+	for frame in 20:
+		await tree.process_frame
+		if frame >= 1:
+			reason = PlaytestDebugger.break_reason()
+			if not reason.is_empty():
+				break
+	# Un breakpoint lo puso alguien para frenar acá: no es un error que se saltea (m16-05).
+	if reason.begins_with(BREAKPOINT_REASON):
+		_continue_errors = false
+		_set_run_state(GameRunState.BREAKED)
+		return
+	_continued.append(reason if not reason.is_empty() else "(the debugger gave no reason)")
+	_last_break_ms = Time.get_ticks_msec()
+	debugger.resume()
+
+
+func _on_finding_received(finding: Dictionary) -> void:
+	if finding.get("detector") == "hitch" and Time.get_ticks_msec() - _last_break_ms < HITCH_AFTER_BREAK_MS:
+		return
+	var signature := str(finding.get("signature", ""))
+	_findings[signature] = finding
+	if not signature in _findings_new:
+		_findings_new.append(signature)
+
+
+func _on_finding_frame_received(signature: String, png: PackedByteArray) -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(RECORD_DIR))
+	var path := RECORD_DIR.path_join("finding_%012d_%s.png" % [Time.get_ticks_msec(), signature.md5_text().left(8)])
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_buffer(png)
+	file.close()
+	if _findings.has(signature):
+		_findings[signature]["frame"] = path
+		if not signature in _findings_new:
+			_findings_new.append(signature)
+	_keep_newest(RECORD_DIR, "finding_", FINDING_FRAMES_KEPT)
+
+
+func _on_film_frame_received(number: int, game_time: float, jpeg: PackedByteArray) -> void:
+	if _film_dir.is_empty():
+		return
+	var path := _film_dir.path_join("%06d.jpg" % number)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_buffer(jpeg)
+	file.close()
+	_film_frames.append({"number": number, "t": game_time, "path": path})
+	if _film_frames.size() > FILM_MAX_FRAMES:
+		var old: Dictionary = _film_frames.pop_front()
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(old.path))
+
+
+## Deja los `kept` archivos o carpetas más nuevos de `dir` cuyo nombre empieza con `prefix`.
+static func _keep_newest(dir: String, prefix: String, kept: int) -> void:
+	var names: Array = []
+	for name: String in DirAccess.get_files_at(dir) + DirAccess.get_directories_at(dir):
+		if name.begins_with(prefix):
+			names.append(name)
+	names.sort()  # llevan la fecha o los ms en el nombre
+	for name: String in names.slice(0, maxi(names.size() - kept, 0)):
+		var path := ProjectSettings.globalize_path(dir.path_join(name))
+		if DirAccess.dir_exists_absolute(path):
+			for file: String in DirAccess.get_files_at(path):
+				DirAccess.remove_absolute(path.path_join(file))
+		DirAccess.remove_absolute(path)
+
+
+func _on_inputs_done(count: int) -> void:
+	_state["inputs_done"] = count
+
+
+func _on_problem_reported(text: String) -> void:
+	(_state.get_or_add("problems", []) as Array).append(text)
+
+
+func _on_frame_received(png: PackedByteArray, _width: int, _height: int) -> void:
+	_state["frame"] = png
+
+
+func _on_reply_received(id: int, result: Dictionary) -> void:
+	if _waiting.has(id):
+		_replies[id] = result
+
+
+func tools() -> Array:
+	var run := PermissionPolicy.GROUP_RUN
+	var read := PermissionPolicy.GROUP_READ
+	var steps_schema := {"type": "array", "description": STEPS_HELP, "items": {"type": "object", "properties": {
+		"t": {"type": "number"}, "action": {"type": "string"}, "key": {"type": "string"}, "event": {"type": "string"},
+		"click": {"type": "array", "items": {"type": "number"}}, "move": {"type": "array", "items": {"type": "number"}},
+		"button": {"type": "string"}, "pressed": {"type": "boolean"}, "hold": {"type": "number"},
+		"look": {"type": "array", "items": {"type": "number"}}, "text": {"type": "string"},
+		"frame": {"type": "integer"}, "hold_frames": {"type": "integer"}, "strength": {"type": "number"}}}}
+	var path_schema := {"type": "string", "description": "Node path in the running game: relative to the current scene (\"Player\", \"HUD/Score\"), \"\" for the scene itself, or absolute (\"/root/GameState\" for an autoload)"}
+	var list: Array = [
+		McpTool.create("run_scene", run,
+			"Runs a scene (default: the open one), waits `seconds` or until it ends, and returns the game's errors and Output. The game keeps running afterwards: capture_game_frame to see it, stop_scene to close it. Saves the scenes before running.",
+			{
+				"scene": {"type": "string", "description": "res://…tscn path (default: the open scene)"},
+				"seconds": {"type": "number", "description": "Seconds to wait after the game starts (max. 120)"},
+				"inputs": steps_schema,
+				"record": {"type": "boolean", "description": "Record the run as a video (AVI) under res://.godot_agent/playtests/: evidence for a playtest. While recording the game runs at a fixed %d fps and closes by itself at the end of `seconds`." % RECORD_FPS},
+				"continue_on_error": {"type": "boolean", "description": "Don't stop in the debugger at a script error: the game goes on and every error is listed (breakpoints still stop it). For testing a whole game; while building, stopping at the first error is better."},
+				"film_fps": {"type": "number", "description": "Keep small frames of the run at this rate (2 to 10 is plenty), to look back with game_frames. The game keeps running and its frame rate is free, unlike `record`."},
+				"monitors": {"type": "boolean", "description": "Sample the performance monitors (frame time, draw calls, physics, nodes, memory) during the whole run and add a summary with the orphan nodes at the end, like game_monitors (default false)"},
+				"device": {"type": "object", "description": "Simulate another device for this run, without touching project.godot: {preset: %s, size: [w, h] (window pixels; overrides the preset's), orientation: portrait|landscape, scale (content scale factor, e.g. 2 for a high-DPI screen), touch: true (mouse clicks also arrive as touch events), locale: \"es\" (TranslationServer)}. Phone and tablet turn on touch. Then capture_game_frame and game_ui show the layout at that size; run again with another device to compare aspects." % "|".join(DeviceSim.PRESETS.keys()),
+					"properties": {"preset": {"type": "string", "enum": DeviceSim.PRESETS.keys()}, "size": {"type": "array", "items": {"type": "integer"}}, "orientation": {"type": "string", "enum": ["portrait", "landscape"]}, "scale": {"type": "number"}, "touch": {"type": "boolean"}, "locale": {"type": "string"}}},
+				"real_gamepads": {"type": "boolean", "description": "Let the gamepads connected to this computer reach the game, for the user to play along (default false: they are ignored, so a resting or drifting stick does not move the player or the UI focus while you drive the game; joypad events you send in steps always work)"},
+				"instances": {"type": "array", "description": "More instances of the same scene at the same time (multiplayer: a server and clients; or parallel cases), up to %d in total. The editor's game is instance 1; each entry here adds the next one, in its own window (or headless), with its own user:// folder: {args: [..] (the game reads them with OS.get_cmdline_user_args(), e.g. [\"--client\", \"127.0.0.1:7000\"]), headless: true (a dedicated server, no window or captures), device (like `device`), inputs (steps, like `inputs`), shared_user_dir: true (use instance 1's user://)}. Then pass `instance` to the game_* tools and capture_game_frame, and use game_instance to list, add or stop (disconnect) one." % GameInstances.MAX_INSTANCES,
+					"items": {"type": "object", "properties": {"args": {"type": "array", "items": {"type": "string"}}, "headless": {"type": "boolean"}, "device": {"type": "object"}, "inputs": steps_schema, "shared_user_dir": {"type": "boolean"}}}},
+			},
+			["seconds"], _run_scene_tool),
+		McpTool.create("stop_scene", run, "Stops the running game, with all its instances. `instance` (2 or more) stops only that one, like game_instance stop.", {"instance": INSTANCE_SCHEMA}, [], _stop_scene_tool),
+		McpTool.create("game_instance", run,
+			"The instances of the running game (run_scene `instances`; instance 1 is the editor's). action `list`: each one with its args, window or headless, and whether its probe answers. `add`: one more instance of the same scene while the game runs (a player joining), with `args`, `headless`, `device`, `inputs` and `shared_user_dir` like run_scene `instances`. `stop`: kills instance `instance` (2 or more) without warning: for the others it is a dropped connection. At most %d instances in total." % GameInstances.MAX_INSTANCES,
+			{"action": {"type": "string", "enum": ["list", "add", "stop"]}, "instance": {"type": "integer"}, "args": {"type": "array", "items": {"type": "string"}}, "headless": {"type": "boolean"},
+				"device": {"type": "object"}, "inputs": steps_schema, "shared_user_dir": {"type": "boolean"}},
+			["action"], _game_instance),
+		McpTool.create("run_regressions", run,
+			"Runs the saved playtest regressions (%s/) in the editor, without an agent turn, `repeat` times each, and reports how many runs of each passed. A regression passes only if every run passes; one that passes some runs and fails others is flaky, and the count is saved with it so the findings panel and the CI workflow can tell. Use repeat 3 or more to check that a regression is stable before relying on it." % RegressionsWorkflow.REGRESSIONS_DIR,
+			{
+				"repeat": {"type": "integer", "description": "Runs of each regression (1 to %d, default 1)" % PlaytestRegressions.MAX_REPEAT},
+				"goal": {"type": "string", "description": "Run only the regressions whose goal contains this text (default: all)"},
+			}, [], _run_regressions),
+		McpTool.create("write_regressions_workflow", PermissionPolicy.GROUP_EDIT_FILES,
+			"Writes %s: a GitHub Actions workflow that runs the saved playtest regressions (%s/) on every push and pull request with this editor's Godot version, and uploads the report and captures when they fail. Never replaces an existing file (only the user can, from the findings panel) and does nothing while there are no saved regressions." % [RegressionsWorkflow.PATH.trim_prefix("res://"), RegressionsWorkflow.REGRESSIONS_DIR],
+			{
+				"render": {"type": "boolean", "description": "Run the regressions under Xvfb with software OpenGL instead of headless, for checks that need the game drawn (default false)"},
+				"repeat": {"type": "integer", "description": "Runs of each regression in CI (1 to %d, default 1). A regression that passes some runs and fails others is reported as flaky" % PlaytestRegressions.MAX_REPEAT},
+				"fail_on_flaky": {"type": "boolean", "description": "A flaky regression fails the CI run too (default false: it is reported and the run passes)"},
+			}, [], _write_regressions_workflow),
+		McpTool.create("capture_game_frame", run, "Captures the current frame of the running game (launched with run_scene) as a PNG. To see the world from somewhere else without moving the player's camera (it renders off screen): `camera` (a Camera3D or Camera2D of the game, by path from the scene root or name), `look_from` and/or `look_at` ([x, y, z] in 3D; in 2D `look_at` [x, y] and `zoom`), or `angles` (1-8 views orbiting `look_at` or the center of what is drawn, 30° up, at `distance` or far enough to fit it). Those views show the world without the game's UI layers.", {
+			"camera": {"type": "string", "description": "A camera of the running game to render from."},
+			"look_from": {"type": "array", "items": {"type": "number"}, "description": "Where the temporary camera stands (3D)."},
+			"look_at": {"type": "array", "items": {"type": "number"}, "description": "What it looks at; with angles, the point it orbits."},
+			"angles": {"type": "integer", "minimum": 1, "maximum": 8, "description": "How many views around the point (3D)."},
+			"distance": {"type": "number", "description": "Orbit distance for angles."},
+			"zoom": {"type": "number", "description": "2D zoom (1 = the game's scale)."}}, [], _capture_game_frame),
+		McpTool.create("game_tree", read,
+			"The live node tree of the running game (nodes spawned at runtime included), with types, scripts, positions and texts.",
+			{"path": path_schema, "depth": {"type": "integer", "description": "Levels below `path` (default 4)"}}, [], _game_tree),
+		McpTool.create("game_get", read,
+			"Reads properties of a node in the running game (\"health\", \"position:x\"). Without `properties`: its script variables and the usual ones (position, velocity, visible, text…).",
+			{"path": path_schema, "properties": {"type": "array", "items": {"type": "string"}}}, ["path"], _game_get),
+		McpTool.create("game_set", run,
+			"Changes properties of a node in the running game, live (the scene file is not changed). Vectors as [x, y], colors as \"#rrggbb\", resources as res:// paths.",
+			{"path": path_schema, "properties": {"type": "object"}}, ["path", "properties"], _game_set),
+		McpTool.create("game_call", run,
+			"Calls a method on a node in the running game and returns its result (\"take_damage\" with args [10]).",
+			{"path": path_schema, "method": {"type": "string"}, "args": {"type": "array"}}, ["path", "method"], _game_call),
+		McpTool.create("game_wait", run,
+			"Waits in the running game until `condition` is true (a Godot Expression evaluated on the node every frame: \"health <= 0\", \"get_node('Boss') == null\", \"score >= 3\"), until the node emits `signal`, or just `timeout` seconds. Returns how long it took or that it timed out.",
+			{"path": path_schema, "condition": {"type": "string"}, "signal": {"type": "string"}, "timeout": {"type": "number", "description": "Seconds (default 5, max. 60)"}},
+			[], _game_wait),
+		McpTool.create("game_input", run,
+			"Sends live input to the running game and waits until it has been played: keys, InputMap actions, mouse clicks and moves, joypad. " + STEPS_HELP,
+			{"steps": steps_schema, "settle_frames": {"type": "integer", "description": "Physics frames to wait after the last step before answering (frame mode; default 0)"}}, ["steps"], _game_input),
+		McpTool.create("game_find", read,
+			"Finds nodes in the running game by class (a Godot class or a script's class_name, subclasses included), group (\"group:enemies\") or part of the name. Without filters, the scene's things: its direct children, physics bodies and areas.",
+			{"class": {"type": "string"}, "name": {"type": "string"}, "limit": {"type": "integer"}}, [], _game_find),
+		McpTool.create("game_ui", read,
+			"What a player sees of the UI of the running game: every visible text, and every button, checkbox, list, slider and text field with its id and pixel position. Use the id with game_ui_act instead of guessing pixels.",
+			{}, [], _game_ui),
+		McpTool.create("game_ui_act", run,
+			"Acts on a control listed by game_ui. A click goes through the viewport as a real mouse click does, so something on top of the control blocks it: that comes back as an error, because a player could not press it either. `set` and choosing an option change the value directly (not by input), and say so. To type: action focus, then game_input {text}.",
+			{"id": {"type": "string"}, "action": {"type": "string", "enum": ["click", "right_click", "double_click", "focus", "set"]}, "value": {"description": "For set: the value. For click on a list: the option's text."}}, ["id"], _game_ui_act),
+		McpTool.create("game_script", run,
+			"Runs a short GDScript inside the running game, so it can react in the same frame and do many reads and inputs in one call. The code needs `func run(game):` and runs as a coroutine; what it returns and what it says with game.say(...) come back. `game` has: say(...), node(path), player(), tree(), movement() (speed, jump and gravity read from the player's script); await press(name), hold(name), release(name), mouse(dx, dy), await wait(seconds), await wait_frames(n), await until(callable, timeout), await look_at(node_or_point, tolerance) (3D). press, until and look_at return {ok, why, data}: read `why` before you blame the game. For a regression worth saving, also invariant(name, check, value) (check returns true while things are right; it runs on every physics frame until run() returns, and a break fails the run with the frame and the value) and budget(metric, limit) with frame_ms_p95, physics_ms_p95, draw_calls_max, nodes_max or orphans_end (over `limit` fails; without a limit it compares with a baseline the first passing saved regression records: counts share one baseline in the regression and fail above it, times compare with this machine's own and only warn), e.g. game.invariant(\"player stays in the level\", func(): return game.player().global_position.y > -50, func(): return game.player().global_position). Example: func run(game):\n\tawait game.press(\"jump\")\n\treturn game.player().velocity.y\nAt `timeout` it stops, the keys it held are let go and the game is paused. It can't use files or start processes.",
+			{"code": {"type": "string"}, "timeout": {"type": "number", "description": "Seconds (default 10, max. %d)" % SCRIPT_MAX_S}}, ["code"], _game_script),
+		McpTool.create("game_pause", run,
+			"Pauses or resumes the running game, so nothing happens while you think. While paused, advance it with game_step. Reads and captures still work. Code that measures real time (Time.get_ticks_*) keeps counting.",
+			{"paused": {"type": "boolean"}}, ["paused"], _game_pause),
+		McpTool.create("game_step", run,
+			"Lets the game run for `frames` physics frames, playing `steps` by frame meanwhile, and pauses it again: play turn by turn, even a fast game. " + STEPS_HELP,
+			{"frames": {"type": "integer", "description": "Physics frames to advance (default 1; at least until the last step)"}, "steps": steps_schema}, [], _game_step),
+		McpTool.create("game_watch", run,
+			"Watches nodes every frame for `seconds` and lists what changed, with times: moved, turned, changed size, shown or hidden, freed, animations that started or ended, and the given properties. Catches what lasts less than a tool call; pass `steps` to play input while watching.",
+			{"paths": {"type": "array", "items": {"type": "string"}, "description": "Node paths"}, "seconds": {"type": "number", "description": "Default 2, max. %d" % WATCH_MAX_S}, "properties": {"type": "array", "items": {"type": "string"}}, "steps": steps_schema}, ["paths"], _game_watch),
+		McpTool.create("game_monitors", read,
+			"Samples the running game's performance monitors every frame for `seconds`: frame time (average, p95, max), the engine's slowest process and physics frame of each second, draw calls, objects and primitives drawn, awake physics bodies and collision pairs, and how nodes, orphan nodes, objects, resources and memory changed from start to end (a count that keeps growing is a leak). Lists the orphan nodes now: nodes created and never added to the tree, or removed without free(). profile_run sees only GDScript time; use this when the game is slow because of rendering or physics, or to find nodes that leak. Pass `steps` to play input while sampling.",
+			{"seconds": {"type": "number", "description": "Default 2, max. %d" % MONITORS_MAX_S}, "orphans": {"type": "boolean", "description": "List the orphan nodes (default true)"}, "steps": steps_schema}, [], _game_monitors),
+		McpTool.create("game_frames", read,
+			"The frames of the last `seconds` of play, with their game times and file paths (a subagent can read those files). Needs a run filmed with run_scene film_fps, or pass `fps` here to start filming.",
+			{"seconds": {"type": "number", "description": "How far back (default 3)"}, "count": {"type": "integer", "description": "How many, evenly spaced (default 6, max. %d)" % FRAMES_MAX_SHOWN}, "fps": {"type": "number", "description": "Start filming at this rate"}}, [], _game_frames),
+	]
+	# El juego habla en estos resultados (m11-45): su Output, sus errores y lo que devuelve el probe.
+	for tool: McpTool in list:
+		if tool.name in INSTANCE_TOOLS:
+			tool.input_schema.properties["instance"] = INSTANCE_SCHEMA
+			var targeted := tool.handler
+			tool.handler = func(args: Dictionary) -> Dictionary: return await _with_instance(args, targeted)
+		if tool.name in ENVELOPED:
+			tool.envelope = McpTool.ENVELOPE_PARTS
+		if tool.name in LOOP_GUARDED:
+			var tool_name := tool.name
+			var inner := tool.handler
+			tool.handler = func(args: Dictionary) -> Dictionary: return await _loop_guarded(tool_name, args, inner)
+	return WriteTargets.declare(list, {"write_regressions_workflow": func(_args: Dictionary) -> PackedStringArray: return PackedStringArray([RegressionsWorkflow.PATH])})
+
+
+## Pone (o con un Callable vacío, quita) quién recibe el corte de un playtest en loop (m11-49). Cada
+## playtest empieza con el historial vacío.
+static func set_playtest_loop_handler(handler: Callable) -> void:
+	if handler.is_valid():
+		Engine.set_meta(LOOP_HANDLER_META, handler)
+		Engine.set_meta(LOOP_SERIAL_META, int(Engine.get_meta(LOOP_SERIAL_META, 0)) + 1)
+	elif Engine.has_meta(LOOP_HANDLER_META):
+		Engine.remove_meta(LOOP_HANDLER_META)
+
+
+## Corre la tool y, en un playtest, anota la llamada en el detector de loops: con WARN_REPEATS vueltas
+## sin progreso el resultado lo avisa; con CUT_REPEATS la llamada no devuelve el juego, el playtest se
+## corta y la sesión lo cierra como «could not test» con la evidencia.
+func _loop_guarded(tool_name: String, args: Dictionary, inner: Callable) -> Dictionary:
+	var result: Dictionary = await inner.call(args)
+	if not Engine.has_meta(LOOP_HANDLER_META):
+		return result
+	var serial := int(Engine.get_meta(LOOP_SERIAL_META, 0))
+	if serial != _loop_serial:
+		_loop_serial = serial
+		_loop_guard.reset()
+	var seen := _loop_guard.observe(tool_name, args, result)
+	var plural := "s" if int(seen.period) > 1 else ""
+	if seen.cut:
+		var handler: Callable = Engine.get_meta(LOOP_HANDLER_META)
+		Engine.remove_meta(LOOP_HANDLER_META)
+		if handler.is_valid():
+			handler.call(seen)
+		return McpTool.error(LOOP_STOPPED % [plural, seen.repeats])
+	if int(seen.repeats) >= PlaytestLoopGuard.WARN_REPEATS:
+		var warned := result.duplicate(true)
+		(warned.content as Array).append({"type": "text", "text": LOOP_WARNING % [plural, seen.repeats]})
+		return warned
+	return result
+
+
+func _run_scene(args: Dictionary) -> Dictionary:
+	if is_busy():
+		return McpTool.error("A run_scene is already in progress (started %d s ago; %s): wait for it to finish." % [(Time.get_ticks_msec() - _busy_since_ms) / 1000, describe_run_state()])
+	var scene := McpTool.str_arg(args, "scene")
+	if scene.is_empty():
+		var root := EditorInterface.get_edited_scene_root()
+		if root == null:
+			return McpTool.error("There is no open scene: pass `scene`.")
+		scene = root.scene_file_path
+		if scene.is_empty():
+			return McpTool.error("The open scene was never saved: save it with save_scene or pass `scene`.")
+	elif not scene.begins_with("res://") or not ResourceLoader.exists(scene):
+		return McpTool.error("The scene %s does not exist." % scene)
+	var seconds := clampf(float(args.get("seconds", 5.0)), 0.1, MAX_SECONDS)
+	var inputs: Array = []
+	var invalid := normalize_steps(args.get("inputs", []), inputs)
+	if not invalid.is_empty():
+		return McpTool.error(invalid)
+	var device := DeviceSim.normalize(args.get("device"))
+	if device.has("error"):
+		return McpTool.error(str(device.error))
+	var extra := GameInstances.normalize(args.get("instances"))
+	if extra.has("error"):
+		return McpTool.error(str(extra.error))
+	for entry: Dictionary in extra.instances:
+		var entry_inputs: Array = []
+		var invalid_entry := normalize_steps(entry.inputs, entry_inputs)
+		if not invalid_entry.is_empty():
+			return McpTool.error("instances: " + invalid_entry)
+		entry.inputs = entry_inputs
+
+	_busy = true
+	instances.stop_all()
+	_busy_since_ms = Time.get_ticks_msec()
+	if EditorInterface.is_playing_scene():
+		EditorInterface.stop_playing_scene()
+		await _until(func() -> bool: return not EditorInterface.is_playing_scene(), STOP_TIMEOUT_S)
+		# El session_stopped del juego que se acaba de parar puede llegar después: si llegara con el
+		# run nuevo en LAUNCHING, cortaría la espera de la probe.
+		if run_state in [GameRunState.STARTED, GameRunState.PROBE_READY, GameRunState.BREAKED]:
+			await _until(func() -> bool: return run_state == GameRunState.STOPPED, STOP_TIMEOUT_S)
+	var recording := _start_recording() if args.get("record") == true else {}
+	var since := errors.mark()
+	var output_before := errors.output_text()
+	_set_run_state(GameRunState.LAUNCHING)
+	_continue_errors = args.get("continue_on_error") == true
+	_breaks = 0
+	_continued = []
+	_findings = {}
+	_findings_new = []
+	_film_dir = ""
+	_film_frames = []
+	harness_requested = true
+	# El juego hereda el entorno del editor: sin la variable, SDL abre los gamepads reales (m16-11).
+	var gamepads: Variant = null if args.get("real_gamepads") == true else RealGamepads.ignore_in_children()
+	# El dispositivo simulado (m11-51) va por el entorno, como los gamepads: solo para este proceso.
+	var device_env: Variant = DeviceSim.set_env(device.device) if device.has("device") else null
+	# Con un tamaño, el juego va en su propia ventana: embebido en la vista Game (lo normal desde 4.4)
+	# el tamaño lo pone el editor. Se apaga solo para este lanzamiento, como el Movie Maker de `record`.
+	var embed: Object = GameEmbedding.disable() if device.has("device") and not (device.device.size as Array).is_empty() else null
+	_run_scene_path = scene
+	EditorInterface.play_custom_scene(scene)  # llama a _build() y lanza el proceso en el momento
+	if device.has("device"):
+		DeviceSim.restore_env(device_env)
+		GameEmbedding.restore(embed)
+	if args.get("real_gamepads") != true:
+		RealGamepads.restore(gamepads)
+	harness_requested = false
+	if not EditorInterface.is_playing_scene():
+		_busy = false
+		_set_run_state(GameRunState.STOPPED)
+		_cleanup()
+		_stop_recording(recording)
+		return McpTool.error("The editor could not launch %s (did a plugin's build fail?). Try get_errors." % scene)
+
+	await _until(func() -> bool: return reached(GameRunState.PROBE_READY) or _game_halted(), STARTUP_TIMEOUT_S)
+	var notes: PackedStringArray = []
+	var monitoring := false
+	if reached(GameRunState.PROBE_READY):
+		if device.has("device"):
+			var applied := await request("device", {})
+			notes.append(str(applied.get("text", applied.get("error", ""))))
+		if not inputs.is_empty():
+			debugger.send("inputs", [inputs])
+		if float(args.get("film_fps", 0.0)) > 0.0:
+			notes.append(await _start_film(float(args.film_fps)))
+		if args.get("monitors") == true:
+			var started := await request("monitors_start", {})
+			monitoring = started.has("text")
+	if not extra.instances.is_empty() and EditorInterface.is_playing_scene():
+		for entry: Dictionary in extra.instances:
+			notes.append(await _add_instance(entry, args.get("real_gamepads") == true))
+	if not reached(GameRunState.PROBE_READY) and not _game_halted():
+		notes.append("The playtest probe did not respond within %d s: no inputs or captures." % STARTUP_TIMEOUT_S)
+		if device.has("device"):
+			notes.append("The simulated device (%s) is applied by the probe, so it may not have taken effect." % DeviceSim.describe(device.device))
+	await _until(_game_halted, seconds)
+	await Engine.get_main_loop().create_timer(SETTLE_S).timeout
+	if not recording.is_empty():
+		notes.append(await _finish_recording(recording))
+	if monitoring:  # m11-43
+		# También parado en el debugger: el probe contesta desde su bucle y deja de muestrear; si no, los
+		# monitores siguen hasta su tope (revisión de next2 #10).
+		if EditorInterface.is_playing_scene() and debugger.has_probe():
+			var sampled := await request("monitors_stop", {}, REQUEST_TIMEOUT_S, true)
+			notes.append(game_note("Performance during the run", str(sampled.get("text", sampled.get("error", "")))))
+		else:
+			notes.append("Performance monitors: the game ended before they could be read; use game_monitors on a running game.")
+	if not reached(GameRunState.STARTED):
+		_cleanup()
+	if EditorInterface.is_playing_scene() and debugger.has_probe() and not _stopped_in_debugger():
+		var opening := await request("opening", {})
+		if opening.has("text"):
+			notes.append(game_note("Now in the game", str(opening.text)))
+	var report := _report(scene, seconds, inputs, notes, since, output_before)
+	_busy = false
+	return McpTool.text(report)
+
+
+## Una nota del informe de run_scene con lo que contestó el juego: la foto del final (textos de la UI y
+## nombres de nodos) o los monitores (nodos huérfanos). Va en un sobre (m11-45), así un Label que dice
+## «Recording: …» o un nodo «Detector …» no imitan una línea del harness.
+static func game_note(title: String, text: String) -> String:
+	return "%s:\n%s" % [title, UntrustedText.wrap(text)]
+
+
+## run_scene para otra tool (godot.profile_run, m13-27): mismo arranque, espera e informe.
+func run_scene(args: Dictionary) -> Dictionary:
+	return await _run_scene_tool(args)
+
+
+## Mientras corren las regresiones el juego es de ellas: lanzar o parar otro cortaría la corrida en
+## curso, que fallaría y quedaría guardada como inestable (revisión de next2 #15).
+func _run_scene_tool(args: Dictionary) -> Dictionary:
+	if regressions_running:
+		return McpTool.error(REGRESSIONS_BUSY)
+	return await _run_scene(args)
+
+
+## Corre `handler` contra la instancia `args.instance` (m11-50). Las llamadas a una misma instancia van
+## a la vez; una a otra instancia espera a que terminen (el debugger tiene un solo destino).
+func _with_instance(args: Dictionary, handler: Callable) -> Dictionary:
+	var raw: Variant = args.get("instance")
+	var instance := int(raw) if raw is float or raw is int else 1
+	if instance < 1 or instance > GameInstances.MAX_INSTANCES:
+		return McpTool.error("`instance` goes from 1 (the editor's game) to %d." % GameInstances.MAX_INSTANCES)
+	if instance >= 2 and not debugger.has_probe(instance):
+		return McpTool.error("Instance %d is not running with the playtest probe (game_instance list shows the running ones)." % instance)
+	var tree := Engine.get_main_loop() as SceneTree
+	while _target_calls > 0 and debugger.target_instance != instance:
+		await tree.process_frame
+	debugger.target_instance = instance
+	_target_calls += 1
+	var result: Dictionary = await handler.call(args)
+	_target_calls -= 1
+	if _target_calls == 0:
+		debugger.target_instance = 1
+	return result
+
+
+## Lanza una instancia extra de la escena del run y espera su probe. Devuelve la nota para el informe.
+func _add_instance(entry: Dictionary, real_gamepads: bool) -> String:
+	var number := instances.free_number()
+	if number < 0:
+		return "Instance not added: %d instances already run (the most at once)." % GameInstances.MAX_INSTANCES
+	var settings := EditorInterface.get_editor_settings()
+	var uri := GameInstances.debugger_uri(GameInstances.editor_debugger_uri(debugger.editor_game_pid), str(settings.get_setting("network/debug/remote_host")),
+		int(settings.get_setting("network/debug/remote_port")))
+	var screen := DisplayServer.window_get_current_screen()
+	var args := GameInstances.launch_args(ProjectSettings.globalize_path("res://"), _run_scene_path, uri, entry, number,
+		DisplayServer.screen_get_usable_rect(screen))
+	if register_autoload.is_valid():
+		register_autoload.call(true)
+	debugger.expect_instance(number)
+	var pid := instances.launch(number, args, entry, real_gamepads)
+	if pid <= 0:
+		debugger.expect_instance(0)
+		_cleanup()
+		return "Instance %d could not be launched." % number
+	await _until(func() -> bool: return debugger.instance_session(number) >= 0 or not OS.is_process_running(pid), STARTUP_TIMEOUT_S)
+	if debugger.instance_session(number) < 0:
+		debugger.expect_instance(0)
+		_cleanup()
+		instances.stop(number)
+		return "Instance %d did not connect to the editor's debugger within %d s; it was stopped." % [number, STARTUP_TIMEOUT_S]
+	await _until(func() -> bool: return debugger.has_probe(number) or debugger.instance_session(number) < 0, STARTUP_TIMEOUT_S)
+	var what := "headless" if entry.headless else "%dx%d window" % [GameInstances.window_size(entry).x, GameInstances.window_size(entry).y]
+	var given := " ".join(entry.args) if not (entry.args as PackedStringArray).is_empty() else "no args"
+	if not debugger.has_probe(number):
+		return "Instance %d (%s, %s) started but its playtest probe did not answer: the game_* tools can't reach it." % [number, what, given]
+	if not (entry.inputs as Array).is_empty():
+		debugger.send("inputs", [entry.inputs], number)
+	var user_dir := "instance 1's user://" if entry.shared_user_dir else "its own user://"
+	return "Instance %d is running (%s, %s, %s): pass instance: %d to the game_* tools." % [number, what, given, user_dir, number]
+
+
+func _game_instance(args: Dictionary) -> Dictionary:
+	var action := McpTool.str_arg(args, "action")
+	if action == "list":
+		return McpTool.text(_describe_instances())
+	if not EditorInterface.is_playing_scene():
+		return McpTool.error("No game is running: start it with run_scene (its `instances` launches several at once).")
+	if action == "stop":
+		var raw: Variant = args.get("instance")
+		var instance := int(raw) if raw is float or raw is int else 0
+		if instance < 2:
+			return McpTool.error("`instance` must be 2 or more: instance 1 is the editor's game (stop_scene stops it with all the others).")
+		return McpTool.text("Instance %d stopped: for the other instances it is a dropped connection." % instance) if instances.stop(instance) else McpTool.error("There is no instance %d running." % instance)
+	if action == "add":
+		var entry := GameInstances.normalize_entry(args)
+		if entry.has("error"):
+			return McpTool.error(str(entry.error))
+		var entry_inputs: Array = []
+		var invalid := normalize_steps(entry.inputs, entry_inputs)
+		if not invalid.is_empty():
+			return McpTool.error(invalid)
+		entry.inputs = entry_inputs
+		if instances.free_number() < 0:
+			return McpTool.error("At most %d instances run at once." % GameInstances.MAX_INSTANCES)
+		return McpTool.text(await _add_instance(entry, false))
+	return McpTool.error("`action` is list, add or stop.")
+
+
+func _describe_instances() -> String:
+	if not EditorInterface.is_playing_scene():
+		return "No game is running."
+	var lines := PackedStringArray(["Instance 1: the editor's game (%s), probe %s." % [_run_scene_path, "answering" if debugger.has_probe(1) else "not answering"]])
+	for number: int in instances.running():
+		var entry: Dictionary = instances.entries[number]
+		var what := "headless" if entry.headless else "own window"
+		var given := " ".join(entry.args) if not (entry.args as PackedStringArray).is_empty() else "no args"
+		lines.append("Instance %d: %s, %s, %s, probe %s." % [number, what, given, "shared user://" if entry.shared_user_dir else "own user://", "answering" if debugger.has_probe(number) else "not answering"])
+	return "\n".join(lines)
+
+
+func _stop_scene_tool(args: Dictionary) -> Dictionary:
+	if regressions_running:
+		return McpTool.error(REGRESSIONS_BUSY)
+	return await _stop_scene(args)
+
+
+## Hay un run_scene en curso (el de una tool o el de otra sesión).
+func is_busy() -> bool:
+	return _busy and not busy_is_stale(_busy_since_ms, Time.get_ticks_msec())
+
+
+## Si un run_scene murió por un error interno nadie baja `_busy`: pasado lo máximo que puede durar uno,
+## no bloquea a los siguientes para siempre (lo encontró un agente real, m16-03).
+static func busy_is_stale(since_ms: int, now_ms: int) -> bool:
+	return now_ms - since_ms > int((MAX_SECONDS + STARTUP_TIMEOUT_S + STOP_TIMEOUT_S + RECORD_CLOSE_S + REQUEST_TIMEOUT_S) * 1000.0)
+
+
+## Prende el Movie Maker del editor hacia un AVI nuevo; devuelve lo que hay que restaurar y la ruta.
+func _start_recording() -> Dictionary:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(RECORD_DIR))
+	var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
+	var path := RECORD_DIR.path_join("playtest_%s.avi" % stamp)
+	var recording := {
+		"path": path, "enabled": EditorInterface.is_movie_maker_enabled(),
+		"file": ProjectSettings.get_setting(MOVIE_FILE_SETTING, ""), "fps": ProjectSettings.get_setting(MOVIE_FPS_SETTING, 60),
+	}
+	ProjectSettings.set_setting(MOVIE_FILE_SETTING, ProjectSettings.globalize_path(path))
+	ProjectSettings.set_setting(MOVIE_FPS_SETTING, RECORD_FPS)
+	EditorInterface.set_movie_maker_enabled(true)
+	return recording
+
+
+## Cierra el juego desde adentro (el video queda bien terminado) y deja el Movie Maker como estaba.
+func _finish_recording(recording: Dictionary) -> String:
+	if EditorInterface.is_playing_scene():
+		debugger.send("quit")
+		await _until(func() -> bool: return not EditorInterface.is_playing_scene(), RECORD_CLOSE_S)
+		if EditorInterface.is_playing_scene():
+			EditorInterface.stop_playing_scene()
+			await _until(func() -> bool: return not EditorInterface.is_playing_scene(), STOP_TIMEOUT_S)
+	_stop_recording(recording)
+	var path: String = recording.path
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null or file.get_length() == 0:
+		return "The recording was not written (%s)." % path
+	return "Recording: %s (%d KB, %d fps). The game was closed to finish the video." % [path, file.get_length() / 1024, RECORD_FPS]
+
+
+static func _stop_recording(recording: Dictionary) -> void:
+	if recording.is_empty():
+		return
+	EditorInterface.set_movie_maker_enabled(recording.enabled)
+	ProjectSettings.set_setting(MOVIE_FILE_SETTING, recording.file)
+	ProjectSettings.set_setting(MOVIE_FPS_SETTING, recording.fps)
+
+
+func _stop_scene(args: Dictionary) -> Dictionary:
+	var instance := int(args.get("instance", 1)) if args.get("instance") is float or args.get("instance") is int else 1
+	if instance >= 2:
+		return McpTool.text("Instance %d stopped." % instance) if instances.stop(instance) else McpTool.error("There is no instance %d running (game_instance list)." % instance)
+	if not EditorInterface.is_playing_scene():
+		instances.stop_all()
+		return McpTool.text("No game is running.")
+	EditorInterface.stop_playing_scene()
+	await _until(func() -> bool: return not EditorInterface.is_playing_scene(), STOP_TIMEOUT_S)
+	_cleanup()
+	return McpTool.text("Game stopped.")
+
+
+func _capture_game_frame(args: Dictionary) -> Dictionary:
+	if not EditorInterface.is_playing_scene() or not debugger.has_probe():
+		return McpTool.error("No game is running with the playtest probe: launch it with run_scene (manual runs do not have it).")
+	if CameraViews.wants_view(args):
+		return await _capture_views(args)
+	var frame: Variant = await capture_frame()
+	if frame is String:
+		return McpTool.error(frame)
+	var image: Image = frame
+	return McpTool.image(image, "Game frame (%dx%d)" % [image.get_width(), image.get_height()])
+
+
+## Vistas desde otra cámara (m11-52): las renderiza la probe fuera de pantalla, una imagen por vista.
+func _capture_views(args: Dictionary) -> Dictionary:
+	if _stopped_in_debugger():
+		return McpTool.error("The game is stopped in the debugger: continue it with game_debug before capturing other views.")
+	var params := {"max_side": max_image_side}
+	for key: String in ["camera", "look_from", "look_at", "angles", "distance", "zoom"]:
+		if args.has(key):
+			params[key] = args[key]
+	var reply := await request("views", params, REQUEST_TIMEOUT_S + FRAME_TIMEOUT_S)
+	if reply.has("error"):
+		return McpTool.error(UntrustedText.wrap(str(reply.error)))
+	var content: Array = []
+	for view: Dictionary in reply.get("views", []):
+		var image := Image.new()
+		if not view.get("png") is PackedByteArray or image.load_png_from_buffer(view.png) != OK:
+			return McpTool.error("A rendered view arrived corrupted.")
+		content.append({"type": "text", "text": "%s (%dx%d)" % [view.get("label", ""), image.get_width(), image.get_height()]})
+		content.append({"type": "image", "mimeType": "image/png", "data": Marshalls.raw_to_base64(view.png)})
+	if content.is_empty():
+		return McpTool.error("No view came back.")
+	return {"content": content, "isError": false}
+
+
+## El frame actual del juego (que tiene que tener la probe) como Image, o el error en inglés.
+## También lo usa «+ contexto → Captura del juego» del dock.
+func capture_frame() -> Variant:
+	_state.erase("frame")
+	debugger.send("capture", [max_image_side])
+	await _until(func() -> bool: return _state.has("frame"), FRAME_TIMEOUT_S)
+	if not _state.has("frame"):
+		var paused := " The game is stopped in the debugger." if run_state == GameRunState.BREAKED else ""
+		return "The game frame did not arrive within %d s.%s" % [FRAME_TIMEOUT_S, paused]
+	var image := Image.new()
+	if image.load_png_from_buffer(_state.frame) != OK:
+		return "The game frame arrived corrupted."
+	return image
+
+
+## Llena `out` con los eventos para el probe ({t, kind, pressed, …}); devuelve "" o el error.
+## Un paso sin `pressed` es apretar y soltar; sin `t`, va justo después del paso anterior.
+static func normalize_steps(value: Variant, out: Array) -> String:
+	if value == null:
+		return ""
+	if not value is Array:
+		return "`inputs`/`steps` must be a list. " + STEPS_HELP
+	value = _expand_text_steps(value)
+	if (value as Array).size() > INPUT_MAX_STEPS:
+		return "At most %d steps per call." % INPUT_MAX_STEPS
+	var next_t := 0.0
+	var next_frame := 0
+	var by_frame := (value as Array).any(func(step: Variant) -> bool: return step is Dictionary and step.has("frame"))
+	for step: Variant in value:
+		if not step is Dictionary:
+			return "Each step must be an object. " + STEPS_HELP
+		var shown := JSON.stringify(step).left(120)
+		if step.has("t") and not (step.t is float or step.t is int):
+			return "`t` must be a number: %s" % shown
+		if by_frame and step.has("t"):
+			return "Use either `t` or `frame` in one call, not both: %s" % shown
+		if step.has("frame") and not (step.frame is int or (step.frame is float and is_equal_approx(step.frame, roundf(step.frame)))):
+			return "`frame` must be a whole number: %s" % shown
+		if step.has("strength") and not (step.strength is float or step.strength is int):
+			return "`strength` must be a number between 0 and 1: %s" % shown
+		var t := maxf(float(step.get("t", next_t)), 0.0)
+		var hold := clampf(float(step.get("hold", TAP_HOLD_S)), 0.0, WAIT_MAX_S)
+		var frame := clampi(int(step.get("frame", next_frame)), 0, FRAME_MAX)
+		var hold_frames := clampi(int(step.get("hold_frames", TAP_HOLD_FRAMES)), 0, FRAME_MAX)
+		var events: Array = []
+		if step.get("action") is String:
+			var action: String = step.action
+			if not ProjectSettings.has_setting("input/" + action) and not InputMap.has_action(action):
+				return "The action '%s' does not exist in the project's InputMap." % action
+			var action_event := {"kind": "action", "action": action}
+			if step.has("strength"):
+				action_event["strength"] = clampf(float(step.strength), 0.0, 1.0)
+			events.append(action_event)
+		elif step.get("char") is String:
+			events.append(_char_step(step.char))
+		elif step.get("look") is Array:
+			var delta: Array = step.look
+			if delta.size() != 2 or not (delta[0] is float or delta[0] is int) or not (delta[1] is float or delta[1] is int):
+				return "`look` must be [dx, dy]: %s" % shown
+			events.append({"kind": "mouse_motion", "rel_x": float(delta[0]), "rel_y": float(delta[1])})
+		elif step.get("key") is String or step.get("event") is String:
+			var spec: String = step.get("key") if step.get("key") is String else step.get("event")
+			if step.get("key") is String and not ":" in spec:
+				spec = "key:" + spec
+			var parsed: Variant = ProjectTools.parse_event(spec)
+			if parsed is String:
+				return "%s (%s)" % [parsed, shown]
+			var converted := _event_step(parsed, step)
+			if converted.is_empty():
+				return "Unsupported event in %s." % shown
+			events.append(converted)
+		elif step.get("click") is Array or step.get("move") is Array:
+			var point: Variant = step.get("click", step.get("move"))
+			if (point as Array).size() != 2 or not (point[0] is float or point[0] is int) or not (point[1] is float or point[1] is int):
+				return "`click`/`move` must be [x, y] in window pixels: %s" % shown
+			events.append({"kind": "mouse_motion", "x": float(point[0]), "y": float(point[1]), "motion": true})
+			if step.has("click"):
+				var button := str(step.get("button", "left")).to_lower()
+				if not ProjectTools.MOUSE_BUTTONS.has(button):
+					return "Unknown mouse button '%s' (left, right, middle, wheel_up, wheel_down)." % button
+				events.append({"kind": "mouse_button", "button": ProjectTools.MOUSE_BUTTONS[button], "x": float(point[0]), "y": float(point[1])})
+		else:
+			return "Step without action, key, event, click or move: %s. %s" % [shown, STEPS_HELP]
+		for event: Dictionary in events:
+			if by_frame:
+				event["frame"] = frame
+			else:
+				event["t"] = t
+			if event.get("kind") == "mouse_motion":
+				event.erase("motion")
+				out.append(event)
+			elif step.has("pressed"):
+				event["pressed"] = step.pressed == true
+				out.append(event)
+			else:
+				event["pressed"] = true
+				out.append(event)
+				var release := event.duplicate()
+				release["pressed"] = false
+				if by_frame:
+					release["frame"] = frame + hold_frames
+				else:
+					release["t"] = t + hold
+				out.append(release)
+		var tap: bool = not step.has("pressed") and not step.has("move") and not step.has("look")
+		next_t = t + (hold if tap else 0.0) + STEP_GAP_S
+		next_frame = frame + (hold_frames if tap else 0) + 1
+	return ""
+
+
+## Un paso {text} se vuelve un toque corto por carácter (m15-04), el primero en el `t` o `frame` del paso.
+static func _expand_text_steps(steps: Array) -> Array:
+	var expanded: Array = []
+	for step: Variant in steps:
+		if not (step is Dictionary and step.get("text") is String):
+			expanded.append(step)
+			continue
+		var first := true
+		for character: String in (step.text as String):
+			var one := {"char": character, "hold": 0.02, "hold_frames": 1}
+			if first:
+				for key: String in ["t", "frame"]:
+					if step.has(key):
+						one[key] = step[key]
+			first = false
+			expanded.append(one)
+	return expanded
+
+
+## El evento de un carácter: la tecla si la tiene y siempre su unicode, que es lo que escribe.
+static func _char_step(character: String) -> Dictionary:
+	var keycode := OS.find_keycode_from_string(character.to_upper()) if character != " " else KEY_SPACE
+	return {"kind": "key", "keycode": int(keycode), "unicode": character.unicode_at(0), "ctrl": false, "alt": false, "meta": false, "shift": character != character.to_lower()}
+
+
+## El paso para el probe de un InputEvent de ProjectTools.parse_event, o {} si no se puede mandar.
+static func _event_step(event: InputEvent, step: Dictionary) -> Dictionary:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		var command := key.command_or_control_autoremap
+		var mac := OS.has_feature("macos")
+		return {"kind": "key", "keycode": int(key.physical_keycode), "ctrl": key.ctrl_pressed or (command and not mac),
+			"shift": key.shift_pressed, "alt": key.alt_pressed, "meta": key.meta_pressed or (command and mac)}
+	if event is InputEventMouseButton:
+		var at: Array = step.get("at") if step.get("at") is Array and (step.get("at") as Array).size() == 2 else [0, 0]
+		return {"kind": "mouse_button", "button": int((event as InputEventMouseButton).button_index), "x": float(at[0]), "y": float(at[1])}
+	if event is InputEventJoypadButton:
+		return {"kind": "joy_button", "button": int((event as InputEventJoypadButton).button_index)}
+	if event is InputEventJoypadMotion:
+		var motion := event as InputEventJoypadMotion
+		return {"kind": "joy_axis", "axis": int(motion.axis), "value": motion.axis_value}
+	return {}
+
+
+func _report(scene: String, seconds: float, inputs: Array, notes: PackedStringArray, since: int, output_before: String) -> String:
+	var lines: PackedStringArray = []
+	var reason := PlaytestDebugger.break_reason() if reached(GameRunState.BREAKED) else ""
+	if run_state == GameRunState.BREAKED and reason.begins_with(BREAKPOINT_REASON):
+		# m11-56: un breakpoint (del agente o del usuario) no es un error.
+		if debugger.is_breaked():
+			lines.append("%s: the game stopped at a breakpoint: %s. It is paused: game_stack shows where and the variables, game_debug continues or steps, stop_scene closes it." % [scene, UntrustedText.wrap(reason)])
+		else:
+			# Paró antes de que cargue el probe (es el último autoload): game_stack no puede (#14c).
+			lines.append("%s: the game stopped at a breakpoint before the playtest probe loaded: %s. It is paused: game_debug continues or steps (game_stack needs the probe), stop_scene closes it." % [scene, UntrustedText.wrap(reason)])
+	elif reached(GameRunState.BREAKED) and run_state != GameRunState.BREAKED and not reached(GameRunState.STOPPED):
+		# Lo continuaron (el usuario o game_debug) mientras se esperaba: ya no está parado (#21).
+		lines.append("%s: the game stopped in the debugger%s and was continued: it is running again." % [scene, ": " + UntrustedText.wrap(reason) if not reason.is_empty() else ""])
+	elif reached(GameRunState.BREAKED):
+		lines.append("%s: the game stopped in the debugger because of an error%s. It is still paused: fix it and run again (run_scene restarts it) or use stop_scene." % [scene, ": " + UntrustedText.wrap(reason) if not reason.is_empty() else ""])
+	elif reached(GameRunState.STOPPED):
+		lines.append("%s: the game ended by itself before %.1f s." % [scene, seconds])
+	else:
+		lines.append("%s: ran for %.1f s and is still running (capture_game_frame to see it, stop_scene to close it)." % [scene, seconds])
+	if not inputs.is_empty():
+		if _state.has("inputs_done"):
+			lines.append("Inputs: %d of %d events played." % [_state.inputs_done, inputs.size()])
+		elif reached(GameRunState.PROBE_READY):
+			lines.append("Inputs: %d events sent; they did not finish in time." % inputs.size())
+	for note: String in notes:
+		lines.append(note)
+	for problem: Variant in _state.get("problems", []):
+		lines.append("Probe: %s" % problem)
+
+	var entries := errors.entries_since(since).filter(func(entry: Dictionary) -> bool: return not ErrorCollector.is_engine_noise(entry))
+	if entries.is_empty():
+		lines.append("No errors or warnings.")
+	else:
+		lines.append("Errors and warnings (%d):" % entries.size())
+		lines.append(UntrustedText.wrap(_entry_lines(entries)))
+	var output := _output_delta(output_before, errors.output_text())
+	if not output.is_empty():
+		lines.append("Output:")
+		lines.append(UntrustedText.wrap(output))
+	lines.append_array(_extra_lines())
+	lines.append("get_errors mark: %d" % errors.mark())
+	return "\n".join(lines)
+
+
+## Lo que traen todas las respuestas: errores salteados, hallazgos de los detectores y tiempo restante.
+func _extra_lines() -> PackedStringArray:
+	var lines: PackedStringArray = []
+	if not _continued.is_empty():
+		lines.append("Script errors the game went past (%d):" % _continued.size())
+		var reasons: PackedStringArray = []
+		for reason: String in _continued:
+			reasons.append("  " + reason)
+		lines.append(UntrustedText.wrap("\n".join(reasons)))
+		_continued = []
+	var silenced := PlaytestMemory.new().not_a_bug()
+	for signature: String in _findings_new:
+		if not signature in silenced:
+			lines.append(format_finding(_findings[signature]))
+	_findings_new = []
+	if Engine.has_meta(DEADLINE_META):
+		var left: float = (int(Engine.get_meta(DEADLINE_META)) - Time.get_ticks_msec()) / 60000.0
+		lines.append("Playtest time left: %.1f min." % left if left > 0.0 else "The playtest's time is up: answer now with what you have.")
+	return lines
+
+
+## Las últimas ERROR_LIMIT entradas del ErrorCollector, una por línea con sangría.
+static func _entry_lines(entries: Array) -> String:
+	var lines: PackedStringArray = []
+	for entry: Dictionary in entries.slice(maxi(entries.size() - ERROR_LIMIT, 0)):
+		lines.append("  " + ErrorCollector.format_entry(entry))
+	return "\n".join(lines)
+
+
+## `ms`: en Time.get_ticks_msec; 0 = sin tope.
+static func set_playtest_deadline(ms: int) -> void:
+	if ms > 0:
+		Engine.set_meta(DEADLINE_META, ms)
+	elif Engine.has_meta(DEADLINE_META):
+		Engine.remove_meta(DEADLINE_META)
+
+
+## La línea de un hallazgo en el resultado de una tool; ReviewStore la vuelve a leer para el panel.
+## La firma, el resumen, el nodo y la escena traen nombres del juego: van en sobres (m11-45), así
+## un nodo no puede escribir otra línea ni otro campo; el detector es una palabra.
+static func format_finding(finding: Dictionary) -> String:
+	var detector := RegEx.create_from_string("[^A-Za-z0-9_]").sub(str(finding.get("detector", "")), "", true)
+	var parts: PackedStringArray = ["Detector %s ×%d [sig=%s]: %s" % [detector if not detector.is_empty() else "?", int(finding.get("count", 1)),
+		UntrustedText.wrap(str(finding.get("signature", ""))), UntrustedText.wrap(str(finding.get("summary", "")))]]
+	for key: String in ["node", "scene", "frame"]:
+		if not str(finding.get(key, "")).is_empty():
+			parts.append("%s=%s" % [key, UntrustedText.wrap(str(finding[key])) if key != "frame" else finding[key]])
+	if finding.get("where") is Array and not (finding.where as Array).is_empty():
+		parts.append("where=%s" % JSON.stringify(finding.where))
+	return " | ".join(parts)
+
+
+## Lo nuevo del panel Output; si el editor lo limpió al correr ("Clear on play"), todo.
+static func _output_delta(before: String, after: String) -> String:
+	var text := after.substr(before.length()) if after.begins_with(before) else after
+	var kept: PackedStringArray = []
+	for line: String in text.split("\n"):
+		if not line.strip_edges().is_empty():
+			kept.append(line)
+	if kept.size() > OUTPUT_LINE_LIMIT:
+		var skipped := kept.size() - OUTPUT_LINE_LIMIT
+		kept = kept.slice(skipped)
+		kept.insert(0, "(… %d earlier lines)" % skipped)
+	return "\n".join(kept)
+
+
+# --- juego en ejecución (m4-07) ------------------------------------------------------------------
+
+func _game_tree(args: Dictionary) -> Dictionary:
+	return await _game_request("tree", {"path": McpTool.str_arg(args, "path"), "depth": int(args.get("depth", 4))})
+
+
+func _game_get(args: Dictionary) -> Dictionary:
+	var properties: Variant = args.get("properties", [])
+	if not properties is Array:
+		return McpTool.error("`properties` must be a list of property names.")
+	return await _game_request("get", {"path": McpTool.str_arg(args, "path"), "properties": properties})
+
+
+func _game_set(args: Dictionary) -> Dictionary:
+	if not args.get("properties") is Dictionary or (args.properties as Dictionary).is_empty():
+		return McpTool.error("`properties` must be an object {name: value}.")
+	return await _game_request("set", {"path": McpTool.str_arg(args, "path"), "properties": args.properties})
+
+
+func _game_call(args: Dictionary) -> Dictionary:
+	var call_args: Variant = args.get("args", [])
+	if not call_args is Array:
+		return McpTool.error("`args` must be a list.")
+	return await _game_request("call", {"path": McpTool.str_arg(args, "path"), "method": McpTool.str_arg(args, "method"), "args": call_args})
+
+
+func _game_wait(args: Dictionary) -> Dictionary:
+	var timeout := clampf(float(args.get("timeout", 5.0)), 0.0, WAIT_MAX_S)
+	var params := {"path": McpTool.str_arg(args, "path"), "condition": McpTool.str_arg(args, "condition"), "signal": McpTool.str_arg(args, "signal"), "timeout": timeout}
+	return await _game_request("wait", params, timeout)
+
+
+func _game_find(args: Dictionary) -> Dictionary:
+	return await _game_request("find", {"class": McpTool.str_arg(args, "class"), "name": McpTool.str_arg(args, "name"), "limit": McpTool.int_arg(args, "limit", 50)})
+
+
+func _game_ui(_args: Dictionary) -> Dictionary:
+	return await _game_request("ui", {})
+
+
+func _game_ui_act(args: Dictionary) -> Dictionary:
+	return await _game_request("ui_act", {"id": McpTool.str_arg(args, "id"), "action": McpTool.str_arg(args, "action", "click"), "value": args.get("value")})
+
+
+func _game_script(args: Dictionary) -> Dictionary:
+	var code := McpTool.str_arg(args, "code")
+	var blocked := blocked_api(code)
+	if not blocked.is_empty():
+		return McpTool.error("game_script can't use %s: it may not touch files or start processes. Use it to play and to read the game." % blocked)
+	var timeout := clampf(float(args.get("timeout", 10.0)), 0.1, SCRIPT_MAX_S)
+	# Un error en el script del agente no tiene que frenar el juego en el debugger.
+	var before := _continue_errors
+	_continue_errors = true
+	var params := {"code": code, "timeout": timeout}
+	# Las bases de los presupuestos de una regresión guardada (m11-44); el agente no las pasa.
+	if args.get("baselines") is Dictionary:
+		params.baselines = args.baselines
+	var result := await _game_request("script", params, timeout)
+	_continue_errors = before
+	return result
+
+
+## La API prohibida que usa un script, o "".
+static func blocked_api(code: String) -> String:
+	return PlaytestRegressions.blocked_api(code)
+
+
+func _game_pause(args: Dictionary) -> Dictionary:
+	return await _game_request("pause", {"paused": args.get("paused") == true})
+
+
+func _game_step(args: Dictionary) -> Dictionary:
+	var steps: Array = []
+	var raw: Variant = args.get("steps", [])
+	if raw is Array and not (raw as Array).is_empty() and not (raw as Array).any(func(step: Variant) -> bool: return step is Dictionary and step.has("frame")):
+		raw = (raw as Array).duplicate(true)
+		if raw[0] is Dictionary:
+			raw[0]["frame"] = 0  # acá todo va por frame: el resto sigue después de este
+	var invalid := normalize_steps(raw, steps)
+	if not invalid.is_empty():
+		return McpTool.error(invalid)
+	var frames := clampi(McpTool.int_arg(args, "frames", 1), 0, FRAME_MAX)
+	var duration := float(frames) / physics_fps()
+	for step: Dictionary in steps:
+		duration = maxf(duration, step_seconds(step))
+	return await _game_request("step", {"frames": frames, "steps": steps}, duration)
+
+
+func _game_watch(args: Dictionary) -> Dictionary:
+	var steps: Array = []
+	var invalid := normalize_steps(args.get("steps"), steps)
+	if not invalid.is_empty():
+		return McpTool.error(invalid)
+	var seconds := clampf(float(args.get("seconds", 2.0)), 0.05, WATCH_MAX_S)
+	return await _game_request("watch", {"paths": args.get("paths", []), "seconds": seconds, "properties": args.get("properties", []), "steps": steps}, seconds)
+
+
+func _game_monitors(args: Dictionary) -> Dictionary:
+	var steps: Array = []
+	var invalid := normalize_steps(args.get("steps"), steps)
+	if not invalid.is_empty():
+		return McpTool.error(invalid)
+	var seconds := clampf(float(args.get("seconds", 2.0)), 0.1, MONITORS_MAX_S)
+	return await _game_request("monitors", {"seconds": seconds, "orphans": args.get("orphans", true) != false, "steps": steps}, seconds)
+
+
+func _game_frames(args: Dictionary) -> Dictionary:
+	if args.has("fps") and float(args.fps) > 0.0:
+		if not EditorInterface.is_playing_scene() or not debugger.has_probe():
+			return McpTool.error(NO_PROBE)
+		return McpTool.text(await _start_film(float(args.fps)))
+	if _film_frames.is_empty():
+		return McpTool.error("There are no frames: launch the game with run_scene film_fps, or pass `fps` here to start filming.")
+	var seconds := float(args.get("seconds", 3.0))
+	var count := clampi(McpTool.int_arg(args, "count", 6), 1, FRAMES_MAX_SHOWN)
+	var content: Array = []
+	var chosen := pick_frames(_film_frames, seconds, count)
+	for frame: Dictionary in chosen:
+		var bytes := FileAccess.get_file_as_bytes(frame.path)
+		if not bytes.is_empty():
+			content.append({"type": "text", "text": "t=%.2f %s" % [frame.t, frame.path]})
+			content.append({"type": "image", "mimeType": "image/jpeg", "data": Marshalls.raw_to_base64(bytes)})
+	return {"content": content, "isError": false}
+
+
+## Repite un playtest guardado sin agente (m16-06): {goal, passed, output}. Deja el juego cerrado.
+## `setup`: código que corre antes en el mismo juego, como el sabotaje que tiene que hacerla fallar.
+func run_regression(entry: Dictionary, setup: String = "") -> Dictionary:
+	var result := {"goal": str(entry.get("goal", "")), "passed": false, "output": ""}
+	var ran: Dictionary = await _run_scene({"scene": str(entry.get("scene", "")), "seconds": REGRESSION_SETTLE_S, "continue_on_error": true})
+	if ran.get("isError", false) or not debugger.has_probe():
+		result.output = "The game did not start: %s" % str(ran.get("content", []))
+		return result
+	if not setup.is_empty():
+		await _game_script({"code": setup, "timeout": REGRESSION_TIMEOUT_S})
+	var played: Dictionary = await _game_script({"code": str(entry.get("code", "")), "timeout": REGRESSION_TIMEOUT_S, "baselines": PlaytestRegressions.baselines_for(entry)})
+	var parts: PackedStringArray = []
+	for block: Dictionary in played.get("content", []):
+		parts.append(str(block.get("text", "")))
+	result.output = "\n".join(parts)
+	result.passed = not played.get("isError", false) and PlaytestRegressions.passed(result.output)
+	if result.passed and setup.is_empty():
+		PlaytestRegressions.record_baselines(str(entry.get("file", "")), result.output)
+	await _stop_scene({})
+	return result
+
+
+## Las regresiones guardadas, `repeat` veces cada una (m11-42): los resultados de PlaytestRegressions.tally.
+## Con 2 o más corridas guarda en cada una cuántas pasaron. `regressions_running` la deja de a una (el
+## botón del panel y la tool corren el mismo juego).
+func run_saved_regressions(entries: Array[Dictionary], repeat: int) -> Array:
+	repeat = clampi(repeat, 1, PlaytestRegressions.MAX_REPEAT)
+	regressions_running = true
+	var results: Array = []
+	for entry: Dictionary in entries:
+		var runs: Array = []
+		for i in repeat:
+			runs.append(await run_regression(entry))
+		while PlaytestRegressions.retry_marked(entry, runs, repeat):
+			runs.append(await run_regression(entry))
+		var tallied := PlaytestRegressions.tally(entry, runs)
+		PlaytestRegressions.record_runs(tallied)
+		results.append(tallied)
+	regressions_running = false
+	regressions_finished.emit(results)
+	return results
+
+
+func _run_regressions(args: Dictionary) -> Dictionary:
+	if regressions_running:
+		return McpTool.error(REGRESSIONS_BUSY)
+	if EditorInterface.is_playing_scene():
+		return McpTool.error("A game is running: stop it with stop_scene first; the regressions launch their own scenes.")
+	var goal := str(args.get("goal", "")).strip_edges()
+	var entries := PlaytestRegressions.new().list().filter(func(entry: Dictionary) -> bool: return goal.is_empty() or str(entry.goal).containsn(goal))
+	if entries.is_empty():
+		return McpTool.error("There are no saved regressions%s in %s/: a playtest that passes saves one." % [" matching «%s»" % goal if not goal.is_empty() else "", RegressionsWorkflow.REGRESSIONS_DIR])
+	var typed: Array[Dictionary] = []
+	typed.assign(entries)
+	var repeat := clampi(McpTool.int_arg(args, "repeat", 1), 1, PlaytestRegressions.MAX_REPEAT)
+	var results := await run_saved_regressions(typed, repeat)
+	var summary := PlaytestRegressions.summary(results)
+	var lines: PackedStringArray = []
+	for result: Dictionary in results:
+		var state := "FLAKY" if result.flaky else ("PASS" if result.passed else "FAIL")
+		var count := PlaytestRegressions.count_text(result)
+		lines.append("%s %s%s" % [state, result.goal, " (%s)" % count if not count.is_empty() else ""])
+	var head := "All %d pass" % results.size() if summary.failed == 0 and summary.flaky == 0 else "%d of %d fail, %d flaky" % [summary.failed, results.size(), summary.flaky]
+	var text := "%s (%d run%s each).\n%s" % [head, repeat, "" if repeat == 1 else "s", "\n".join(lines)]
+	if not str(summary.details).is_empty():
+		text += "\n\n" + summary.details
+	return McpTool.text(text) if summary.failed == 0 else McpTool.error(text)
+
+
+## El workflow de CI de las regresiones (m16-10), en la raíz del repo del proyecto abierto. La tool
+## nunca pisa uno que exista (en Auto, edit_files no pide tarjeta y el workflow puede ser del
+## usuario): reemplazarlo es cosa del botón del panel, que confirma. Sin regresiones grabadas no
+## escribe: el CI fallaría en cada push sin nada que correr.
+func _write_regressions_workflow(args: Dictionary) -> Dictionary:
+	var saved := PlaytestRegressions.new().list().size()
+	if saved == 0:
+		return McpTool.error("There are no saved regressions in %s/: a playtest that passes saves one. Without them the workflow would fail on every push, so nothing was written." % RegressionsWorkflow.REGRESSIONS_DIR)
+	var root := ProjectSettings.globalize_path("res://").trim_suffix("/")
+	var repeat := clampi(McpTool.int_arg(args, "repeat", 1), 1, PlaytestRegressions.MAX_REPEAT)
+	var written := RegressionsWorkflow.write(root, bool(args.get("render", false)), false, "", null, null, repeat, bool(args.get("fail_on_flaky", false)))
+	if not written.ok:
+		if written.existed:
+			return McpTool.error("%s and this tool never replaces it. If the user wants the harness's version, they can press «CI workflow…» in the findings panel, which asks before overwriting." % written.error)
+		return McpTool.error(written.error)
+	var lines: PackedStringArray = ["Wrote %s (repository root: %s) for Godot %s%s. Commit it and push: GitHub Actions runs the %d saved regressions on every push and pull request%s." % [written.path, written.root, RegressionsWorkflow.editor_version(), " (.NET)" if RegressionsWorkflow.is_dotnet_editor() else "", saved,
+		", %d times each" % repeat if repeat > 1 else ""]]
+	if repeat > 1:
+		lines.append("A flaky regression (it passes some runs and fails others) %s." % ("fails the CI run" if bool(args.get("fail_on_flaky", false)) else "is reported but doesn't fail the CI run; one that fails every run does"))
+	if not str(written.project_dir).is_empty():
+		lines.append("The project is in %s/ inside the repository: the workflow runs Godot with --path %s." % [written.project_dir, written.project_dir])
+	for warning: String in written.warnings:
+		lines.append("Warning: " + RegressionsWorkflow.WARNING_TEXTS[warning])
+	return McpTool.text("\n".join(lines))
+
+
+## `count` frames repartidos en los últimos `seconds` de la lista.
+static func pick_frames(frames: Array[Dictionary], seconds: float, count: int) -> Array[Dictionary]:
+	var last: float = frames[-1].t
+	var recent := frames.filter(func(frame: Dictionary) -> bool: return float(frame.t) >= last - seconds)
+	var picked: Array[Dictionary] = []
+	if recent.size() <= count:
+		picked.assign(recent)
+		return picked
+	for i: int in count:
+		picked.append(recent[roundi(float(i) * (recent.size() - 1) / maxi(count - 1, 1))])
+	return picked
+
+
+## Empieza a filmar: carpeta nueva para este run. Devuelve la línea para el reporte.
+func _start_film(fps: float) -> String:
+	var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
+	_film_dir = RECORD_DIR.path_join("film_%s" % stamp)
+	_film_frames = []
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_film_dir))
+	var manifest := FileAccess.open(_film_dir.path_join("film.json"), FileAccess.WRITE)
+	if manifest:
+		manifest.store_string(JSON.stringify({"fps": fps}))
+		manifest.close()
+	_keep_newest(RECORD_DIR, "film_", FILM_KEEP_RUNS)
+	var reply := await request("film", {"fps": fps})
+	return "Filming: %s" % _film_dir if reply.has("text") else "Not filming: %s" % UntrustedText.wrap(str(reply.get("error", "")))
+
+
+func _game_input(args: Dictionary) -> Dictionary:
+	var steps: Array = []
+	var invalid := normalize_steps(args.get("steps"), steps)
+	if not invalid.is_empty():
+		return McpTool.error(invalid)
+	if steps.is_empty():
+		return McpTool.error("`steps` is empty. " + STEPS_HELP)
+	var settle := clampi(int(args.get("settle_frames", 0)), 0, FRAME_MAX)
+	var duration := float(settle) / physics_fps()
+	for step: Dictionary in steps:
+		duration = maxf(duration, step_seconds(step) + float(settle) / physics_fps())
+	return await _game_request("input", {"steps": steps, "settle_frames": settle}, duration)
+
+
+## Cuándo sale un paso del probe, en segundos (`frame` a los frames de física por segundo del proyecto).
+static func step_seconds(step: Dictionary) -> float:
+	return float(step.frame) / physics_fps() if step.has("frame") else float(step.get("t", 0.0))
+
+
+static func physics_fps() -> float:
+	return maxf(float(ProjectSettings.get_setting("physics/common/physics_ticks_per_second", 60)), 1.0)
+
+
+## Manda un pedido al probe y arma el resultado con su respuesta y los errores nuevos del juego.
+func _game_request(op: String, params: Dictionary, duration_s: float = 0.0) -> Dictionary:
+	if not EditorInterface.is_playing_scene() or not debugger.has_probe():
+		return McpTool.error(NO_PROBE)
+	if _stopped_in_debugger():
+		var reason := PlaytestDebugger.break_reason()
+		if reason.begins_with(BREAKPOINT_REASON):
+			return McpTool.error("The game is stopped at a breakpoint (%s): game_stack shows where and the variables, game_debug continues or steps it." % UntrustedText.wrap(reason))
+		return McpTool.error("The game is stopped in the debugger (%s): fix the error and run it again, or continue it with game_debug or from the Debugger." % UntrustedText.wrap(reason))
+	var since := errors.mark()
+	var reply := await request(op, params, duration_s + REQUEST_TIMEOUT_S)
+	var lines: PackedStringArray = [UntrustedText.wrap(str(reply.get("text", "")))] if not reply.has("error") else []
+	# Los errores de la pausa se anotan unos frames después de que llega la respuesta.
+	if _continue_errors:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	lines.append_array(_extra_lines())
+	var entries := errors.entries_since(since).filter(func(entry: Dictionary) -> bool: return str(entry.source).begins_with("game") and not ErrorCollector.is_engine_noise(entry))
+	if not entries.is_empty():
+		lines.append("Game errors and warnings (%d):" % entries.size())
+		lines.append(UntrustedText.wrap(_entry_lines(entries)))
+	if reply.has("error"):
+		lines.insert(0, UntrustedText.wrap(str(reply.error)))
+		return McpTool.error("\n".join(lines))
+	return McpTool.text("\n".join(lines))
+
+
+## El nodo del juego bajo un punto de la captura (m11-37): `uv` en [0, 1]. {node: {path, class,
+## kind, point}}, {text} si no hay nada, o {error}.
+func point_at(uv: Vector2) -> Dictionary:
+	if not EditorInterface.is_playing_scene() or not debugger.has_probe():
+		return {"error": NO_PROBE}
+	# Parado en el debugger el probe igual correría el pedido dentro del bucle del debugger, quizás
+	# con la física bloqueada (revisión de next2 #23).
+	if _stopped_in_debugger():
+		return {"error": "The game is stopped in the debugger: continue it first."}
+	return await request("point", {"u": uv.x, "v": uv.y})
+
+
+## Pedido al probe: {text} o {error}. `while_breaked`: el pedido es para el juego parado en el
+## debugger (game_stack, m11-56): no se corta por la pausa.
+func request(op: String, params: Dictionary, timeout_s: float = REQUEST_TIMEOUT_S, while_breaked: bool = false) -> Dictionary:
+	var id := _next_request
+	_next_request += 1
+	if not debugger.send("request", [id, op, params]):
+		return {"error": NO_PROBE}
+	_waiting[id] = true
+	await _until(func() -> bool: return _replies.has(id) or not debugger.has_probe() or (_stopped_in_debugger() and not while_breaked), timeout_s)
+	_waiting.erase(id)
+	if _replies.has(id):
+		var reply: Dictionary = _replies[id]
+		_replies.erase(id)
+		return reply
+	if _stopped_in_debugger() and not while_breaked:
+		return {"error": "The game stopped in the debugger before answering: %s" % PlaytestDebugger.break_reason()}
+	if not debugger.has_probe():
+		return {"error": "The game closed before answering."}
+	return {"error": "The game did not answer within %d s." % ceili(timeout_s)}
+
+
+## El juego de este run terminó o quedó parado en el debugger.
+func _game_halted() -> bool:
+	return reached(GameRunState.STOPPED) or reached(GameRunState.BREAKED)
+
+
+## Parado en el debugger sin que este run lo vaya a sacar de ahí.
+func _stopped_in_debugger() -> bool:
+	return debugger.is_breaked() and not _continue_errors
+
+
+func _until(condition: Callable, timeout_s: float) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var deadline := Time.get_ticks_msec() + int(timeout_s * 1000.0)
+	while not condition.call() and Time.get_ticks_msec() < deadline:
+		await tree.process_frame
+
+
+func _cleanup() -> void:
+	if cleanup.is_valid():
+		cleanup.call()

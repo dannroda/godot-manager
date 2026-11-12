@@ -1,0 +1,335 @@
+[gd_resource type="Resource" format=3 uid="uid://mfnmndxt1po4"]
+
+[ext_resource type="Script" uid="uid://c57ddxmrotodv" path="res://addons/godot_agent/config/project_config.gd" id="1_wtjth"]
+
+[resource]
+script = ExtResource("1_wtjth")
+permissions = {
+"mcp:scompass": {
+"ask": "allow",
+"auto": "allow",
+"build": "allow",
+"oneshot": "allow",
+"review": "allow"
+}
+}
+auto_shell_rules = [{
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "ls *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "cat *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "head *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "tail *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "wc *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "grep *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "rg *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "find *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "pwd"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "cd *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "echo *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "which *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "stat *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "du *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "df *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "diff *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git status *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git diff *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git log *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git show *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git branch"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git rev-parse *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git ls-files *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "git blame *"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "godot --version"
+}, {
+"added": "",
+"list": "allow",
+"origin": "default",
+"pattern": "godot --headless *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "rm *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "rmdir *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "mv *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "dd *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "shred *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "sudo *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "su *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "doas *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "chmod *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "chown *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "kill *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "pkill *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "killall *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "git push *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "git reset *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "git checkout *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "git restore *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "git clean *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "git rebase *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "git *--output*"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "curl *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "wget *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "ssh *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "scp *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "rsync *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "npm install *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "npm i *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "pip install *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "apt *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "apt-get *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "pacman *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "brew *"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "find *-delete*"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "find *-exec*"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "find *-ok*"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "find *-fprint*"
+}, {
+"added": "",
+"list": "ask",
+"origin": "default",
+"pattern": "rg *--pre*"
+}]
+extra_fs_roots = PackedStringArray()
+playtest_on_manual_runs = true
+disabled_skills = PackedStringArray()
+completion_exclude = PackedStringArray("addons/")

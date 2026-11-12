@@ -1,0 +1,65 @@
+@tool
+extends RefCounted
+## Lo que cambia según el agente (m13-04, A1): cómo pide y lee su cuota, si su cuenta se sabe por un
+## CLI, qué `_meta` necesita al abrir la sesión y qué API key del entorno conviene avisar. Este es el
+## genérico: no hace nada de eso. Cada agente con algo propio tiene su subclase en esta carpeta, y
+## `agent_adapters.gd` elige cuál usar. Sumar un agente = un archivo acá.
+
+const ClaudeExtensions := preload("../../extensions/claude_extensions.gd")
+
+## Familia del agente (`ClaudeExtensions.AGENT_*`): la usan las extensiones por archivos.
+var kind: String = ClaudeExtensions.AGENT_OTHER
+
+
+## Comando local que informa la cuota sin gastar tokens ("" = el agente no tiene, o la manda sola en
+## `usage_update`). `model` es el SessionModel: algunos agentes solo lo tienen si lo anuncian.
+func quota_command(_model: RefCounted) -> String:
+	return ""
+
+
+## Lee la respuesta de `quota_command` y la pasa a `quota` (QuotaMonitor); puede completar la cuenta
+## en `model` si el agente no la informó por otro lado.
+func read_quota(_text: String, _quota: RefCounted, _model: RefCounted, _model_name: String) -> void:
+	pass
+
+
+## Se eligió otro modelo: los agentes con cuota por grupo de modelos cambian de grupo.
+func model_changed(_quota: RefCounted, _model_name: String) -> void:
+	pass
+
+
+## true si la cuenta del perfil se pregunta a un CLI del agente (ver SessionController._refresh_account).
+func reads_account_from_cli() -> bool:
+	return false
+
+
+## `_meta` de session/new y session/load ({} = ninguno).
+func session_meta(_disabled_skills: PackedStringArray) -> Dictionary:
+	return {}
+
+
+## Variable del entorno que hace que el agente cobre por API en vez de por la suscripción ("" = no hay).
+func api_key_variable() -> String:
+	return ""
+
+
+## Cuentas (una por pestaña del dock): la variable del entorno con la carpeta de configuración del
+## agente, donde guarda su login ("" = el agente no tiene una conocida; el perfil puede decirla).
+func account_variable() -> String:
+	return ""
+
+
+## La carpeta que usa el agente si la variable no está puesta (con `~/`).
+func default_account_dir() -> String:
+	return ""
+
+
+## Con qué email está logueada la carpeta, si el agente lo deja en un archivo ("" = no se sabe).
+func account_email(_dir: String) -> String:
+	return ""
+
+
+## Un aviso para el chat después de abrir la sesión, sobre algo que el agente hizo en el proyecto
+## (m18-03). "" = nada. El controlador lo muestra una sola vez por proyecto.
+func notice_after_session(_cwd: String) -> String:
+	return ""

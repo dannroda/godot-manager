@@ -1,0 +1,176 @@
+@tool
+extends RefCounted
+## Un tool call del agente, indexado por `toolCallId` (ACP tool_call / tool_call_update).
+
+const ExternalMcpServers := preload("../mcp/external_mcp_servers.gd")
+
+const STATUS_PENDING := "pending"
+const STATUS_IN_PROGRESS := "in_progress"
+const STATUS_COMPLETED := "completed"
+const STATUS_FAILED := "failed"
+## Local: el turno se canceló con el tool call sin terminar.
+const STATUS_CANCELLED := "cancelled"
+## Tools de Claude Code que lanzan un subagente.
+const SUBAGENT_TOOLS: PackedStringArray = ["Agent", "Task"]
+## Texto del subagente que se conserva (el final).
+const SUBAGENT_TEXT_MAX := 2000
+
+var id: String = ""
+var title: String = ""
+## read, edit, delete, move, search, execute, think, fetch, switch_mode u other.
+var kind: String = "other"
+var status: String = STATUS_PENDING
+## Bloques `content`, `diff` y `terminal` tal como llegan (Dictionary).
+var content: Array = []
+## `{path, line?}`
+var locations: Array = []
+var raw_input: Variant = null
+var raw_output: Variant = null
+## El harness ya escribió el archivo de esta edición por fs/write_text_file (m18-04): la ruta, o "".
+var write_applied: String = ""
+## Lo que dijo el agente al marcar la edición fallida después de escribirla (Antigravity lo hace con
+## una edición ya aplicada cuando el usuario deniega la siguiente): la llamada queda completada.
+var failure_after_write: String = ""
+var started_msec: int = 0
+var finished_msec: int = 0
+## Paso de undo de una tool godot.* de edición (EditorUndo.record), o {}.
+var undo_info: Dictionary = {}
+var undo_done: bool = false
+## Nombre de la tool del lado del agente (`_meta.claudeCode.toolName`: Agent, Bash…), si lo manda.
+var tool_name: String = ""
+## `server.tool` de una tool MCP que el agente nombra a su manera (Antigravity: `godot_run_scene` con
+## `_meta.mcp`, m18-02). Vacío si no vino.
+var mcp_display: String = ""
+## El plan de esta tool (ExitPlanMode) se muestra en su tarjeta de aprobación (m11-22): la fila no lo repite.
+var plan_card: bool = false
+## Tool call del subagente que hizo este (`_meta.claudeCode.parentToolUseId`), o "".
+var parent_id: String = ""
+## Tool calls que hizo el subagente de este tool call, en orden.
+var child_ids: PackedStringArray = []
+## Lo que fue escribiendo el subagente (los últimos SUBAGENT_TEXT_MAX caracteres).
+var subagent_text: String = ""
+## Sesión ACP del subagente que lanzó este tool call (subagentes nativos de ACP, m7-43), o "".
+var subagent_session_id: String = ""
+## Estado de trabajo que el agente informa de ese subagente: running, requires_action, idle o
+## unknown; "" si no informa.
+var subagent_state: String = ""
+
+
+func is_finished() -> bool:
+	return status in [STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED]
+
+
+## true mientras el subagente trabaja: según su estado si el agente lo informa (uno en segundo
+## plano sigue después de que termina el tool call que lo lanzó) y si no, mientras corre el tool call.
+func is_working() -> bool:
+	if not subagent_state.is_empty():
+		return subagent_state in ["running", "requires_action"]
+	return not is_finished()
+
+
+## Aplica los campos presentes de un ToolCall / ToolCallUpdate de ACP.
+func apply(data: Dictionary) -> void:
+	if data.get("title") is String:
+		title = data.title
+	if data.get("kind") is String:
+		kind = data.kind
+	if data.get("status") is String:
+		set_status(data.status)
+	if data.get("content") is Array:
+		content = data.content
+	if data.get("locations") is Array:
+		locations = data.locations
+	if data.has("rawInput"):
+		raw_input = data.rawInput
+	if data.has("rawOutput"):
+		raw_output = data.rawOutput
+	if status == STATUS_FAILED and not write_applied.is_empty():
+		failure_after_write = str(raw_output) if raw_output != null and not str(raw_output).is_empty() else STATUS_FAILED
+		set_status(STATUS_COMPLETED)
+	var meta: Variant = data.get("_meta")
+	if meta is Dictionary and meta.get("claudeCode") is Dictionary and meta.claudeCode.get("toolName") is String:
+		tool_name = meta.claudeCode.toolName
+	if meta is Dictionary and meta.get("mcp") is Dictionary and not str(meta.mcp.get("server", "")).is_empty() and not str(meta.mcp.get("tool", "")).is_empty():
+		mcp_display = "%s.%s" % [meta.mcp.server, meta.mcp.tool]
+
+
+func is_subagent() -> bool:
+	return tool_name in SUBAGENT_TOOLS or not child_ids.is_empty()
+
+
+func append_subagent_text(text: String) -> void:
+	subagent_text += text
+	if subagent_text.length() > SUBAGENT_TEXT_MAX:
+		subagent_text = "…" + subagent_text.right(SUBAGENT_TEXT_MAX - 1)
+
+
+func set_status(value: String) -> void:
+	status = value
+	if is_finished() and finished_msec == 0:
+		finished_msec = Time.get_ticks_msec()
+
+
+func duration_msec() -> int:
+	if started_msec == 0:
+		return 0
+	return (finished_msec if finished_msec > 0 else Time.get_ticks_msec()) - started_msec
+
+
+## Las rutas de archivo que toca: las de sus bloques diff y sus ubicaciones.
+func touched_paths() -> PackedStringArray:
+	var paths: PackedStringArray = []
+	for block: Dictionary in diffs():
+		if block.get("path") is String and not block.path in paths:
+			paths.append(block.path)
+	for location: Variant in locations:
+		if location is Dictionary and location.get("path") is String and not location.path in paths:
+			paths.append(location.path)
+	return paths
+
+
+## Bloques `diff` del content: `{path, oldText, newText}`.
+func diffs() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for block: Variant in content:
+		if block is Dictionary and block.get("type") == "diff":
+			result.append(block)
+	return result
+
+
+## Nombre corto para la UI. Las tools MCP llegan como `mcp__<server>__<tool>`: se muestran como
+## `godot.add_node` o `blender.get_objects_summary`.
+func display_name() -> String:
+	if not mcp_display.is_empty():
+		return mcp_display
+	if title.is_empty():
+		return kind
+	return ExternalMcpServers.short_tool_name(title)
+
+
+## Nombre de la tool godot.* sin prefijo ("add_node"), o "" si no es del addon.
+## Nombre de la tool `godot.*`; por `godot.run` (D56), el del método que corrió.
+func godot_tool_name() -> String:
+	for prefix: String in ["mcp__godot__", "godot."]:
+		if title.begins_with(prefix):
+			var name := title.trim_prefix(prefix)
+			if name == "run" and raw_input is Dictionary and raw_input.get("method") is String:
+				return raw_input.method
+			return name
+	return ""
+
+
+## Argumentos de la tool `godot.*`: por `godot.run`, los `params` del método.
+func godot_arguments() -> Variant:
+	if title.trim_prefix("mcp__godot__").trim_prefix("godot.") == "run" and raw_input is Dictionary and raw_input.get("method") is String:
+		return raw_input.get("params", {}) if raw_input.get("params") is Dictionary else {}
+	return raw_input
+
+
+func can_undo() -> bool:
+	return not undo_info.is_empty() and not undo_done and status == STATUS_COMPLETED
+
+
+func is_godot_tool() -> bool:
+	return title.begins_with("mcp__godot__") or title.begins_with("godot.") or (
+		raw_input is Dictionary and str(raw_input.get("server", "")) == "godot"
+	)

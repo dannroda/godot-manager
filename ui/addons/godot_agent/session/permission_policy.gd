@@ -1,0 +1,227 @@
+@tool
+extends RefCounted
+## Matriz modo × grupo de herramienta → allow / ask / deny (spec §7). Los "Siempre en esta
+## sesión" quedan en memoria y se pierden con la sesión.
+
+const SessionModel := preload("session_model.gd")
+const I18n := preload("../core/i18n.gd")
+const ExternalMcpServers := preload("../mcp/external_mcp_servers.gd")
+const ToolCall := preload("tool_call.gd")
+
+const ALLOW := "allow"
+const ASK := "ask"
+const DENY := "deny"
+
+const GROUP_READ := "read"
+const GROUP_DIAGNOSTICS := "diagnostics"
+const GROUP_EDIT_SCENE := "edit_scene"
+const GROUP_EDIT_FILES := "edit_files"
+const GROUP_RUN := "run"
+const GROUP_SHELL := "shell"
+const GROUP_PROJECT := "project"
+## Instalar assets del Asset Store (m7-39): código de terceros en el proyecto, siempre se pregunta.
+const GROUP_ADDONS := "addons"
+## Subagentes de Claude Code (tool Agent, m7-43). La sesión pide permiso para cada uno
+## (SUBAGENT_ASK_RULES); acá se permiten o no por modo, y subagent_limits los cuenta.
+const GROUP_SUBAGENTS := "subagents"
+## Las tools propias del proyecto (m11-46): código del proyecto que corre en el editor. La aprobación
+## por máquina es sobre ese código; este grupo, sobre cada llamada.
+const GROUP_PROJECT_TOOLS := "project_tools"
+## godot.ask_second_opinion (m11-28): gasta la cuota de otro agente.
+const GROUP_SECOND_OPINION := "second_opinion"
+## godot.session_send: un prompt a otra pestaña, que puede estar en un modo con más permisos.
+const GROUP_SESSIONS_MESSAGE := "sessions_message"
+## Sin grupo conocido: siempre se pregunta (spec §7, "el resto → ask").
+const GROUP_OTHER := "other"
+## Un grupo por MCP server de terceros (m7-35): `mcp:blender`. Sin override, ask en todos los modos.
+const GROUP_MCP_PREFIX := "mcp:"
+
+const GROUPS: PackedStringArray = [
+	GROUP_READ, GROUP_DIAGNOSTICS, GROUP_EDIT_SCENE, GROUP_EDIT_FILES, GROUP_RUN, GROUP_SHELL, GROUP_PROJECT, GROUP_ADDONS,
+	GROUP_PROJECT_TOOLS, GROUP_SECOND_OPINION, GROUP_SESSIONS_MESSAGE, GROUP_SUBAGENTS,
+]
+const GROUP_LABELS: Dictionary = {
+	GROUP_READ: "Read",  # i18n
+	GROUP_DIAGNOSTICS: "Diagnostics",  # i18n
+	GROUP_EDIT_SCENE: "Edit scenes",  # i18n
+	GROUP_EDIT_FILES: "Edit files",  # i18n
+	GROUP_RUN: "Run the game",  # i18n
+	GROUP_SHELL: "Shell / commands",  # i18n
+	GROUP_PROJECT: "Project settings, export and addons",  # i18n
+	GROUP_ADDONS: "Install from the Asset Store",  # i18n
+	GROUP_PROJECT_TOOLS: "Project tools",  # i18n
+	GROUP_SECOND_OPINION: "Second opinion",  # i18n
+	GROUP_SESSIONS_MESSAGE: "Messages to other sessions",  # i18n
+	GROUP_SUBAGENTS: "Subagents",  # i18n
+	GROUP_OTHER: "Other",  # i18n
+}
+const MODE_KEYS: Dictionary = {
+	SessionModel.HarnessMode.ASK: "ask",
+	SessionModel.HarnessMode.REVIEW: "review",
+	SessionModel.HarnessMode.BUILD: "build",
+	SessionModel.HarnessMode.ONESHOT: "oneshot",
+	SessionModel.HarnessMode.AUTO: "auto",
+}
+## Defaults de la spec §7: grupo -> [Preguntar, Revisar, Construir, One-shot, Auto].
+## En Auto, el "ask" de shell lo resuelve primero ShellRules con sus listas (D57).
+const DEFAULTS: Dictionary = {
+	GROUP_READ: [ALLOW, ALLOW, ALLOW, ALLOW, ALLOW],
+	GROUP_DIAGNOSTICS: [ALLOW, ALLOW, ALLOW, ALLOW, ALLOW],
+	GROUP_EDIT_SCENE: [DENY, DENY, ASK, ALLOW, ALLOW],
+	GROUP_EDIT_FILES: [DENY, DENY, ASK, ALLOW, ALLOW],
+	GROUP_RUN: [DENY, ASK, ASK, ALLOW, ALLOW],
+	GROUP_SHELL: [DENY, DENY, ASK, ASK, ASK],
+	# One-shot: allow desde D49. Input map, autoloads y settings son parte de armar un juego, y antes
+	# el agente los escribía en project.godot con edit_files (allow en One-shot).
+	GROUP_PROJECT: [DENY, DENY, ASK, ALLOW, ALLOW],
+	# Ask también en One-shot y Auto: baja código de terceros al proyecto (m7-39).
+	GROUP_ADDONS: [DENY, DENY, ASK, ASK, ASK],
+	# Ask también en One-shot y Auto, como addons: el usuario lo cambia en la matriz (m11-46).
+	GROUP_PROJECT_TOOLS: [DENY, DENY, ASK, ASK, ASK],
+	# Gasta la cuota de otro agente (m11-28): pregunta en todos los modos; el One-shot tiene su evaluador.
+	GROUP_SECOND_OPINION: [ASK, ASK, ASK, DENY, ASK],
+	# Un mensaje le llega como prompt a otra pestaña: sin preguntar, un agente (o un texto plantado que
+	# leyó) haría actuar a otra sesión con sus permisos. Además, nunca hacia un modo con más permisos
+	# (message_escalates), sea cual sea la matriz.
+	GROUP_SESSIONS_MESSAGE: [ASK, ASK, ASK, DENY, ASK],
+	# Como antes de m7-43: Claude Code los lanzaba sin preguntar.
+	GROUP_SUBAGENTS: [ALLOW, ALLOW, ALLOW, ALLOW, ALLOW],
+}
+## Reglas `ask` de las settings de la sesión: que Claude Code pida permiso para cada subagente.
+const SUBAGENT_ASK_RULES: PackedStringArray = ["Agent"]
+## kind de un tool call de ACP → grupo.
+const KIND_GROUPS: Dictionary = {
+	"read": GROUP_READ,
+	"search": GROUP_READ,
+	"edit": GROUP_EDIT_FILES,
+	"delete": GROUP_EDIT_FILES,
+	"move": GROUP_EDIT_FILES,
+	"execute": GROUP_SHELL,
+}
+
+## Cuánto puede hacer un modo sin preguntar, para los mensajes entre sesiones: Preguntar y Revisar no
+## editan (0), Construir edita preguntando (1), Auto y One-shot editan solos (2).
+const MODE_RANKS: Dictionary = {
+	SessionModel.HarnessMode.ASK: 0,
+	SessionModel.HarnessMode.REVIEW: 0,
+	SessionModel.HarnessMode.BUILD: 1,
+	SessionModel.HarnessMode.ONESHOT: 2,
+	SessionModel.HarnessMode.AUTO: 2,
+}
+
+## Overrides por proyecto: grupo -> { mode_key -> decisión }.
+var overrides: Dictionary = {}
+## Subagentes a la vez por modo (m7-43): mode_key -> int. 0 o ausente = sin límite del harness
+## (Claude Code tiene el suyo, 20).
+var subagent_limits: Dictionary = {}
+var _session_grants: Dictionary = {}  # grupo -> true
+## Decisiones que pisan la matriz mientras dura un rol (el evaluador del One-shot, D55): grupo -> decisión.
+var restrictions: Dictionary = {}
+
+
+func _init(project_overrides: Dictionary = {}) -> void:
+	overrides = project_overrides
+
+
+## Decisión para un grupo en un modo, sin contar lo concedido en la sesión.
+func matrix_value(group: String, mode: SessionModel.HarnessMode) -> String:
+	var key: String = MODE_KEYS[mode]
+	var override: Variant = overrides.get(group)
+	if (DEFAULTS.has(group) or is_mcp_group(group)) and override is Dictionary and override.get(key) in [ALLOW, ASK, DENY]:
+		return override[key]
+	if not DEFAULTS.has(group):
+		return ASK
+	return DEFAULTS[group][int(mode)]
+
+
+## Decisión efectiva: un "ask" que el usuario concedió para toda la sesión pasa a "allow".
+## Un "deny" de la matriz nunca se levanta con un permiso de sesión.
+func decide(group: String, mode: SessionModel.HarnessMode) -> String:
+	if restrictions.get(group) in [ALLOW, ASK, DENY]:
+		return restrictions[group]
+	var value := matrix_value(group, mode)
+	if value == ASK and _session_grants.has(group):
+		return ALLOW
+	return value
+
+
+func grant_for_session(group: String) -> void:
+	_session_grants[group] = true
+
+
+func clear_session() -> void:
+	_session_grants.clear()
+
+
+func set_matrix_value(group: String, mode: SessionModel.HarnessMode, value: String) -> void:
+	var entry: Dictionary = overrides.get(group, {})
+	entry[MODE_KEYS[mode]] = value
+	overrides[group] = entry
+
+
+## Grupo de un tool call de ACP según su kind (las tools `godot.*` las decide el server MCP).
+## Las tools de un MCP server de terceros van al grupo de ese server.
+static func group_for_tool_call(tool_call: Dictionary) -> String:
+	var meta: Variant = tool_call.get("_meta")
+	if meta is Dictionary and meta.get("claudeCode") is Dictionary and str(meta.claudeCode.get("toolName", "")) in ToolCall.SUBAGENT_TOOLS:
+		return GROUP_SUBAGENTS
+	var server := mcp_server_of(tool_call)
+	if not server.is_empty():
+		return mcp_group(server)
+	return KIND_GROUPS.get(str(tool_call.get("kind", "")), GROUP_OTHER)
+
+
+## Subagentes a la vez permitidos en `mode`, o 0 si no hay límite.
+func subagent_limit(mode: SessionModel.HarnessMode) -> int:
+	return maxi(0, int(subagent_limits.get(MODE_KEYS.get(mode, ""), 0)))
+
+
+## Server de terceros de un tool call (`mcp__<server>__<tool>` en el título o en
+## `_meta.claudeCode.toolName`), o "" si no es de uno.
+static func mcp_server_of(tool_call: Dictionary) -> String:
+	var meta: Variant = tool_call.get("_meta")
+	if meta is Dictionary and meta.get("claudeCode") is Dictionary and meta.claudeCode.get("toolName") is String:
+		var server := ExternalMcpServers.server_of_tool(meta.claudeCode.toolName)
+		if not server.is_empty():
+			return server
+	var by_title := ExternalMcpServers.server_of_tool(str(tool_call.get("title", "")))
+	if not by_title.is_empty():
+		return by_title
+	# Antigravity (m18-02) titula `<server>_<tool>` y dice el server en _meta.mcp.
+	var server := _meta_mcp_server(tool_call)
+	return "" if server == ExternalMcpServers.RESERVED_NAME else server
+
+
+## El server de `_meta.mcp.server` (Antigravity), o "".
+static func _meta_mcp_server(tool_call: Dictionary) -> String:
+	var meta: Variant = tool_call.get("_meta")
+	if meta is Dictionary and meta.get("mcp") is Dictionary:
+		return str(meta.mcp.get("server", ""))
+	return ""
+
+
+static func mcp_group(server: String) -> String:
+	return GROUP_MCP_PREFIX + server
+
+
+static func is_mcp_group(group: String) -> bool:
+	return group.begins_with(GROUP_MCP_PREFIX) and group.length() > GROUP_MCP_PREFIX.length()
+
+
+## Nombre del grupo para la UI (los de MCP llevan el nombre del server, sin traducir).
+static func group_label(group: String) -> String:
+	if is_mcp_group(group):
+		return "MCP · %s" % group.trim_prefix(GROUP_MCP_PREFIX)
+	return I18n.t(GROUP_LABELS.get(group, GROUP_LABELS[GROUP_OTHER]))
+
+
+## true si el tool call es una tool del server MCP del addon: el permiso lo decide el server.
+static func is_godot_mcp_tool(tool_call: Dictionary) -> bool:
+	var title := str(tool_call.get("title", ""))
+	return title.begins_with("mcp__godot__") or title.begins_with("godot.") or _meta_mcp_server(tool_call) == ExternalMcpServers.RESERVED_NAME
+
+
+## Un mensaje de una sesión en `from_mode` a otra en `to_mode` le daría más permisos de los que tiene
+## (Preguntar → Auto): se deniega siempre, sin importar la matriz ni lo concedido en la sesión.
+static func message_escalates(from_mode: int, to_mode: int) -> bool:
+	return int(MODE_RANKS.get(to_mode, 2)) > int(MODE_RANKS.get(from_mode, 0))

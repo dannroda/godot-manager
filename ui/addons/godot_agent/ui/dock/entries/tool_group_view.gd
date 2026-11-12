@@ -1,0 +1,540 @@
+@tool
+extends "entry_view.gd"
+## Grupo colapsable de tool calls consecutivos: "4 herramientas · 1,2 s", cada fila con estado,
+## nombre (las tools `godot.*` en violeta), resumen y ubicaciones. Los diffs van en tarjetas. Un
+## subagente (Agent/Task) lleva adentro, plegadas, las herramientas que usó y lo que fue escribiendo.
+
+const ToolCall := preload("../../../session/tool_call.gd")
+const ShellCommand := preload("../../../session/shell_command.gd")
+const DiffCard := preload("diff_card.gd")
+const ImageViewer := preload("../../image_viewer.gd")
+
+const STATUS_ICONS: Dictionary = {
+	ToolCall.STATUS_PENDING: "○",
+	ToolCall.STATUS_IN_PROGRESS: "◐",
+	ToolCall.STATUS_COMPLETED: "✓",
+	ToolCall.STATUS_FAILED: "✗",
+	ToolCall.STATUS_CANCELLED: "⊘",
+}
+## Tope del nombre de la herramienta en la fila (m12-17); el entero queda en el tooltip.
+const NAME_MAX_CHARS := 22
+const SPINNER := ["◐", "◓", "◑", "◒"]
+const SUMMARY_MAX := 80
+const OUTPUT_PREVIEW_LINES := 40
+const OUTPUT_PREVIEW_CHARS := 4000
+const IMAGE_MAX_HEIGHT := 160
+## Sangría (sin escalar) de las herramientas de un subagente.
+const SUBAGENT_INDENT := 14
+## Lo que se muestra del último texto de un subagente.
+const SUBAGENT_NOTE_CHARS := 400
+
+## Callable(id: String) -> ToolCall, inyectado por la ConversationView.
+var tool_call_lookup: Callable
+
+var _header: Button
+var _body: VBoxContainer
+var _rows: Dictionary = {}  # toolCallId -> {row, status, name, summary, extra, undo, nested, toggle, children, note}
+var _spinner_timer: Timer
+var _spinner_frame: int = 0
+
+
+func _build() -> void:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override(&"panel", AgentTheme.panel(Color(AgentTheme.dark_color(), 0.6), Color(1, 1, 1, 0.08), 6, 6))
+	add_child(panel)
+	var column := VBoxContainer.new()
+	panel.add_child(column)
+	_header = Button.new()
+	_header.flat = true
+	_header.toggle_mode = true
+	_header.button_pressed = true
+	_header.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_header.add_theme_color_override(&"font_color", AgentTheme.MUTED)
+	_header.toggled.connect(func(open: bool) -> void:
+		_body.visible = open
+		refresh()
+	)
+	column.add_child(_header)
+	_body = VBoxContainer.new()
+	column.add_child(_body)
+	_spinner_timer = Timer.new()
+	_spinner_timer.wait_time = 0.15
+	_spinner_timer.timeout.connect(_on_spinner)
+	add_child(_spinner_timer)
+
+
+func refresh() -> void:
+	if _header == null:
+		return
+	var calls := _calls()
+	var running := false
+	var total_msec := 0
+	var failed := 0
+	for call: ToolCall in calls:
+		_refresh_row(call, _body)
+		running = running or not call.is_finished() or (call.is_subagent() and call.is_working())
+		total_msec += call.duration_msec()
+		if call.status == ToolCall.STATUS_FAILED and not call.plan_card:  # un plan no aprobado no es un error
+			failed += 1
+	_align_rows()
+	var count := (I18n.t("%d tool") if calls.size() == 1 else I18n.t("%d tools")) % calls.size()
+	var text := "%s %s · %s" % ["▾" if _header.button_pressed else "▸", count, _format_duration(total_msec)]
+	if failed > 0:
+		text += " · " + I18n.t("%d with errors") % failed
+	_header.text = text
+	if running and _spinner_timer.is_inside_tree() and _spinner_timer.is_stopped():
+		_spinner_timer.start()
+	elif not running:
+		_spinner_timer.stop()
+
+
+func _calls() -> Array[ToolCall]:
+	return _lookup(entry.tool_call_ids)
+
+
+func _lookup(ids: PackedStringArray) -> Array[ToolCall]:
+	var result: Array[ToolCall] = []
+	if not tool_call_lookup.is_valid():
+		return result
+	for id: String in ids:
+		var call: ToolCall = tool_call_lookup.call(id)
+		if call:
+			result.append(call)
+	return result
+
+
+func _refresh_row(call: ToolCall, container: VBoxContainer) -> void:
+	var parts: Dictionary = _rows.get(call.id, {})
+	if parts.is_empty():
+		parts = _make_row(call, container)
+		_rows[call.id] = parts
+	var status_label: Label = parts.status
+	status_label.text = SPINNER[_spinner_frame % SPINNER.size()] if call.status == ToolCall.STATUS_IN_PROGRESS else STATUS_ICONS.get(call.status, "·")
+	var status_color := AgentTheme.MUTED
+	match call.status:
+		ToolCall.STATUS_COMPLETED:
+			status_color = AgentTheme.ADDED
+		ToolCall.STATUS_FAILED:
+			status_color = AgentTheme.ERROR
+		ToolCall.STATUS_IN_PROGRESS:
+			status_color = accent
+	if call.plan_card and call.status == ToolCall.STATUS_FAILED:  # no aprobado: se sigue planeando, no falló
+		status_label.text = "↺"
+		status_color = AgentTheme.MUTED
+	status_label.add_theme_color_override(&"font_color", status_color)
+	var name_label: Label = parts.name
+	name_label.text = _short_name(call)
+	name_label.tooltip_text = call.title if call.title != name_label.text else ""
+	name_label.add_theme_color_override(&"font_color", AgentTheme.font_color())  # sin violeta: el nombre ya dice qué hace
+	var summary_label: Label = parts.summary
+	summary_label.text = _summary(call)
+	var undo_button: Button = parts.undo
+	undo_button.visible = call.can_undo()
+	undo_button.tooltip_text = I18n.t("Undo «%s» in the editor") % call.undo_info.get("action", "") if call.can_undo() else ""
+	if call.undo_done:
+		summary_label.text = I18n.t("undone · %s") % summary_label.text
+	_refresh_extra(call, parts.extra)
+	_refresh_subagent(call, parts)
+
+
+func _make_row(call: ToolCall, container: VBoxContainer) -> Dictionary:
+	var block := VBoxContainer.new()
+	container.add_child(block)
+	var row := HBoxContainer.new()
+	block.add_child(row)
+	var status := Label.new()
+	status.custom_minimum_size.x = AgentTheme.px(14)
+	row.add_child(status)
+	# Columna del nombre con el ancho del más largo del grupo (_align_rows), no un 40 % que cortaba
+	# «godot.connect_sig…» (m12-17).
+	var name_label := Label.new()
+	name_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(name_label)
+	var summary := Label.new()
+	summary.add_theme_color_override(&"font_color", AgentTheme.MUTED)
+	summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.clip_text = true
+	row.add_child(summary)
+	var undo := Button.new()
+	undo.flat = true
+	undo.text = "↶ " + I18n.t("undo")
+	undo.visible = false
+	undo.tooltip_text = I18n.t("Undo in the editor (Ctrl+Z)")
+	undo.pressed.connect(func() -> void: action_requested.emit("undo_tool_call", call.id))
+	row.add_child(undo)
+	# La salida, los diffs y los enlaces van anidados bajo el resumen (m12-17).
+	var extra_margin := MarginContainer.new()
+	block.add_child(extra_margin)
+	var extra := VBoxContainer.new()
+	extra_margin.add_child(extra)
+	# Subagente: "▸ 5 herramientas · Read" y, al abrirlo, sus herramientas y su último texto.
+	var nested := VBoxContainer.new()
+	nested.visible = false
+	block.add_child(nested)
+	var toggle := Button.new()
+	toggle.flat = true
+	toggle.toggle_mode = true
+	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	toggle.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	toggle.clip_text = true
+	toggle.add_theme_color_override(&"font_color", AgentTheme.MUTED)
+	nested.add_child(toggle)
+	var indent := MarginContainer.new()
+	indent.visible = false
+	indent.add_theme_constant_override(&"margin_left", AgentTheme.px(SUBAGENT_INDENT))
+	nested.add_child(indent)
+	var inner := VBoxContainer.new()
+	indent.add_child(inner)
+	var children := VBoxContainer.new()
+	inner.add_child(children)
+	var note := _muted_label("")
+	note.visible = false
+	inner.add_child(note)
+	toggle.toggled.connect(func(open: bool) -> void:
+		indent.visible = open
+		refresh()
+	)
+	return {"row": row, "status": status, "name": name_label, "summary": summary, "extra": extra, "extra_margin": extra_margin, "undo": undo,
+		"nested": nested, "toggle": toggle, "indent": indent, "children": children, "note": note}
+
+
+func _refresh_subagent(call: ToolCall, parts: Dictionary) -> void:
+	var nested: VBoxContainer = parts.nested
+	nested.visible = call.is_subagent()
+	if not nested.visible:
+		return
+	var children := _lookup(call.child_ids)
+	var toggle: Button = parts.toggle
+	var count := (I18n.t("%d subagent tool") if children.size() == 1 else I18n.t("%d subagent tools")) % children.size()
+	var text := "%s %s" % ["▾" if toggle.button_pressed else "▸", count]
+	if call.is_working() and not children.is_empty():
+		var latest: ToolCall = children.back()
+		text += " · " + _short_name(latest)
+	toggle.text = text
+	if not toggle.button_pressed:
+		return
+	for child: ToolCall in children:
+		_refresh_row(child, parts.children)
+	var note: Label = parts.note
+	var last_text := call.subagent_text.strip_edges()
+	note.visible = not last_text.is_empty()
+	note.text = "💬 " + (last_text if last_text.length() <= SUBAGENT_NOTE_CHARS else "…" + last_text.right(SUBAGENT_NOTE_CHARS))
+
+
+## Contenido del tool call: diffs como tarjetas, texto breve, salida de terminal, ubicaciones.
+func _refresh_extra(call: ToolCall, extra: VBoxContainer) -> void:
+	var signature := "%s|%d|%d|%s|%s" % [call.status, str(call.content).hash(), call.locations.size(), call.plan_card, call.failure_after_write]
+	if extra.get_meta(&"signature", "") == signature:
+		return
+	extra.set_meta(&"signature", signature)
+	for child: Node in extra.get_children():
+		child.queue_free()
+	if call.plan_card:
+		return  # ni el plan ni el «User has approved your plan…»: ya están en la tarjeta
+	for block: Variant in call.content:
+		if not block is Dictionary:
+			continue
+		match str(block.get("type", "")):
+			"diff":
+				var card := DiffCard.new()
+				card.setup_diff(block, accent)
+				card.open_requested.connect(func(path: String, line: int) -> void: action_requested.emit("open_location", {"path": path, "line": line}))
+				extra.add_child(card)
+			"terminal":
+				var term_text := str(block.get("output", ""))
+				if call.status == ToolCall.STATUS_FAILED and not term_text.strip_edges().is_empty():
+					extra.add_child(_muted_label(term_text.left(400), AgentTheme.ERROR))
+				elif not term_text.strip_edges().is_empty():
+					extra.add_child(_output_toggle(term_text, _output_noun(call)))
+			"content":
+				var inner: Variant = block.get("content")
+				if not inner is Dictionary:
+					continue
+				match str(inner.get("type", "")):
+					"text":
+						var text := str(inner.get("text", ""))
+						if call.status == ToolCall.STATUS_FAILED:
+							extra.add_child(_muted_label(text.left(400), AgentTheme.ERROR))
+						elif not text.strip_edges().is_empty():
+							extra.add_child(_output_toggle(text, _output_noun(call)))
+					"image":
+						extra.add_child(_image_preview(inner))
+					"resource_link":
+						extra.add_child(_muted_label("📎 " + str(inner.get("uri", ""))))
+					"resource":
+						var resource: Variant = inner.get("resource")
+						extra.add_child(_muted_label("📎 " + (str(resource.get("uri", "")) if resource is Dictionary else I18n.t("resource"))))
+	if not call.failure_after_write.is_empty():
+		# El archivo ya se escribió: un «failed» posterior del agente no la deshace (m18-04).
+		extra.add_child(_muted_label(I18n.t("The agent then reported this edit as failed, but the file was already written: %s") % call.failure_after_write.left(300), AgentTheme.WARNING))
+	var links := HFlowContainer.new()
+	for location: Variant in call.locations:
+		if location is Dictionary and location.get("path") is String:
+			var path: String = location.path
+			var line := int(location.get("line", 0)) if location.get("line") != null else 0
+			var link := LinkButton.new()
+			link.text = "%s%s" % [path.get_file(), ":%d" % line if line > 0 else ""]
+			link.tooltip_text = path
+			link.underline = LinkButton.UNDERLINE_MODE_ON_HOVER
+			link.add_theme_color_override(&"font_color", AgentTheme.MUTED)  # un detalle de la fila, no una fila suelta
+			link.pressed.connect(func() -> void: action_requested.emit("open_location", {"path": path, "line": line}))
+			links.add_child(link)
+	if links.get_child_count() > 0:
+		extra.add_child(links)
+	else:
+		links.free()
+
+
+## Un subagente muestra su prompt mientras trabaja y su informe al terminar.
+static func _output_noun(call: ToolCall) -> String:
+	if not call.is_subagent():
+		return I18n.t("output")
+	return I18n.t("report") if call.status == ToolCall.STATUS_COMPLETED else I18n.t("prompt")
+
+
+## Salida de texto plegada: "salida · N líneas" y, al abrirla, las primeras líneas en monoespaciada.
+func _output_toggle(text: String, noun: String = "") -> Control:
+	var column := VBoxContainer.new()
+	var lines := text.split("\n")
+	var toggle := Button.new()
+	toggle.flat = true
+	toggle.toggle_mode = true
+	toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	# Sin el relleno del tema: arranca en la misma columna que los enlaces y el nombre de la tool.
+	for state: StringName in [&"normal", &"hover", &"pressed", &"hover_pressed", &"focus"]:
+		toggle.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	if noun.is_empty():
+		noun = I18n.t("output")
+	toggle.text = "▸ " + (I18n.t("%s · %d line") if lines.size() == 1 else I18n.t("%s · %d lines")) % [noun, lines.size()]
+	toggle.add_theme_color_override(&"font_color", AgentTheme.MUTED)
+	column.add_child(toggle)
+	var output := Label.new()
+	output.visible = false
+	output.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	output.add_theme_font_override(&"font", AgentTheme.mono_font())
+	output.add_theme_font_size_override(&"font_size", AgentTheme.mono_font_size())
+	output.add_theme_color_override(&"font_color", AgentTheme.MUTED)
+	var shown := "\n".join(lines.slice(0, OUTPUT_PREVIEW_LINES)).left(OUTPUT_PREVIEW_CHARS)
+	if shown.length() < text.length():
+		shown += "\n…"
+	output.text = shown
+	column.add_child(output)
+	toggle.toggled.connect(func(open: bool) -> void:
+		output.visible = open
+		toggle.text = ("▾" if open else "▸") + toggle.text.substr(1)
+	)
+	return column
+
+
+static func _image_preview(block: Dictionary) -> Control:
+	var image := decode_image(str(block.get("data", "")), str(block.get("mimeType", "")))
+	if image == null:
+		var label := Label.new()
+		label.text = I18n.t("[image]")
+		label.add_theme_color_override(&"font_color", AgentTheme.MUTED)
+		return label
+	var rect := TextureRect.new()
+	rect.texture = ImageTexture.create_from_image(image)
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+	var height := mini(image.get_height(), AgentTheme.px(IMAGE_MAX_HEIGHT))
+	rect.custom_minimum_size = Vector2(0, height)
+	ImageViewer.attach(rect, func() -> Image: return image)
+	return rect
+
+
+## Imagen de un bloque ACP (base64 + mimeType), o null si no se puede decodificar.
+static func decode_image(data: String, mime_type: String) -> Image:
+	if data.is_empty():
+		return null
+	var bytes := Marshalls.base64_to_raw(data)
+	if bytes.is_empty():
+		return null
+	var image := Image.new()
+	var error := ERR_FILE_UNRECOGNIZED
+	match mime_type:
+		"image/png":
+			error = image.load_png_from_buffer(bytes)
+		"image/jpeg", "image/jpg":
+			error = image.load_jpg_from_buffer(bytes)
+		"image/webp":
+			error = image.load_webp_from_buffer(bytes)
+	return image if error == OK and not image.is_empty() else null
+
+
+func _muted_label(text: String, color: Color = AgentTheme.MUTED) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_color_override(&"font_color", color)
+	return label
+
+
+func _on_spinner() -> void:
+	_spinner_frame += 1
+	for call: ToolCall in _lookup(PackedStringArray(_rows.keys())):
+		if call.status == ToolCall.STATUS_IN_PROGRESS:
+			(_rows[call.id].status as Label).text = SPINNER[_spinner_frame % SPINNER.size()]
+
+
+## Nombre para personas de cada tool `godot.*` (m12-17); el técnico queda en el tooltip.
+const GODOT_TOOL_NAMES := {
+	"add_node": "Add node",  # i18n
+	"add_nodes": "Add nodes",  # i18n
+	"addons_list": "List addons",  # i18n
+	"animation_create": "Create animation",  # i18n
+	"animation_get": "Read animation",  # i18n
+	"animation_remove": "Remove animation",  # i18n
+	"animation_set_track": "Set animation track",  # i18n
+	"asset_details": "Asset details",  # i18n
+	"asset_install": "Install asset",  # i18n
+	"asset_search": "Search assets",  # i18n
+	"attach_script": "Attach script",  # i18n
+	"capture_editor_viewport": "Capture the editor",  # i18n
+	"capture_game_frame": "Capture the game",  # i18n
+	"class_info": "Class info",  # i18n
+	"connect_signal": "Connect signal",  # i18n
+	"copy_file": "Copy file",  # i18n
+	"create_resource": "Create resource",  # i18n
+	"create_scene": "Create scene",  # i18n
+	"delete_file": "Delete file",  # i18n
+	"duplicate_node": "Duplicate node",  # i18n
+	"editor_state": "Editor state",  # i18n
+	"game_breakpoint": "Breakpoint in the game",  # i18n
+	"game_call": "Call in the game",  # i18n
+	"game_debug": "Step through the game",  # i18n
+	"game_find": "Find in the game",  # i18n
+	"game_frames": "Look back at the game",  # i18n
+	"game_monitors": "Measure the game's performance",  # i18n
+	"game_stack": "Read the game's call stack",  # i18n
+	"game_get": "Read from the game",  # i18n
+	"game_input": "Input to the game",  # i18n
+	"game_pause": "Pause the game",  # i18n
+	"game_script": "Script in the game",  # i18n
+	"game_set": "Set in the game",  # i18n
+	"game_step": "Step the game",  # i18n
+	"game_tree": "Game tree",  # i18n
+	"game_ui": "Game UI",  # i18n
+	"game_ui_act": "Use the game UI",  # i18n
+	"game_wait": "Wait in the game",  # i18n
+	"game_watch": "Watch the game",  # i18n
+	"get_errors": "Read errors",  # i18n
+	"get_node": "Read node",  # i18n
+	"get_resource": "Read resource",  # i18n
+	"instantiate_scene": "Instance scene",  # i18n
+	"list_files": "List files",  # i18n
+	"move_file": "Move file",  # i18n
+	"open_scene": "Open scene",  # i18n
+	"plugin_enable": "Enable plugin",  # i18n
+	"profile_run": "Profile the game",  # i18n
+	"project_info": "Project info",  # i18n
+	"project_settings": "Project settings",  # i18n
+	"remove_autoload": "Remove autoload",  # i18n
+	"project_map": "Project map",  # i18n
+	"remove_input_action": "Remove input action",  # i18n
+	"remove_node": "Remove node",  # i18n
+	"rename_node": "Rename node",  # i18n
+	"reparent_node": "Move node",  # i18n
+	"run_scene": "Run scene",  # i18n
+	"save_scene": "Save scene",  # i18n
+	"scene_tree": "Scene tree",  # i18n
+	"search_api": "Search the API",  # i18n
+	"session_send": "Send to a session",  # i18n
+	"ask_second_opinion": "Second opinion",  # i18n
+	"sessions": "Sessions",  # i18n
+	"set_autoload": "Set autoload",  # i18n
+	"set_input_action": "Set input action",  # i18n
+	"set_project_setting": "Set project setting",  # i18n
+	"set_properties": "Set properties",  # i18n
+	"set_resource_properties": "Set resource properties",  # i18n
+	"sprite_frames_set": "Set sprite frames",  # i18n
+	"stop_scene": "Stop scene",  # i18n
+	"game_instance": "Game instances",  # i18n
+	"bake": "Bake",  # i18n
+	"export_project": "Export the project",  # i18n
+	"run_regressions": "Run the regressions",  # i18n
+	"write_regressions_workflow": "Write the regressions CI workflow",  # i18n
+	"tilemap_clear": "Clear tilemap",  # i18n
+	"tilemap_get": "Read tilemap",  # i18n
+	"tilemap_paint_terrain": "Paint terrain",  # i18n
+	"tilemap_set_cells": "Set tiles",  # i18n
+	"tileset_add_atlas": "Add tileset atlas",  # i18n
+	"tileset_add_scenes": "Add tileset scenes",  # i18n
+	"validate_physics": "Validate physics",  # i18n
+	"validate_scripts": "Validate scripts",  # i18n
+	"build_extension": "Build the GDExtension",  # i18n
+	"test_extension": "Test the GDExtension",  # i18n
+	"install_extension": "Install the GDExtension in the game",  # i18n
+	"restart_editor": "Restart the editor",  # i18n
+	"validate_tilemap": "Validate tilemap",  # i18n
+}
+
+
+## Las tools del editor con nombre para personas («godot.connect_signal» → «Connect signal»); el
+## nombre técnico queda en el tooltip. Las del agente (Read, Bash…) ya son cortas.
+static func _short_name(call: ToolCall) -> String:
+	if call.plan_card:
+		return _cap_name(I18n.t("Plan presented"))
+	var godot_name := call.godot_tool_name()
+	if not godot_name.is_empty():
+		if GODOT_TOOL_NAMES.has(godot_name):
+			return _cap_name(I18n.t(GODOT_TOOL_NAMES[godot_name]))
+		var human := godot_name.replace("_", " ")
+		return _cap_name(human.left(1).to_upper() + human.substr(1))
+	return _cap_name(call.display_name())
+
+
+static func _cap_name(text: String) -> String:
+	return text if text.length() <= NAME_MAX_CHARS else text.left(NAME_MAX_CHARS - 1) + "…"
+
+
+## La columna del nombre toma el ancho del nombre más largo del grupo; lo anidado (salida,
+## diffs, enlaces) arranca después de la columna de estado, sin sumar el nombre: un diff ya pide su
+## ancho y, más corrido, ensanchaba el dock.
+func _align_rows() -> void:
+	var width := 0.0
+	for parts: Dictionary in _rows.values():
+		var label: Label = parts.name
+		label.custom_minimum_size.x = 0
+		width = maxf(width, label.get_minimum_size().x)
+	width = ceilf(width)
+	for parts: Dictionary in _rows.values():
+		(parts.name as Label).custom_minimum_size.x = width
+		var row: HBoxContainer = parts.row
+		var indent := (parts.status as Control).custom_minimum_size.x + row.get_theme_constant(&"separation")
+		(parts.extra_margin as MarginContainer).add_theme_constant_override(&"margin_left", int(indent))
+
+
+static func _summary(call: ToolCall) -> String:
+	if call.plan_card:  # el plan está en su tarjeta: acá solo cómo terminó
+		match call.status:
+			ToolCall.STATUS_COMPLETED:
+				return I18n.t("approved")
+			ToolCall.STATUS_FAILED:
+				return I18n.t("not approved")
+		return I18n.t("waiting for you")
+	if call.is_subagent():
+		var agent_type := ""
+		if call.raw_input is Dictionary:
+			var subagent_input: Dictionary = call.raw_input
+			agent_type = str(subagent_input.get("subagent_type", ""))
+		return I18n.t("subagent · %s") % agent_type if not agent_type.is_empty() else I18n.t("subagent")
+	if call.raw_input is Dictionary:
+		var input: Dictionary = call.raw_input
+		for key: String in ["file_path", "path", "command", "pattern", "query", "url", "node_path", "scene"]:
+			if input.get(key) is String:
+				return str(input[key]).left(SUMMARY_MAX)
+		var command := ShellCommand.of(input)
+		if not command.is_empty():
+			return command.left(SUMMARY_MAX)
+	if not call.locations.is_empty() and call.locations[0] is Dictionary:
+		return str(call.locations[0].get("path", "")).get_file()
+	return "" if call.kind == "other" else call.kind
+
+
+static func _format_duration(msec: int) -> String:
+	if msec < 1000:
+		return "%d ms" % msec
+	var seconds := "%.1f s" % (msec / 1000.0)
+	return seconds.replace(".", ",") if I18n.locale() == "es" else seconds
