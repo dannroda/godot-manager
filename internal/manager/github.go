@@ -73,10 +73,22 @@ func httpGet(u string) (*http.Response, error) {
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
 		return nil, errNotFound
-	case (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests) && isAPI(u):
+	case !isAPI(u):
+	case resp.StatusCode == http.StatusUnauthorized:
+		return nil, errf(codeBadToken, "la API de GitHub rechazo GITHUB_TOKEN (HTTP 401): revisalo o borralo")
+	case resp.StatusCode == http.StatusTooManyRequests || rateLimited(resp.Header):
+		return nil, errf(codeRateLimited, "la API de GitHub limito los pedidos; espera un rato o defini GITHUB_TOKEN")
+	case resp.StatusCode == http.StatusForbidden && os.Getenv("GITHUB_TOKEN") != "":
+		return nil, errf(codeBadToken, "la API de GitHub rechazo GITHUB_TOKEN (HTTP 403, sin permiso): revisalo o borralo")
+	case resp.StatusCode == http.StatusForbidden:
 		return nil, errf(codeRateLimited, "la API de GitHub limito los pedidos; espera un rato o defini GITHUB_TOKEN")
 	}
 	return nil, errf(codeNetwork, "no se pudo descargar %s (HTTP %d)", u, resp.StatusCode)
+}
+
+// Si un 403 de la API es por limite de pedidos (primario o secundario).
+func rateLimited(h http.Header) bool {
+	return h.Get("X-RateLimit-Remaining") == "0" || h.Get("Retry-After") != ""
 }
 
 // Decodifica el JSON de u en v; devuelve los headers de la respuesta.
@@ -110,6 +122,7 @@ type release struct {
 	TagName     string  `json:"tag_name"`
 	Prerelease  bool    `json:"prerelease"`
 	PublishedAt string  `json:"published_at"`
+	HTMLURL     string  `json:"html_url"`
 	Assets      []asset `json:"assets"`
 }
 

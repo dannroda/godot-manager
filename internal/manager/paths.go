@@ -117,10 +117,21 @@ func editorAssets(ver string, mono bool) ([]string, error) {
 	p := assetPrefix(ver, mono)
 	switch runtime.GOOS {
 	case "linux":
+		var names []string
 		if mono {
-			return []string{p + "linux_" + arch + ".zip"}, nil
+			names = []string{p + "linux_" + arch + ".zip"}
+		} else {
+			names = []string{p + "linux." + arch + ".zip"}
 		}
-		return []string{p + "linux." + arch + ".zip"}, nil
+		// 3.x publica el editor x86_64 como x11.64 (y mono_x11_64)
+		if arch == "x86_64" {
+			if mono {
+				names = append(names, p+"x11_64.zip")
+			} else {
+				names = append(names, p+"x11.64.zip")
+			}
+		}
+		return names, nil
 	case "windows":
 		w := windowsPlatform(arch)
 		if mono {

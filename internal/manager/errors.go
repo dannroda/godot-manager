@@ -19,6 +19,9 @@ const (
 	codeInvalidArgs       = "invalid_args"
 	codeUnknownCommand    = "unknown_command"
 	codeNeedsConfirmation = "needs_confirmation"
+	codeBadToken          = "bad_token"         // GITHUB_TOKEN rechazado por la API
+	codeAlreadyInstalled  = "already_installed" // add sobre un nombre existente sin --force
+	codeLaunchFailed      = "launch_failed"     // el binario no se pudo ejecutar
 	codeInternal          = "internal"
 )
 

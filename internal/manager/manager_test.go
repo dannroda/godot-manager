@@ -198,3 +198,83 @@ func TestCleanStaleTemps(t *testing.T) {
 		}
 	}
 }
+
+func TestAPIErrorCodes(t *testing.T) {
+	status, hdr := 0, map[string]string{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range hdr {
+			w.Header().Set(k, v)
+		}
+		w.WriteHeader(status)
+	}))
+	t.Cleanup(srv.Close)
+	prev := githubAPI
+	githubAPI = srv.URL + "/repos/x"
+	t.Cleanup(func() { githubAPI = prev })
+
+	for _, c := range []struct {
+		status int
+		hdr    map[string]string
+		token  string
+		want   string
+	}{
+		{401, nil, "malo", codeBadToken},
+		{403, nil, "sinpermiso", codeBadToken},
+		{403, map[string]string{"X-RateLimit-Remaining": "0"}, "bueno", codeRateLimited},
+		{403, map[string]string{"Retry-After": "60"}, "bueno", codeRateLimited},
+		{403, nil, "", codeRateLimited},
+		{429, nil, "", codeRateLimited},
+		{500, nil, "", codeNetwork},
+	} {
+		status, hdr = c.status, c.hdr
+		t.Setenv("GITHUB_TOKEN", c.token)
+		_, err := httpGet(githubAPI + "/releases")
+		if code, _ := errorInfo(err); code != c.want {
+			t.Errorf("HTTP %d %v token=%q: %s, quiero %s", c.status, c.hdr, c.token, code, c.want)
+		}
+	}
+}
+
+func TestAddExisting(t *testing.T) {
+	pv, pg := versionsDir, godotDir
+	t.Cleanup(func() { versionsDir, godotDir = pv, pg })
+	versionsDir, godotDir = filepath.Join(t.TempDir(), "versions"), t.TempDir()
+	capture(t, modeJSON)
+	src := filepath.Join(t.TempDir(), "bin")
+	os.WriteFile(src, []byte("#!/bin/sh\n"), 0o755)
+	if _, err := cmdAdd([]string{"mio", src}); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(versionsDir, "mio", "resto"), nil, 0o644)
+	_, err := cmdAdd([]string{"mio", src})
+	if code, _ := errorInfo(err); code != codeAlreadyInstalled {
+		t.Fatalf("sin --force: %v", err)
+	}
+	if _, err := cmdAdd([]string{"--force", "mio", src}); err != nil {
+		t.Fatal(err)
+	}
+	if exists(filepath.Join(versionsDir, "mio", "resto")) {
+		t.Error("--force deberia reemplazar la carpeta entera")
+	}
+}
+
+func TestLaunchError(t *testing.T) {
+	capture(t, modeJSON)
+	bin := filepath.Join(t.TempDir(), "no-existe")
+	_, err := runBinary("x", bin, nil, true)
+	code, det := errorInfo(err)
+	if code != codeLaunchFailed || det["path"] != bin || strings.Contains(err.Error(), "fork/exec") {
+		t.Errorf("%s %v: %v", code, det, err)
+	}
+}
+
+func TestPlatformInstalled3x(t *testing.T) {
+	dest := t.TempDir()
+	for _, f := range []string{"iphone.zip", "osx.zip", "webassembly_debug.zip", "linux_x11_64_debug", "windows_64_debug.exe"} {
+		os.WriteFile(filepath.Join(dest, f), nil, 0o644)
+	}
+	got := installedPlatforms(dest)
+	if strings.Join(got, ",") != "ios,linux,macos,web,windows" {
+		t.Errorf("plataformas 3.x: %v", got)
+	}
+}

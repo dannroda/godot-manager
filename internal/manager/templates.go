@@ -46,11 +46,23 @@ func splitList(s string) []string {
 }
 
 // Los archivos de cada plataforma en el tpz empiezan con su nombre
-// (linux_debug.x86_64, macos.zip, web_release.zip...).
+// (linux_debug.x86_64, macos.zip, web_release.zip...). En 3.x linux, windows,
+// android y web (webassembly_*) tambien; ios y macos se llamaban iphone y osx.
+func platformFilePrefixes(platform string) []string {
+	switch platform {
+	case "ios":
+		return []string{"ios", "iphone"}
+	case "macos":
+		return []string{"macos", "osx"}
+	}
+	return []string{platform}
+}
+
 func platformInstalled(dest, platform string) bool {
+	prefixes := platformFilePrefixes(platform)
 	ents, _ := os.ReadDir(dest)
 	for _, e := range ents {
-		if strings.HasPrefix(e.Name(), platform) && !strings.HasSuffix(e.Name(), ".debugsymbols") {
+		if hasAnyPrefix(e.Name(), prefixes) && !strings.HasSuffix(e.Name(), ".debugsymbols") {
 			return true
 		}
 	}
@@ -96,7 +108,9 @@ func installTemplates(ver string, mono bool, platforms []string) error {
 	out.step("Export templates (%s) desde %s", strings.Join(missing, " "), url)
 	prefixes := []string{"templates/version.txt", "templates/icudt_godot.dat"}
 	for _, p := range missing {
-		prefixes = append(prefixes, "templates/"+p)
+		for _, f := range platformFilePrefixes(p) {
+			prefixes = append(prefixes, "templates/"+f)
+		}
 	}
 	if err := remoteUnzip(url, tmp, prefixes); err != nil {
 		return err

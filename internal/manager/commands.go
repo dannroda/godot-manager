@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -202,6 +203,7 @@ type remoteVersion struct {
 	Tag         string `json:"tag"`
 	Prerelease  bool   `json:"prerelease"`
 	PublishedAt string `json:"published_at"`
+	URL         string `json:"url"` // pagina de la release en GitHub
 	// que trae para esta plataforma
 	Editor        bool  `json:"editor"`
 	Mono          bool  `json:"mono"`
@@ -224,7 +226,7 @@ func firstAsset(r *release, names []string) *asset {
 }
 
 func describeRelease(r *release) remoteVersion {
-	v := remoteVersion{Tag: r.TagName, Prerelease: r.Prerelease, PublishedAt: r.PublishedAt}
+	v := remoteVersion{Tag: r.TagName, Prerelease: r.Prerelease, PublishedAt: r.PublishedAt, URL: r.HTMLURL}
 	if names, err := editorAssets(r.TagName, false); err == nil {
 		if a := firstAsset(r, names); a != nil {
 			v.Editor, v.EditorSize = true, a.Size
@@ -369,14 +371,36 @@ func detachFlag(args []string) ([]string, bool) {
 
 func runBinary(version, bin string, args []string, detach bool) (map[string]any, error) {
 	if !detach {
-		return nil, execBinary(bin, args)
+		return nil, launchError(bin, execBinary(bin, args))
 	}
 	pid, err := startDetached(bin, args)
 	if err != nil {
-		return nil, err
+		return nil, launchError(bin, err)
 	}
 	out.step("Lanzado %s (pid %d)", version, pid)
 	return map[string]any{"version": version, "path": bin, "pid": pid}, nil
+}
+
+// Error de arranque con la causa sola ("no such file or directory"), sin el
+// "fork/exec <path>:" que agrega Go.
+func launchError(bin string, err error) error {
+	if err == nil {
+		return nil
+	}
+	cause := err
+	var pe *os.PathError
+	var ee *exec.Error
+	switch {
+	case errors.As(err, &pe):
+		cause = pe.Err
+	case errors.As(err, &ee):
+		cause = ee.Err
+	}
+	return &cliError{
+		Code:    codeLaunchFailed,
+		Msg:     fmt.Sprintf("no se pudo ejecutar %s: %v", bin, cause),
+		Details: map[string]any{"path": bin},
+	}
 }
 
 func cmdRun(args []string) (map[string]any, error) {
@@ -401,11 +425,25 @@ func cmdLaunch(args []string) (map[string]any, error) {
 }
 
 func cmdAdd(args []string) (map[string]any, error) {
-	if len(args) < 2 {
-		return nil, errf(codeInvalidArgs, "uso: godot-manager add <nombre> <ruta-al-binario> [--symlink]")
+	var symlink, force bool
+	var pos []string
+	for _, a := range args {
+		switch a {
+		case "--symlink":
+			symlink = true
+		case "--force":
+			force = true
+		default:
+			if strings.HasPrefix(a, "--") {
+				return nil, errf(codeInvalidArgs, "opcion desconocida '%s'", a)
+			}
+			pos = append(pos, a)
+		}
 	}
-	name, src := args[0], args[1]
-	symlink := len(args) > 2 && args[2] == "--symlink"
+	if len(pos) != 2 {
+		return nil, errf(codeInvalidArgs, "uso: godot-manager add <nombre> <ruta-al-binario> [--symlink] [--force]")
+	}
+	name, src := pos[0], pos[1]
 	if !validName(name) {
 		return nil, errf(codeInvalidArgs, "nombre invalido '%s'", name)
 	}
@@ -413,6 +451,27 @@ func cmdAdd(args []string) (map[string]any, error) {
 		return nil, errf(codeInvalidArgs, "%s no existe o no es ejecutable", src)
 	}
 	dir := filepath.Join(versionsDir, name)
+	if exists(dir) {
+		if !force {
+			return nil, &cliError{
+				Code:    codeAlreadyInstalled,
+				Msg:     fmt.Sprintf("ya hay una version '%s' (usa --force para reemplazarla)", name),
+				Details: map[string]any{"version": name},
+			}
+		}
+		// reemplazo completo: no quedan restos de la anterior (otro binario,
+		// simbolos, el _console.exe de una oficial)
+		if defaultVersion() == name {
+			defer func() {
+				if bin, ok := versionBinary(name); ok {
+					setDefault(name, bin)
+				}
+			}()
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			return nil, err
+		}
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -762,7 +821,9 @@ Comandos:
                                       macos_debug.arm64, android_release...
                                     --debugsymbolsonly: no toca los templates, solo baja los
                                       simbolos de los ya instalados (todos, o los filtrados)
-  add <nombre> <path> [--symlink]   Agrega un binario custom (build propio)
+  add <nombre> <path> [--symlink] [--force]
+                                    Agrega un binario custom (build propio). Si el nombre
+                                    ya existe falla, salvo con --force (lo reemplaza)
   remove <ver> [--yes] [--templates]
                                     Borra una version. Pregunta si borrar sus export templates;
                                     con --yes no pregunta y los borra solo con --templates
@@ -792,7 +853,7 @@ Salida con --json:
   los demas                         {"ok":true,...} o {"error":{"code","message"}}
   Codigos de error: not_installed, no_default, no_release, no_build_for_platform,
   not_available, rate_limited, network, checksum, invalid_args, unknown_command,
-  needs_confirmation, internal
+  needs_confirmation, bad_token, already_installed, launch_failed, internal
 
 Variables:
   GODOT_DIR                         Raiz de las versiones (ahora: %s)
