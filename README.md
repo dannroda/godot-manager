@@ -1,0 +1,120 @@
+# godot-manager
+
+**English** · [Español](README.es.md)
+
+A version manager for [Godot](https://godotengine.org) on Linux and Windows. It installs official builds (stable, dev, .NET/mono), export templates and debug symbols, and picks the right editor for each project through a `.godot-version` file.
+
+It has two parts:
+
+- **`godot-manager`**: a command-line tool written in Go, with a `godot` shim that runs the version the current project asks for.
+- **An optional GUI** that looks like Godot's Project Manager. It is a Godot project in [`ui/`](ui/) and does all its work through the CLI's `--json` output.
+
+![Projects](docs/screenshots/projects.png)
+
+## Features
+
+- Installs any release from [godotengine/godot-builds](https://github.com/godotengine/godot-builds), including the .NET (mono) editor, and verifies every download against the official SHA-512 or SHA-256 checksum.
+- Sets a global default version and a per-project version. The project version lives in a `.godot-version` file, which `godot` finds by walking up from the current folder.
+- Installs export templates only for the platforms you ask for. It reads the files it needs straight out of the remote `.tpz`, so you don't download the whole archive.
+- Installs debug symbols for the editor and the templates (Godot 4.8-beta1 and later).
+- Supports your own builds with `godot-manager add`.
+- Supports Godot 3.x. On Linux this covers the editor, mono and templates.
+- Has a `--json` output for scripts and the GUI: one result object, or one event per line (progress, warnings, errors) for long operations.
+
+## Screenshots
+
+| Installed versions | Available releases |
+|---|---|
+| ![Installed versions](docs/screenshots/installed.png) | ![Available releases](docs/screenshots/download.png) |
+
+![Install dialog](docs/screenshots/install-dialog.png)
+
+The GUI is currently in Spanish only.
+
+## Installation
+
+### Arch Linux
+
+```sh
+git clone git@github.com:dannroda/godot-manager.git
+cd godot-manager
+makepkg -si
+```
+
+This installs `/usr/bin/godot-manager` and `/usr/bin/godot`.
+
+### Other systems (Linux, Windows)
+
+You need Go 1.24 or later:
+
+```sh
+make dist   # dist/<os>-<arch>/godot-manager[.exe] and godot[.exe]
+```
+
+The binaries are static and have no dependencies. `make dist` builds them for linux and windows on amd64 and arm64. Put `godot-manager` and `godot` in a folder that is on your `PATH`.
+
+### Where things go
+
+| | Linux | Windows |
+|---|---|---|
+| Versions (`GODOT_DIR`) | `/opt/godot` (your user must be able to write to it) | `%LOCALAPPDATA%\godot-manager` |
+| Export templates | `~/.local/share/godot/export_templates` | `%APPDATA%\Godot\export_templates` |
+
+Set `GODOT_DIR` to keep your versions somewhere else. Templates go where the Godot editor looks for them, so the editor can use them right away.
+
+## Usage
+
+```sh
+godot-manager list-remote stable        # releases available on GitHub
+godot-manager install 4.7.2-stable      # download, verify and install
+godot-manager install 4.7.2-stable --mono --templates --platforms=linux,windows
+godot-manager set 4.7.2-stable          # global default
+
+cd my-game
+godot-manager set-local 4.8-beta3       # writes .godot-version
+godot -e                                # opens 4.8-beta3 in this project
+godot-manager which                     # which binary 'godot' would use here
+
+godot-manager templates 4.8-beta3 --platforms=web
+godot-manager symbols 4.8-beta3         # debug symbols for the editor
+godot-manager add my-build ~/godot/bin/godot.linuxbsd.editor.x86_64
+godot-manager launch --detach 4.5.1-stable
+godot-manager remove 4.5.1-stable
+```
+
+`godot-manager help` lists every command and option.
+
+### JSON output
+
+With `--json`, `godot-manager` writes only JSON to stdout:
+
+- **`list`, `list-remote` and `which`** print their data.
+- **`install`, `templates` and `symbols`** print one event per line (`step`, `download`, `warn`). The last line is always `done` or `error`.
+- **Every other command** prints `{"ok": true, ...}` or `{"error": {"code": "...", "message": "..."}}`.
+
+Error codes don't change between versions, so a script can branch on them: `not_installed`, `no_default`, `rate_limited`, `bad_token` and so on. `--dir <folder>` runs a command as if it were started in that folder.
+
+Without a terminal, any command that would ask for confirmation fails with `needs_confirmation`; pass `--yes` to confirm in advance.
+
+### GitHub token
+
+`list-remote` and some install steps call the GitHub API. Without a token, GitHub allows 60 requests per hour. To raise that limit, set `GITHUB_TOKEN` to a personal access token; it needs no scopes.
+
+## The GUI
+
+The GUI is a Godot 4.8 project in [`ui/`](ui/). It looks for `godot-manager` on the `PATH`, or uses the path you set in its Settings. To run it, open `ui/` in Godot 4.8 or later, or export it with the Linux or Windows preset in `ui/export_presets.cfg`.
+
+It has three tabs:
+
+- **Projects**: your project list, the version each one resolves to, and buttons to open, run, change the version or install a missing one. It can import the list from Godot's Project Manager.
+- **Versions**: installed versions, with buttons to set the default, add export templates and debug symbols, or add your own build.
+- **Download**: official releases with filters, sizes and an install dialog.
+
+## Development
+
+```sh
+go test ./...                    # CLI tests
+godot --headless --path ui -s res://tests/run_tests.gd   # GUI tests
+```
+
+The GUI's task board is in `ui/compass` (Scope Compass format).
