@@ -328,6 +328,81 @@ auto_shell_rules = [{
 "list": "ask",
 "origin": "default",
 "pattern": "rg *--pre*"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "godot-manager *"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "timeout *"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "jq *"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "sleep *"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "ps *"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "pgrep *"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "cut *"
+}, {
+"added": "2026-11-12",
+"list": "allow",
+"origin": "card",
+"pattern": "tr *"
+}, {
+"added": "2026-11-13",
+"list": "allow",
+"origin": "card",
+"pattern": "sed *"
+}, {
+"added": "2026-11-13",
+"list": "allow",
+"origin": "card",
+"pattern": "for *"
+}, {
+"added": "2026-11-13",
+"list": "allow",
+"origin": "card",
+"pattern": "strings *"
+}, {
+"added": "2026-11-13",
+"list": "allow",
+"origin": "card",
+"pattern": "git *"
+}, {
+"added": "2026-11-13",
+"list": "allow",
+"origin": "card",
+"pattern": "mkdir *"
+}, {
+"added": "2026-11-13",
+"list": "allow",
+"origin": "card",
+"pattern": "do *"
+}, {
+"added": "2026-11-13",
+"list": "allow",
+"origin": "card",
+"pattern": "done"
 }]
 extra_fs_roots = PackedStringArray()
 playtest_on_manual_runs = true
