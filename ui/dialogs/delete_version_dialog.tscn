@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://c2gv1sy2ptwwa"]
+
+[ext_resource type="Script" uid="uid://bi80gemwrbjpe" path="res://dialogs/delete_version_dialog.gd" id="1_we2xa"]
+
+[node name="DeleteVersionDialog" type="ConfirmationDialog" unique_id=1588215784]
+title = "Borrar versión"
+size = Vector2i(480, 220)
+min_size = Vector2i(440, 200)
+ok_button_text = "Borrar"
+cancel_button_text = "Cancelar"
+script = ExtResource("1_we2xa")
+
+[node name="Content" type="VBoxContainer" parent="." unique_id=2096355820]
+theme_override_constants/separation = 8
+
+[node name="Question" type="Label" parent="Content" unique_id=1015182153]
+layout_mode = 2
+text = "¿Borrar esta versión?"
+
+[node name="VersionName" type="Label" parent="Content" unique_id=1085824990]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+
+[node name="FolderRow" type="HBoxContainer" parent="Content" unique_id=1527375532]
+layout_mode = 2
+
+[node name="FolderLabel" type="Label" parent="Content/FolderRow" unique_id=1867970079]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Se borra la carpeta"
+
+[node name="Folder" type="Label" parent="Content/FolderRow" unique_id=661300285]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+text_overrun_behavior = 3
+
+[node name="DefaultWarning" type="Label" parent="Content" unique_id=1418791385]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.7058824, 0.3019608, 1)
+text = "Es la versión por defecto: después de borrarla no va a quedar ninguna por defecto."
+autowrap_mode = 3
+
+[node name="RemoveTemplates" type="CheckBox" parent="Content" unique_id=1871329957]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Borrar también sus export templates"

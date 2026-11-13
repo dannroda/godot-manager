@@ -1,0 +1,84 @@
+[gd_scene format=3 uid="uid://b7rbi3mrwkb61"]
+
+[ext_resource type="Script" uid="uid://c03xvl5y0g5ec" path="res://screens/remote_screen.gd" id="1_qgcvk"]
+[ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="2_5isvt"]
+[ext_resource type="PackedScene" uid="uid://nuqhd7dy8x" path="res://rows/list_state.tscn" id="2_638rj"]
+
+[node name="RemoteScreen" type="PanelContainer" unique_id=1642537091]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_vertical = 3
+theme_type_variation = &"ScreenPanel"
+script = ExtResource("1_qgcvk")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=2074823379]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Toolbar" type="HBoxContainer" parent="Layout" unique_id=1338638191]
+layout_mode = 2
+
+[node name="Search" type="LineEdit" parent="Layout/Toolbar" unique_id=1773036368]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Filtrar versiones"
+clear_button_enabled = true
+
+[node name="Channel" type="OptionButton" parent="Layout/Toolbar" unique_id=399745129]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+tooltip_text = "Stable: versiones estables. Dev: betas, release candidates y dev snapshots."
+
+[node name="Refresh" type="Button" parent="Layout/Toolbar" unique_id=1093634057]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Vuelve a pedir la lista a GitHub"
+text = "Refrescar"
+
+[node name="Body" type="HBoxContainer" parent="Layout" unique_id=1704454933]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="ListPanel" type="PanelContainer" parent="Layout/Body" unique_id=177566164]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ListPanel"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/ListPanel" unique_id=143078078]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Layout/Body/ListPanel/Scroll" unique_id=859434991]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Placeholder" parent="Layout/Body/ListPanel" unique_id=838009154 instance=ExtResource("2_638rj")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Actions" type="VBoxContainer" parent="Layout/Body" unique_id=1834590972]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+
+[node name="Install" type="Button" parent="Layout/Body/Actions" unique_id=1341308431]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Instalar…"
+
+[node name="ReleaseNotes" type="Button" parent="Layout/Body/Actions" unique_id=953523076]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Ver en GitHub"
+
+[node name="InstallDialog" parent="." unique_id=1165000065 instance=ExtResource("2_5isvt")]
+unique_name_in_owner = true

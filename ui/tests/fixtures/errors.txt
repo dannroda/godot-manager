@@ -1,0 +1,2 @@
+{"error":{"code":"not_installed","message":"'9.9-nope' no esta instalada (ver 'godot-manager list')"}}
+{"error":{"code":"unknown_command","message":"comando desconocido 'bogus' (ver 'godot-manager help')"}}

@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://b4upeh2igksnq"]
+
+[ext_resource type="Script" uid="uid://dsmamb018646u" path="res://rows/version_row.gd" id="1_q48pn"]
+
+[node name="VersionRow" type="PanelContainer" unique_id=1935280642]
+focus_mode = 2
+theme_type_variation = &"RowPanel"
+script = ExtResource("1_q48pn")
+
+[node name="HBox" type="HBoxContainer" parent="." unique_id=1123708863]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Star" type="Label" parent="HBox" unique_id=706619912]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(18, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.827451, 0.3529412, 1)
+theme_override_font_sizes/font_size = 18
+text = "★"
+horizontal_alignment = 1
+
+[node name="Info" type="VBoxContainer" parent="HBox" unique_id=360299710]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Top" type="HBoxContainer" parent="HBox/Info" unique_id=48943100]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Name" type="Label" parent="HBox/Info/Top" unique_id=1184519861]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+
+[node name="Tags" type="HBoxContainer" parent="HBox/Info/Top" unique_id=440952292]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Path" type="Label" parent="HBox/Info" unique_id=1110319776]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"DimLabel"
+text_overrun_behavior = 3

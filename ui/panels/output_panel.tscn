@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://dvcqk8rf7uvq4"]
+
+[ext_resource type="Script" uid="uid://4uqowmplbrkk" path="res://panels/output_panel.gd" id="1_iqt81"]
+
+[node name="OutputPanel" type="PanelContainer" unique_id=1329205976]
+theme_type_variation = &"TopBar"
+script = ExtResource("1_iqt81")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1764636736]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="VBox" unique_id=2065479578]
+layout_mode = 2
+
+[node name="Toggle" type="Button" parent="VBox/Header" unique_id=2002923113]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Salida"
+flat = true
+alignment = 0
+
+[node name="Copy" type="Button" parent="VBox/Header" unique_id=720298699]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Copiar"
+flat = true
+
+[node name="Clear" type="Button" parent="VBox/Header" unique_id=1061722123]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Limpiar"
+flat = true
+
+[node name="Body" type="MarginContainer" parent="VBox" unique_id=401331558]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 170)
+layout_mode = 2
+theme_override_constants/margin_bottom = 6
+
+[node name="Log" type="RichTextLabel" parent="VBox/Body" unique_id=630625562]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+bbcode_enabled = true
+scroll_following = true
+context_menu_enabled = true
+selection_enabled = true

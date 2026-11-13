@@ -1,0 +1,4 @@
+[{"tag":"4.8-beta3","prerelease":true,"published_at":"2026-11-09T16:16:14Z","editor":true,"mono":true,"debug_symbols":true,"templates":true,"mono_templates":true,"editor_size":62385758,"mono_size":92947744,"templates_size":1354701894},
+{"tag":"4.8-beta2","prerelease":true,"published_at":"2026-10-29T14:01:23Z","editor":true,"mono":true,"debug_symbols":true,"templates":true,"mono_templates":true,"editor_size":62274839,"mono_size":92839011,"templates_size":1349622957},
+{"tag":"4.7.2-stable","prerelease":false,"published_at":"2026-08-18T15:56:46Z","editor":true,"mono":true,"debug_symbols":false,"templates":true,"mono_templates":true,"editor_size":77860424,"mono_size":107698034,"templates_size":1281349702},
+{"tag":"3.6.3-stable","prerelease":false,"published_at":"2026-08-22T14:00:49Z","editor":false,"mono":false,"debug_symbols":false,"templates":true,"mono_templates":true,"editor_size":0,"mono_size":0,"templates_size":530863170}]

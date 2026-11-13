@@ -1,0 +1,171 @@
+[gd_scene format=3 uid="uid://de4e8p6q3k5ja"]
+
+[ext_resource type="Script" uid="uid://dc5ijrifm1rdq" path="res://screens/projects_screen.gd" id="1_aeybp"]
+[ext_resource type="PackedScene" uid="uid://nuqhd7dy8x" path="res://rows/list_state.tscn" id="2_cqxe7"]
+[ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="2_okxhh"]
+[ext_resource type="PackedScene" uid="uid://1b1bcuu1v8hw" path="res://dialogs/change_version_dialog.tscn" id="3_igeof"]
+
+[node name="ProjectsScreen" type="PanelContainer" unique_id=1011292242]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_vertical = 3
+theme_type_variation = &"ScreenPanel"
+script = ExtResource("1_aeybp")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=1534496362]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Toolbar" type="HBoxContainer" parent="Layout" unique_id=785677313]
+layout_mode = 2
+
+[node name="Search" type="LineEdit" parent="Layout/Toolbar" unique_id=303775477]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Filtrar proyectos"
+clear_button_enabled = true
+
+[node name="SortLabel" type="Label" parent="Layout/Toolbar" unique_id=516849752]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Ordenar:"
+
+[node name="Sort" type="OptionButton" parent="Layout/Toolbar" unique_id=247989146]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+
+[node name="Status" type="Label" parent="Layout/Toolbar" unique_id=2011409014]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_type_variation = &"DimLabel"
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="Body" type="HBoxContainer" parent="Layout" unique_id=1003785802]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="ListPanel" type="PanelContainer" parent="Layout/Body" unique_id=1940103053]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ListPanel"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/ListPanel" unique_id=1117854343]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Layout/Body/ListPanel/Scroll" unique_id=1385675869]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Placeholder" parent="Layout/Body/ListPanel" unique_id=838009154 instance=ExtResource("2_cqxe7")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Actions" type="VBoxContainer" parent="Layout/Body" unique_id=2010798053]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+
+[node name="Open" type="Button" parent="Layout/Body/Actions" unique_id=1110543596]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Abre el proyecto en el editor con su versión"
+disabled = true
+text = "Abrir"
+
+[node name="Run" type="Button" parent="Layout/Body/Actions" unique_id=85162903]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Corre el proyecto (sin abrir el editor) con su versión"
+disabled = true
+text = "Correr"
+
+[node name="ChangeVersion" type="Button" parent="Layout/Body/Actions" unique_id=1711565690]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Fija con qué versión se abre el proyecto (.godot-version)"
+disabled = true
+text = "Cambiar versión…"
+
+[node name="ShowFolder" type="Button" parent="Layout/Body/Actions" unique_id=1680188527]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Mostrar carpeta"
+
+[node name="Sep" type="HSeparator" parent="Layout/Body/Actions" unique_id=1161981444]
+layout_mode = 2
+
+[node name="Add" type="Button" parent="Layout/Body/Actions" unique_id=1928560243]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Agrega una carpeta con project.godot"
+text = "Agregar…"
+
+[node name="Scan" type="Button" parent="Layout/Body/Actions" unique_id=576689269]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Busca proyectos dentro de una carpeta (y sus subcarpetas)"
+text = "Escanear…"
+
+[node name="ImportPM" type="Button" parent="Layout/Body/Actions" unique_id=729275189]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Agrega los proyectos que ya tiene el Project Manager de Godot (solo lee su lista, no la cambia)"
+text = "Importar de Godot"
+text_overrun_behavior = 3
+
+[node name="Remove" type="Button" parent="Layout/Body/Actions" unique_id=369455049]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Lo saca de esta lista; no borra nada del disco"
+disabled = true
+text = "Quitar de la lista"
+
+[node name="AddDialog" type="FileDialog" parent="." unique_id=428797253]
+unique_name_in_owner = true
+title = "Agregar proyecto (carpeta con project.godot)"
+size = Vector2i(760, 480)
+ok_button_text = "Agregar"
+file_mode = 2
+access = 2
+
+[node name="ScanDialog" type="FileDialog" parent="." unique_id=186309915]
+unique_name_in_owner = true
+title = "Buscar proyectos en una carpeta"
+size = Vector2i(760, 480)
+ok_button_text = "Escanear"
+file_mode = 2
+access = 2
+
+[node name="RemoveDialog" type="ConfirmationDialog" parent="." unique_id=961851560]
+unique_name_in_owner = true
+title = "Quitar de la lista"
+size = Vector2i(420, 120)
+min_size = Vector2i(420, 120)
+ok_button_text = "Quitar"
+dialog_autowrap = true
+cancel_button_text = "Cancelar"
+
+[node name="MessageDialog" type="AcceptDialog" parent="." unique_id=1926549926]
+unique_name_in_owner = true
+title = "Proyectos"
+size = Vector2i(420, 100)
+min_size = Vector2i(420, 100)
+dialog_autowrap = true
+
+[node name="InstallDialog" parent="." unique_id=1165000065 instance=ExtResource("2_okxhh")]
+unique_name_in_owner = true
+
+[node name="ChangeVersionDialog" parent="." unique_id=110441867 instance=ExtResource("3_igeof")]
+unique_name_in_owner = true

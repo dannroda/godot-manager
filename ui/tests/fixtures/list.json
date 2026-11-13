@@ -1,0 +1,74 @@
+{
+  "default": "4.7.2-stable",
+  "versions": [
+    {
+      "name": "4.5.1-stable",
+      "path": "/opt/godot/versions/4.5.1-stable/godot",
+      "default": false,
+      "mono": false,
+      "debug_symbols": false,
+      "tag": "4.5.1-stable",
+      "custom": false,
+      "templates_dir": "",
+      "template_platforms": []
+    },
+    {
+      "name": "4.7.2-stable",
+      "path": "/opt/godot/versions/4.7.2-stable/godot",
+      "default": true,
+      "mono": false,
+      "debug_symbols": false,
+      "tag": "4.7.2-stable",
+      "custom": false,
+      "templates_dir": "/home/dannode/.local/share/godot/export_templates/4.7.2.stable",
+      "template_platforms": [
+        "linux",
+        "windows"
+      ]
+    },
+    {
+      "name": "4.7.2-stable-mono",
+      "path": "/opt/godot/versions/4.7.2-stable-mono/godot",
+      "default": false,
+      "mono": true,
+      "debug_symbols": false,
+      "tag": "4.7.2-stable",
+      "custom": false,
+      "templates_dir": "",
+      "template_platforms": []
+    },
+    {
+      "name": "4.8-beta1",
+      "path": "/opt/godot/versions/4.8-beta1/godot",
+      "default": false,
+      "mono": false,
+      "debug_symbols": true,
+      "tag": "4.8-beta1",
+      "custom": false,
+      "templates_dir": "",
+      "template_platforms": []
+    },
+    {
+      "name": "4.8-beta2",
+      "path": "/opt/godot/versions/4.8-beta2/godot",
+      "default": false,
+      "mono": false,
+      "debug_symbols": true,
+      "tag": "4.8-beta2",
+      "custom": false,
+      "templates_dir": "",
+      "template_platforms": []
+    },
+    {
+      "name": "4.8-beta3",
+      "path": "/opt/godot/versions/4.8-beta3/godot",
+      "default": false,
+      "mono": false,
+      "debug_symbols": true,
+      "tag": "4.8-beta3",
+      "custom": false,
+      "templates_dir": "",
+      "template_platforms": []
+    }
+  ]
+}

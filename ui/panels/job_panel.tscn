@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://cmsi88i3qiokf"]
+
+[ext_resource type="Script" uid="uid://bw0ycb1tx4unm" path="res://panels/job_panel.gd" id="1_ovxy5"]
+
+[node name="JobPanel" type="PanelContainer" unique_id=859153623]
+theme_type_variation = &"TopBar"
+script = ExtResource("1_ovxy5")
+
+[node name="HBox" type="HBoxContainer" parent="." unique_id=1422973805]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Info" type="VBoxContainer" parent="HBox" unique_id=1372541854]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Top" type="HBoxContainer" parent="HBox/Info" unique_id=523256128]
+layout_mode = 2
+
+[node name="JobTitle" type="Label" parent="HBox/Info/Top" unique_id=637784048]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+
+[node name="Queue" type="Label" parent="HBox/Info/Top" unique_id=865456743]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+
+[node name="Progress" type="ProgressBar" parent="HBox/Info" unique_id=728610225]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+show_percentage = false
+indeterminate = true
+editor_preview_indeterminate = false
+
+[node name="Status" type="Label" parent="HBox/Info" unique_id=731160175]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text_overrun_behavior = 3
+
+[node name="Warnings" type="Label" parent="HBox/Info" unique_id=931176664]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.7058824, 0.3019608, 1)
+autowrap_mode = 3
+
+[node name="Cancel" type="Button" parent="HBox" unique_id=1142088381]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+text = "Cancelar"
+
+[node name="CancelDialog" type="ConfirmationDialog" parent="." unique_id=1436802311]
+unique_name_in_owner = true
+title = "Cancelar"
+size = Vector2i(420, 120)
+min_size = Vector2i(420, 120)
+ok_button_text = "Cancelar la operación"
+dialog_autowrap = true
+cancel_button_text = "Seguir"
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="." unique_id=1335867212]
+unique_name_in_owner = true
+title = "Descarga grande"
+size = Vector2i(420, 120)
+min_size = Vector2i(420, 120)
+ok_button_text = "Descargar"
+dialog_autowrap = true
+cancel_button_text = "No"

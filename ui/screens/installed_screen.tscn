@@ -1,0 +1,123 @@
+[gd_scene format=3 uid="uid://c6t6g7cbwaf6m"]
+
+[ext_resource type="Script" uid="uid://by4ggcacw8kvh" path="res://screens/installed_screen.gd" id="1_7ed15"]
+[ext_resource type="PackedScene" uid="uid://c2gv1sy2ptwwa" path="res://dialogs/delete_version_dialog.tscn" id="2_1xri8"]
+[ext_resource type="PackedScene" uid="uid://nuqhd7dy8x" path="res://rows/list_state.tscn" id="2_uv1t5"]
+[ext_resource type="PackedScene" uid="uid://cs105eaytibkt" path="res://dialogs/add_build_dialog.tscn" id="3_yxyyf"]
+[ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="4_tp014"]
+
+[node name="InstalledScreen" type="PanelContainer" unique_id=1455426914]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_vertical = 3
+theme_type_variation = &"ScreenPanel"
+script = ExtResource("1_7ed15")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=994385591]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Toolbar" type="HBoxContainer" parent="Layout" unique_id=1550014353]
+layout_mode = 2
+
+[node name="Search" type="LineEdit" parent="Layout/Toolbar" unique_id=1708970737]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Filtrar versiones"
+clear_button_enabled = true
+
+[node name="Filter" type="OptionButton" parent="Layout/Toolbar" unique_id=712161011]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+
+[node name="Refresh" type="Button" parent="Layout/Toolbar" unique_id=853561191]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Refrescar"
+
+[node name="Body" type="HBoxContainer" parent="Layout" unique_id=363956396]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="ListPanel" type="PanelContainer" parent="Layout/Body" unique_id=600238482]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ListPanel"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/ListPanel" unique_id=650772044]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Layout/Body/ListPanel/Scroll" unique_id=571543932]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Placeholder" parent="Layout/Body/ListPanel" unique_id=838009154 instance=ExtResource("2_uv1t5")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Actions" type="VBoxContainer" parent="Layout/Body" unique_id=91225017]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+
+[node name="Launch" type="Button" parent="Layout/Body/Actions" unique_id=1867319693]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Abrir editor"
+
+[node name="SetDefault" type="Button" parent="Layout/Body/Actions" unique_id=433237644]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Usar por defecto"
+
+[node name="Templates" type="Button" parent="Layout/Body/Actions" unique_id=429655831]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Instala export templates oficiales de esta versión"
+disabled = true
+text = "Export templates…"
+
+[node name="Symbols" type="Button" parent="Layout/Body/Actions" unique_id=616397846]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Agrega los símbolos de debug del editor de esta versión"
+text = "Símbolos de debug"
+
+[node name="ShowFolder" type="Button" parent="Layout/Body/Actions" unique_id=138188554]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Mostrar carpeta"
+
+[node name="Delete" type="Button" parent="Layout/Body/Actions" unique_id=2092234764]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Borrar"
+
+[node name="Sep" type="HSeparator" parent="Layout/Body/Actions" unique_id=1888619525]
+layout_mode = 2
+
+[node name="AddBuild" type="Button" parent="Layout/Body/Actions" unique_id=2073527464]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Agregar build propio"
+
+[node name="DeleteDialog" parent="." unique_id=1588215784 instance=ExtResource("2_1xri8")]
+unique_name_in_owner = true
+
+[node name="AddBuildDialog" parent="." unique_id=983276835 instance=ExtResource("3_yxyyf")]
+unique_name_in_owner = true
+
+[node name="TemplatesDialog" parent="." unique_id=1165000065 instance=ExtResource("4_tp014")]
+unique_name_in_owner = true

@@ -1,0 +1,135 @@
+[gd_scene format=3 uid="uid://w4yb1vi2icjc"]
+
+[ext_resource type="Script" uid="uid://bc0mftulobfn1" path="res://dialogs/settings_dialog.gd" id="1_aoggo"]
+
+[node name="SettingsDialog" type="ConfirmationDialog" unique_id=1602077598]
+title = "Ajustes"
+size = Vector2i(560, 420)
+min_size = Vector2i(520, 380)
+ok_button_text = "Guardar"
+cancel_button_text = "Cancelar"
+script = ExtResource("1_aoggo")
+
+[node name="Content" type="VBoxContainer" parent="." unique_id=979944462]
+theme_override_constants/separation = 8
+
+[node name="BinaryTitle" type="Label" parent="Content" unique_id=1888504104]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "Binario de godot-manager"
+
+[node name="UsePath" type="CheckBox" parent="Content" unique_id=957404161]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Buscar en el PATH"
+
+[node name="FixedRow" type="HBoxContainer" parent="Content" unique_id=1963307164]
+layout_mode = 2
+
+[node name="UseFixed" type="CheckBox" parent="Content/FixedRow" unique_id=803607939]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ruta fija:"
+
+[node name="BinaryPath" type="LineEdit" parent="Content/FixedRow" unique_id=1384118609]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "/ruta/a/godot-manager"
+
+[node name="BrowseBinary" type="Button" parent="Content/FixedRow" unique_id=1097156744]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Elegir…"
+
+[node name="TestRow" type="HBoxContainer" parent="Content" unique_id=2143398095]
+layout_mode = 2
+
+[node name="TestBinary" type="Button" parent="Content/TestRow" unique_id=1829571079]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+text = "Probar"
+
+[node name="TestResult" type="Label" parent="Content/TestRow" unique_id=1210197442]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="Sep1" type="HSeparator" parent="Content" unique_id=2067890493]
+layout_mode = 2
+
+[node name="TokenTitle" type="Label" parent="Content" unique_id=374654540]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "GITHUB_TOKEN (opcional)"
+
+[node name="TokenRow" type="HBoxContainer" parent="Content" unique_id=1802912527]
+layout_mode = 2
+
+[node name="Token" type="LineEdit" parent="Content/TokenRow" unique_id=1795545572]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "ghp_…"
+secret = true
+
+[node name="ShowToken" type="Button" parent="Content/TokenRow" unique_id=1407598367]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+toggle_mode = true
+text = "Ver"
+
+[node name="TokenHelp" type="Label" parent="Content" unique_id=331827054]
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Sin token, GitHub permite 60 pedidos por hora (cada «Refrescar» de Descargar usa unos 4). Se guarda sin cifrar en los ajustes de la app."
+autowrap_mode = 3
+
+[node name="Sep2" type="HSeparator" parent="Content" unique_id=1411240561]
+layout_mode = 2
+
+[node name="DirTitle" type="Label" parent="Content" unique_id=56188796]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text = "GODOT_DIR (opcional)"
+
+[node name="DirRow" type="HBoxContainer" parent="Content" unique_id=775974707]
+layout_mode = 2
+
+[node name="GodotDir" type="LineEdit" parent="Content/DirRow" unique_id=558451676]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Vacío: la carpeta por defecto del CLI"
+
+[node name="BrowseDir" type="Button" parent="Content/DirRow" unique_id=1756719669]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Elegir…"
+
+[node name="DirHelp" type="Label" parent="Content" unique_id=1117556363]
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Carpeta donde godot-manager instala las versiones."
+autowrap_mode = 3
+
+[node name="BinaryFileDialog" type="FileDialog" parent="." unique_id=961948214]
+unique_name_in_owner = true
+title = "Elegir godot-manager"
+size = Vector2i(700, 450)
+file_mode = 0
+access = 2
+
+[node name="DirFileDialog" type="FileDialog" parent="." unique_id=489771739]
+unique_name_in_owner = true
+title = "Elegir GODOT_DIR"
+size = Vector2i(700, 450)
+file_mode = 2
+access = 2

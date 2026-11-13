@@ -1,0 +1,133 @@
+[gd_scene format=3 uid="uid://cbaty0ydwrxht"]
+
+[ext_resource type="Theme" uid="uid://cks5bsnfdnhe4" path="res://theme/editor_dark.tres" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://dwrbiwsexdmth" path="res://main.gd" id="2_h2yge"]
+[ext_resource type="PackedScene" uid="uid://de4e8p6q3k5ja" path="res://screens/projects_screen.tscn" id="3_lquwl"]
+[ext_resource type="PackedScene" uid="uid://c6t6g7cbwaf6m" path="res://screens/installed_screen.tscn" id="4_7mycd"]
+[ext_resource type="PackedScene" uid="uid://b7rbi3mrwkb61" path="res://screens/remote_screen.tscn" id="5_272bh"]
+[ext_resource type="PackedScene" uid="uid://cmsi88i3qiokf" path="res://panels/job_panel.tscn" id="6_5vw27"]
+[ext_resource type="PackedScene" uid="uid://w4yb1vi2icjc" path="res://dialogs/settings_dialog.tscn" id="6_7mycd"]
+[ext_resource type="PackedScene" uid="uid://dvcqk8rf7uvq4" path="res://panels/output_panel.tscn" id="6_272bh"]
+
+[node name="Main" type="Control" unique_id=409658129]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_0xm2m")
+script = ExtResource("2_h2yge")
+
+[node name="Background" type="Panel" parent="." unique_id=1960976968]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=270680965]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+[node name="TopBar" type="PanelContainer" parent="Layout" unique_id=1553521715]
+layout_mode = 2
+theme_type_variation = &"TopBar"
+
+[node name="Row" type="HBoxContainer" parent="Layout/TopBar" unique_id=1948295578]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Layout/TopBar/Row" unique_id=911855234]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"TitleLabel"
+text = "Godot Manager"
+
+[node name="Tabs" type="TabBar" parent="Layout/TopBar/Row" unique_id=1071522647]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+current_tab = 0
+tab_alignment = 1
+tab_count = 3
+tab_0/title = "Proyectos"
+tab_1/title = "Versiones"
+tab_2/title = "Descargar"
+
+[node name="Right" type="HBoxContainer" parent="Layout/TopBar/Row" unique_id=1441582647]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+
+[node name="Settings" type="Button" parent="Layout/TopBar/Row/Right" unique_id=267605361]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ajustes"
+
+[node name="Banner" type="PanelContainer" parent="Layout" unique_id=277518739]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"ErrorBanner"
+
+[node name="Row" type="HBoxContainer" parent="Layout/Banner" unique_id=748241121]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BannerText" type="Label" parent="Layout/Banner/Row" unique_id=893884829]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="BannerRetry" type="Button" parent="Layout/Banner/Row" unique_id=913743590]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+text = "Reintentar"
+
+[node name="BannerSettings" type="Button" parent="Layout/Banner/Row" unique_id=471777118]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+text = "Abrir Ajustes"
+
+[node name="Screens" type="MarginContainer" parent="Layout" unique_id=602843814]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ProjectsScreen" parent="Layout/Screens" unique_id=1011292242 instance=ExtResource("3_lquwl")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="InstalledScreen" parent="Layout/Screens" unique_id=1455426914 instance=ExtResource("4_7mycd")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RemoteScreen" parent="Layout/Screens" unique_id=1642537091 instance=ExtResource("5_272bh")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="JobPanel" parent="Layout" unique_id=859153623 instance=ExtResource("6_5vw27")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OutputPanel" parent="Layout" unique_id=1329205976 instance=ExtResource("6_272bh")]
+layout_mode = 2
+
+[node name="SettingsDialog" parent="." unique_id=1602077598 instance=ExtResource("6_7mycd")]
+
+[node name="ErrorDialog" type="AcceptDialog" parent="." unique_id=510327874]
+unique_name_in_owner = true
+title = "Error de godot-manager"
+size = Vector2i(420, 120)
+min_size = Vector2i(420, 120)
+ok_button_text = "Cerrar"
+
+[node name="ErrorText" type="Label" parent="ErrorDialog" unique_id=753723439]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 0)
+autowrap_mode = 3

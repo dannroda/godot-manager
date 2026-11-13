@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://dmhrhwtom72vc"]
+
+[node name="Tag" type="PanelContainer" unique_id=2029829058]
+size_flags_vertical = 4
+mouse_filter = 2
+theme_type_variation = &"Tag"
+
+[node name="Text" type="Label" parent="." unique_id=446600051]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12

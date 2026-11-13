@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://nuqhd7dy8x"]
+
+[ext_resource type="Script" uid="uid://btbn4g8mrbt81" path="res://rows/list_state.gd" id="1_071ht"]
+
+[node name="ListState" type="CenterContainer" unique_id=838009154]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_071ht")
+
+[node name="Box" type="VBoxContainer" parent="." unique_id=550401451]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Progress" type="ProgressBar" parent="Box" unique_id=1987116631]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(200, 6)
+layout_mode = 2
+size_flags_horizontal = 4
+show_percentage = false
+indeterminate = true
+editor_preview_indeterminate = false
+
+[node name="Message" type="Label" parent="Box" unique_id=1343630812]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Actions" type="HBoxContainer" parent="Box" unique_id=2031531366]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1

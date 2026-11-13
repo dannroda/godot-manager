@@ -1,0 +1,158 @@
+extends Control
+## Ventana principal: barra de pestañas arriba y la pantalla activa debajo.
+## Al arrancar carga los Ajustes, los pasa a GmCli y prueba el binario; si
+## falla, muestra la franja de error y las pantallas no llaman al CLI
+## (escuchan GmCli.availability_changed).
+
+const MIN_WINDOW_SIZE := Vector2i(820, 480)
+## Atajos que resuelve cada pantalla (acciones del Input Map).
+const SCREEN_SHORTCUTS: Array[StringName] = [&"gm_search", &"gm_refresh", &"gm_delete"]
+
+var settings: AppSettings
+
+@onready var _tabs: TabBar = %Tabs
+@onready var _screens: Array[Control] = [%ProjectsScreen, %InstalledScreen, %RemoteScreen]
+@onready var _banner: PanelContainer = %Banner
+@onready var _banner_text: Label = %BannerText
+@onready var _banner_retry: Button = %BannerRetry
+@onready var _settings_dialog: ConfirmationDialog = $SettingsDialog
+@onready var _output_panel: PanelContainer = $Layout/OutputPanel
+@onready var _error_dialog: AcceptDialog = %ErrorDialog
+@onready var _error_text: Label = %ErrorText
+
+
+func _ready() -> void:
+	_setup_window()
+	_tabs.tab_changed.connect(_show_screen)
+	_show_screen(_tabs.current_tab)
+
+	%Settings.pressed.connect(_open_settings)
+	%BannerSettings.pressed.connect(_open_settings)
+	_banner_retry.pressed.connect(_check_cli)
+	_settings_dialog.saved.connect(func(s: AppSettings) -> void:
+		settings = s
+		_check_cli())
+	GmCli.availability_changed.connect(_on_availability_changed)
+	GmCli.job_finished.connect(_on_job_finished)
+	for screen: Control in [%RemoteScreen, %InstalledScreen, %ProjectsScreen]:
+		screen.install_requested.connect(func(args: PackedStringArray, title: String) -> void:
+			%JobPanel.run(args, title))
+	%ProjectsScreen.error_reported.connect(show_cli_error)
+	%InstalledScreen.tab_requested.connect(func(tab: StringName) -> void:
+		var target: Control = {&"projects": %ProjectsScreen, &"installed": %InstalledScreen,
+			&"remote": %RemoteScreen}.get(tab)
+		if target != null:
+			_tabs.current_tab = _screens.find(target))
+	_error_dialog.add_button("Ver salida", true, "show_output")
+	_error_dialog.custom_action.connect(func(action: StringName) -> void:
+		if action == &"show_output":
+			_error_dialog.hide()
+			_output_panel.expand())
+
+	settings = AppSettings.load_from()
+	settings.apply_to(GmCli)
+	_check_cli()
+
+
+## Ctrl+Tab / Ctrl+Shift+Tab (también Ctrl+RePág/AvPág) cambian de pestaña.
+## Va en _input porque si no la navegación de foco se come el Tab.
+func _input(event: InputEvent) -> void:
+	if _dialog_open() or not event is InputEventKey:
+		return
+	var step := 0
+	if event.is_action_pressed(&"gm_next_tab", true, true):
+		step = 1
+	elif event.is_action_pressed(&"gm_prev_tab", true, true):
+		step = -1
+	if step != 0:
+		_tabs.current_tab = posmod(_tabs.current_tab + step, _tabs.tab_count)
+		get_viewport().set_input_as_handled()
+
+
+## Ctrl+F, F5 y Supr: los maneja la pestaña visible (`handle_shortcut`). En
+## _unhandled_input, así un campo de texto con foco se queda con Supr.
+func _unhandled_input(event: InputEvent) -> void:
+	if _dialog_open() or not event is InputEventKey:
+		return
+	for action: StringName in SCREEN_SHORTCUTS:
+		if event.is_action_pressed(action, false, true):
+			var screen := _screens[_tabs.current_tab]
+			if screen.has_method(&"handle_shortcut") and screen.handle_shortcut(action):
+				get_viewport().set_input_as_handled()
+			return
+
+
+## Hay un diálogo abierto: los atajos no tocan la pantalla de atrás.
+func _dialog_open() -> bool:
+	for w in get_window().get_embedded_subwindows():
+		if w.visible:
+			return true
+	return false
+
+
+func _show_screen(index: int) -> void:
+	for i in _screens.size():
+		_screens[i].visible = i == index
+	# Al cambiar de pestaña con el teclado, el foco va a su lista (o búsqueda).
+	var screen := _screens[index]
+	if screen.has_method(&"focus_list"):
+		screen.focus_list.call_deferred()
+
+
+func _open_settings() -> void:
+	_settings_dialog.open_with(settings)
+
+
+func _check_cli() -> void:
+	_banner_retry.disabled = true
+	await GmCli.check()
+	_banner_retry.disabled = false
+
+
+## Aviso con el mensaje del CLI tal cual. Los jobs del chequeo de versión no
+## avisan (ya los muestra la franja) y los que la pantalla maneja tampoco;
+## `needs_confirmation` no es un error: lo pregunta el panel de progreso.
+func _on_job_finished(job: CliJob) -> void:
+	if not job.notify_on_error or job.args == GmCommands.cli_version():
+		return
+	var err := GmParse.job_error(job)
+	if err == null or err.code == "needs_confirmation":
+		return
+	show_cli_error(err.message)
+
+
+func show_cli_error(message: String) -> void:
+	_error_text.text = message
+	_error_dialog.popup_centered()
+
+
+func _on_availability_changed(ok: bool, message: String) -> void:
+	_banner.visible = not ok
+	_banner_text.text = message
+
+
+## Escala la interfaz en pantallas HiDPI, como hace el Project Manager con su
+## "auto" de escala, y fija el tamaño mínimo de la ventana.
+func _setup_window() -> void:
+	var window := get_window()
+	var factor := ui_scale_for(DisplayServer.screen_get_scale(), DisplayServer.screen_get_dpi())
+	window.content_scale_factor = factor
+	window.min_size = Vector2i(Vector2(MIN_WINDOW_SIZE) * factor)
+	if factor > 1.0 and not window.mode in [Window.MODE_MAXIMIZED, Window.MODE_FULLSCREEN]:
+		var screen := DisplayServer.window_get_current_screen()
+		var usable := DisplayServer.screen_get_usable_rect(screen)
+		var wanted := Vector2i(Vector2(window.size) * factor).min(usable.size)
+		window.size = wanted
+		window.position = usable.position + Vector2i(Vector2(usable.size - wanted) * 0.5)
+
+
+## screen_get_scale() solo da algo distinto de 1 en macOS y Wayland; en X11 y
+## Windows se mira el DPI, con los mismos cortes que el editor.
+static func ui_scale_for(screen_scale: float, dpi: int) -> float:
+	if screen_scale > 1.0:
+		return screen_scale
+	if dpi >= 192:
+		return 2.0
+	if dpi >= 144:
+		return 1.5
+	return 1.0

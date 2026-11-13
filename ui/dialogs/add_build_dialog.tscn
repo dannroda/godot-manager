@@ -1,0 +1,67 @@
+[gd_scene format=3 uid="uid://cs105eaytibkt"]
+
+[ext_resource type="Script" uid="uid://45qn7j41848q" path="res://dialogs/add_build_dialog.gd" id="1_v02vp"]
+
+[node name="AddBuildDialog" type="ConfirmationDialog" unique_id=983276835]
+title = "Agregar build propio"
+size = Vector2i(480, 200)
+min_size = Vector2i(480, 200)
+ok_button_text = "Agregar"
+cancel_button_text = "Cancelar"
+script = ExtResource("1_v02vp")
+
+[node name="Content" type="VBoxContainer" parent="." unique_id=1738221676]
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="Content" unique_id=447577050]
+layout_mode = 2
+text = "Nombre"
+
+[node name="BuildName" type="LineEdit" parent="Content" unique_id=2116661237]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+placeholder_text = "por ejemplo 4.5-mio"
+
+[node name="PathLabel" type="Label" parent="Content" unique_id=473342599]
+layout_mode = 2
+text = "Ejecutable de Godot"
+
+[node name="PathRow" type="HBoxContainer" parent="Content" unique_id=1114631842]
+layout_mode = 2
+
+[node name="BuildPath" type="LineEdit" parent="Content/PathRow" unique_id=435385914]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Ruta al binario"
+
+[node name="Browse" type="Button" parent="Content/PathRow" unique_id=1659309481]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Examinar…"
+
+[node name="Symlink" type="CheckBox" parent="Content" unique_id=1266609525]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Crea un enlace al binario en vez de copiarlo (--symlink): si recompilás, la versión se actualiza sola."
+text = "Enlazar en lugar de copiar"
+
+[node name="Hint" type="Label" parent="Content" unique_id=737334483]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+
+[node name="Replace" type="CheckBox" parent="Content" unique_id=1174638166]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Borra la versión con ese nombre y agrega esta en su lugar (--force). Si era la versión por defecto, lo sigue siendo."
+text = "Reemplazar la existente"
+
+[node name="BuildFileDialog" type="FileDialog" parent="." unique_id=1536832484]
+unique_name_in_owner = true
+title = "Elegir el ejecutable de Godot"
+size = Vector2i(700, 450)
+file_mode = 0
+access = 2
