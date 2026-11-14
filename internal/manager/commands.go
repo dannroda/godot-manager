@@ -42,7 +42,7 @@ func Main(args []string) int {
 		cmd, args = args[0], args[1:]
 	}
 	// --json tambien vale despues del comando en los que solo leen
-	if cmd == "list" || cmd == "list-remote" || cmd == "which" {
+	if cmd == "list" || cmd == "list-remote" || cmd == "which" || cmd == "plugins" {
 		args, asJSON = jsonFlag(args, asJSON)
 	}
 	if asJSON {
@@ -70,7 +70,7 @@ func Main(args []string) int {
 func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 	// which y set-local tambien aceptan --dir despues del comando; run y
 	// launch no, porque sus argumentos son de Godot
-	if cmd == "which" || cmd == "set-local" {
+	if cmd == "which" || cmd == "set-local" || cmd == "plugins" {
 		var err error
 		if args, dir, err = stripDirFlag(args, dir); err != nil {
 			return nil, errf(codeInvalidArgs, "%v", err)
@@ -87,7 +87,7 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 			return nil, err
 		}
 	}
-	if cmd == "remove" || cmd == "install" || cmd == "templates" {
+	if cmd == "remove" || cmd == "install" || cmd == "templates" || cmd == "plugins" {
 		args = yesFlag(args)
 	}
 	if err := initPaths(); err != nil {
@@ -128,6 +128,8 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 		return cmdRun(args)
 	case "launch":
 		return cmdLaunch(args)
+	case "plugins":
+		return cmdPlugins(args)
 	case "version", "--version":
 		fmt.Println(Version)
 		return nil, nil
@@ -834,18 +836,24 @@ Comandos:
   run [--detach] [args...]          Corre la version que corresponde al directorio actual (lo que hace 'godot')
   launch [--detach] <ver> [args...] Corre una version puntual sin cambiar la default
                                     (--detach: la lanza aparte, sin consola, y vuelve enseguida)
+  plugins [list]                    Lista los plugins del proyecto actual (addons/*/plugin.cfg),
+                                    cuales estan activos y si les falta algo
+  plugins enable|disable <plugin>   Activa o desactiva un plugin en project.godot, sin abrir el
+                                    editor (sirve si un plugin roto no lo deja abrir)
+  plugins remove <plugin> [--yes]   Lo desactiva y borra su carpeta de addons/
   version                           Muestra la version de godot-manager
 
 Opciones:
   --json                            Salida en JSON en stdout (ver abajo)
   --dir <carpeta>, -C <carpeta>     Usa esa carpeta como directorio actual (which, set-local,
-                                    run, launch); en which y set-local tambien va despues
+                                    run, launch, plugins); en which, set-local y plugins va despues
                                     del comando
-  --yes, -y                         Confirma sin preguntar (remove, install, templates). Sin
+  --yes, -y                         Confirma sin preguntar (remove, install, templates, plugins
+                                    remove). Sin
                                     terminal y sin --yes, lo que pide confirmacion falla
 
 Salida con --json:
-  list, list-remote, which          El JSON del listado o de la version que corresponde
+  list, list-remote, which, plugins El JSON del listado o de la version que corresponde
   install, templates, symbols       Un objeto por linea: {"event":"step","message"},
                                     {"event":"download","file","done","total"},
                                     {"event":"warn","message"}; la ultima linea es
@@ -853,7 +861,8 @@ Salida con --json:
   los demas                         {"ok":true,...} o {"error":{"code","message"}}
   Codigos de error: not_installed, no_default, no_release, no_build_for_platform,
   not_available, rate_limited, network, checksum, invalid_args, unknown_command,
-  needs_confirmation, bad_token, already_installed, launch_failed, internal
+  needs_confirmation, bad_token, already_installed, launch_failed, not_a_project,
+  no_plugin, internal
 
 Variables:
   GODOT_DIR                         Raiz de las versiones (ahora: %s)

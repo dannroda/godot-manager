@@ -99,6 +99,9 @@ godot-manager symbols 4.8-beta3         # símbolos de debug del editor
 godot-manager add mi-build ~/godot/bin/godot.linuxbsd.editor.x86_64
 godot-manager launch --detach 4.5.1-stable
 godot-manager remove 4.5.1-stable
+
+godot-manager plugins                   # plugins del proyecto actual
+godot-manager plugins disable roto      # desactiva uno sin abrir el editor
 ```
 
 `godot-manager help` lista todos los comandos y opciones.
@@ -125,7 +128,7 @@ La interfaz es un proyecto de Godot 4.8 en [`ui/`](ui/). Usa el `godot-manager` 
 
 Tiene tres pestañas:
 
-- **Proyectos**: tu lista de proyectos, la versión que usa cada uno y botones para abrirlo, correrlo, cambiarle la versión o instalar la que falta. Puede importar la lista del Project Manager de Godot.
+- **Proyectos**: tu lista de proyectos, la versión que usa cada uno y botones para abrirlo, correrlo, cambiarle la versión o instalar la que falta. En sus detalles están los plugins del proyecto, para desactivar uno que no deja abrir el editor. Puede importar la lista del Project Manager de Godot.
 - **Versiones**: las versiones instaladas, con botones para elegir la default, agregar export templates y símbolos de debug, o sumar un build propio.
 - **Descargar**: las releases oficiales, con filtros, tamaños y un diálogo de instalación.
 
