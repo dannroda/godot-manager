@@ -33,6 +33,18 @@ La interfaz está en español y en inglés: usa español si el sistema está en 
 
 ## Instalación
 
+### Descarga
+
+Cada [release](https://github.com/dannroda/godot-manager/releases/latest) trae un archivo por plataforma:
+
+| Archivo | Contenido |
+|---|---|
+| `godot-manager-linux-amd64.tar.gz` | `godot-manager`, `godot` y la interfaz (`godot-manager-ui.x86_64`) |
+| `godot-manager-windows-amd64.zip` | `godot-manager.exe`, `godot.exe` y la interfaz (`godot-manager-ui.exe`) |
+| `godot-manager-linux-arm64.tar.gz`, `godot-manager-windows-arm64.zip` | solo el CLI |
+
+`SHA256SUMS` tiene el checksum de cada archivo. Descomprimilo y poné la carpeta en el `PATH`. La interfaz usa el `godot-manager` que está al lado.
+
 ### Arch Linux
 
 ```sh
@@ -115,6 +127,12 @@ Tiene tres pestañas:
 ```sh
 go test ./...                    # tests del CLI
 godot --headless --path ui -s res://tests/run_tests.gd   # tests de la interfaz
+```
+
+Cada push y pull request corre los dos juegos de tests en GitHub Actions (el CLI en Linux y en Windows). Un tag `vX.Y.Z` arma todos los archivos y crea una release en borrador; revisá las notas y publicala desde GitHub.
+
+```sh
+git tag v2.2.0 && git push origin v2.2.0
 ```
 
 Las traducciones de la interfaz están en `ui/i18n/en.po`; los textos fuente están en español. El tablero de tareas de la interfaz está en `ui/compass` (formato Scope Compass).

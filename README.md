@@ -33,6 +33,18 @@ The GUI is in English and Spanish. It uses Spanish when the system language is S
 
 ## Installation
 
+### Download
+
+Each [release](https://github.com/dannroda/godot-manager/releases/latest) has an archive per platform:
+
+| Archive | Contents |
+|---|---|
+| `godot-manager-linux-amd64.tar.gz` | `godot-manager`, `godot` and the GUI (`godot-manager-ui.x86_64`) |
+| `godot-manager-windows-amd64.zip` | `godot-manager.exe`, `godot.exe` and the GUI (`godot-manager-ui.exe`) |
+| `godot-manager-linux-arm64.tar.gz`, `godot-manager-windows-arm64.zip` | the CLI only |
+
+`SHA256SUMS` has the checksum of each archive. Extract it and put the folder on your `PATH`. The GUI uses the `godot-manager` that sits next to it.
+
 ### Arch Linux
 
 ```sh
@@ -115,6 +127,12 @@ It has three tabs:
 ```sh
 go test ./...                    # CLI tests
 godot --headless --path ui -s res://tests/run_tests.gd   # GUI tests
+```
+
+Pushes and pull requests run both test suites on GitHub Actions (the CLI on Linux and Windows). Pushing a `vX.Y.Z` tag builds every archive and creates a draft release; review the notes and publish it from GitHub.
+
+```sh
+git tag v2.2.0 && git push origin v2.2.0
 ```
 
 The GUI's translations are in `ui/i18n/en.po`; the source strings are in Spanish. The GUI's task board is in `ui/compass` (Scope Compass format).
