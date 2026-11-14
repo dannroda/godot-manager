@@ -55,15 +55,22 @@ makepkg -si
 
 This installs `/usr/bin/godot-manager` and `/usr/bin/godot`.
 
-### Other systems (Linux, Windows)
+### Build from source
 
-You need Go 1.24 or later:
+The CLI needs Go 1.24 or later:
 
 ```sh
-make dist   # dist/<os>-<arch>/godot-manager[.exe] and godot[.exe]
+make build  # bin/godot-manager and bin/godot for this system
+make dist   # dist/<os>-<arch>/ for linux and windows, amd64 and arm64
 ```
 
-The binaries are static and have no dependencies. `make dist` builds them for linux and windows on amd64 and arm64. Put `godot-manager` and `godot` in a folder that is on your `PATH`.
+The binaries are static and have no dependencies. Put `godot-manager` and `godot` in a folder that is on your `PATH`.
+
+The GUI needs Godot 4.8 and its export templates. Export it with the Linux or Windows preset in `ui/export_presets.cfg`:
+
+```sh
+godot --headless --path ui --export-release Linux "$PWD/godot-manager-ui.x86_64"
+```
 
 ### Where things go
 
@@ -114,7 +121,7 @@ Without a terminal, any command that would ask for confirmation fails with `need
 
 ## The GUI
 
-The GUI is a Godot 4.8 project in [`ui/`](ui/). It looks for `godot-manager` on the `PATH`, or uses the path you set in its Settings. To run it, open `ui/` in Godot 4.8 or later, or export it with the Linux or Windows preset in `ui/export_presets.cfg`.
+The GUI is a Godot 4.8 project in [`ui/`](ui/). It uses the `godot-manager` in its own folder, then the one on the `PATH`, or the path you set in its Settings. It comes in the release archives; to build it yourself, see [Build from source](#build-from-source).
 
 It has three tabs:
 

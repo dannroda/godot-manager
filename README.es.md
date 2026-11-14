@@ -55,15 +55,22 @@ makepkg -si
 
 Instala `/usr/bin/godot-manager` y `/usr/bin/godot`.
 
-### Otros sistemas (Linux, Windows)
+### Compilar desde el código
 
-Hace falta Go 1.24 o posterior:
+El CLI necesita Go 1.24 o posterior:
 
 ```sh
-make dist   # dist/<os>-<arch>/godot-manager[.exe] y godot[.exe]
+make build  # bin/godot-manager y bin/godot para este sistema
+make dist   # dist/<os>-<arch>/ para linux y windows, en amd64 y arm64
 ```
 
-Los binarios son estáticos y no tienen dependencias. `make dist` los compila para linux y windows en amd64 y arm64. Poné `godot-manager` y `godot` en una carpeta que esté en el `PATH`.
+Los binarios son estáticos y no tienen dependencias. Poné `godot-manager` y `godot` en una carpeta que esté en el `PATH`.
+
+La interfaz necesita Godot 4.8 y sus export templates. Exportala con el preset de Linux o de Windows de `ui/export_presets.cfg`:
+
+```sh
+godot --headless --path ui --export-release Linux "$PWD/godot-manager-ui.x86_64"
+```
 
 ### Dónde guarda las cosas
 
@@ -114,7 +121,7 @@ Sin terminal, cualquier comando que pediría confirmación falla con `needs_conf
 
 ## La interfaz
 
-La interfaz es un proyecto de Godot 4.8 en [`ui/`](ui/). Busca `godot-manager` en el `PATH`, o usa la ruta que le pongas en Ajustes. Para usarla, abrí `ui/` con Godot 4.8 o posterior, o exportala con el preset de Linux o Windows de `ui/export_presets.cfg`.
+La interfaz es un proyecto de Godot 4.8 en [`ui/`](ui/). Usa el `godot-manager` de su misma carpeta, si no el del `PATH`, o la ruta que le pongas en Ajustes. Viene en los archivos de cada release; para compilarla vos, mirá [Compilar desde el código](#compilar-desde-el-código).
 
 Tiene tres pestañas:
 
