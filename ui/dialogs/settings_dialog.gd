@@ -14,6 +14,9 @@ signal saved(settings: AppSettings)
 @onready var _token: LineEdit = %Token
 @onready var _show_token: Button = %ShowToken
 @onready var _godot_dir: LineEdit = %GodotDir
+@onready var _check_updates: CheckBox = %CheckUpdates
+## Los ajustes con que se abrió (para lo que el formulario no muestra).
+var _opened_with: AppSettings
 @onready var _binary_dialog: FileDialog = %BinaryFileDialog
 @onready var _dir_dialog: FileDialog = %DirFileDialog
 
@@ -54,6 +57,8 @@ func open_with(settings: AppSettings) -> void:
 	_token.text = settings.github_token
 	_show_token.button_pressed = false
 	_godot_dir.text = settings.godot_dir
+	_check_updates.button_pressed = settings.check_updates
+	_opened_with = settings
 	_clear_test()
 	_update_enabled()
 	popup_centered()
@@ -66,6 +71,9 @@ func current_settings() -> AppSettings:
 	s.binary_path = _binary_path.text.strip_edges()
 	s.github_token = _token.text.strip_edges()
 	s.godot_dir = _godot_dir.text.strip_edges()
+	s.check_updates = _check_updates.button_pressed
+	if _opened_with != null:
+		s.last_update_check = _opened_with.last_update_check
 	return s
 
 

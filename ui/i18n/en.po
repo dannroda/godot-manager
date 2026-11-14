@@ -962,3 +962,36 @@ msgstr "There is no installed default version."
 
 msgid "El proyecto pasa a abrirse con la default"
 msgstr "The project will open with the default"
+
+msgid "Como mucho una vez por día, pregunta a GitHub si hay una release nueva de godot-manager"
+msgstr "At most once a day, asks GitHub whether there is a new godot-manager release"
+
+msgid "Buscar actualizaciones de godot-manager al abrir"
+msgstr "Check for godot-manager updates on startup"
+
+msgid "Actualizar"
+msgstr "Update"
+
+msgid "Abre la página de la release en el navegador"
+msgstr "Opens the release page in the browser"
+
+msgid "Novedades"
+msgstr "What's new"
+
+msgid "Reiniciar"
+msgstr "Restart"
+
+msgid "Ocultar hasta la próxima vez"
+msgstr "Hide until next time"
+
+msgid "Actualizar godot-manager a %s"
+msgstr "Update godot-manager to %s"
+
+msgid "Hay una versión nueva de godot-manager: %s (tenés %s)."
+msgstr "A new version of godot-manager is available: %s (you have %s)."
+
+msgid "Hay una versión nueva de godot-manager: %s (tenés %s). No se puede actualizar sola: %s."
+msgstr "A new version of godot-manager is available: %s (you have %s). It can't update itself: %s."
+
+msgid "godot-manager se actualizó a %s. Reiniciá la interfaz para usar la versión nueva."
+msgstr "godot-manager was updated to %s. Restart the app to use the new version."

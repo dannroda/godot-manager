@@ -49,6 +49,7 @@ func _ready() -> void:
 		screen.install_requested.connect(func(args: PackedStringArray, title: String) -> void:
 			%JobPanel.run(args, title))
 	%ProjectsScreen.error_reported.connect(show_cli_error)
+	%UpdateBanner.update_requested.connect(_run_update)
 	%InstalledScreen.tab_requested.connect(func(tab: StringName) -> void:
 		var target: Control = {&"projects": %ProjectsScreen, &"installed": %InstalledScreen,
 			&"remote": %RemoteScreen}.get(tab)
@@ -140,6 +141,21 @@ func show_cli_error(message: String) -> void:
 func _on_availability_changed(ok: bool, message: String) -> void:
 	_banner.visible = not ok
 	_banner_text.text = message
+	if ok and not %UpdateBanner.updated:
+		%UpdateBanner.check_if_due(settings)
+
+
+## Actualiza godot-manager en el panel de progreso; al terminar, el CLI ya es
+## otro: se vuelve a probar (versión nueva) y la franja ofrece reiniciar.
+func _run_update(args: PackedStringArray, title: String) -> void:
+	var job: CliJob = %JobPanel.run(args, title)
+	if job == null:
+		return
+	if not job.is_done():
+		await job.finished
+	%UpdateBanner.on_update_finished(job)
+	if job.succeeded():
+		_check_cli()
 
 
 ## Escala la interfaz en pantallas HiDPI, como hace el Project Manager con su

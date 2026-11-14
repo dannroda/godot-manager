@@ -15,6 +15,11 @@ var binary_path := ""
 var github_token := ""
 ## Vacío = el default del CLI.
 var godot_dir := ""
+## Al abrir, buscar una versión nueva de godot-manager (como mucho una vez
+## por día).
+var check_updates := true
+## Cuándo se buscó por última vez (Unix); 0 = nunca.
+var last_update_check := 0
 
 
 ## Lo que GmCli tiene que ejecutar: el nombre (se busca en PATH) o la ruta.
@@ -41,6 +46,8 @@ func save(path := PATH) -> Error:
 	cfg.set_value("cli", "binary_path", binary_path)
 	cfg.set_value("cli", "github_token", github_token)
 	cfg.set_value("cli", "godot_dir", godot_dir)
+	cfg.set_value("updates", "check", check_updates)
+	cfg.set_value("updates", "last_check", last_update_check)
 	return cfg.save(path)
 
 
@@ -54,6 +61,8 @@ static func load_from(path := PATH) -> AppSettings:
 	s.binary_path = str(cfg.get_value("cli", "binary_path", ""))
 	s.github_token = str(cfg.get_value("cli", "github_token", ""))
 	s.godot_dir = str(cfg.get_value("cli", "godot_dir", ""))
+	s.check_updates = bool(cfg.get_value("updates", "check", true))
+	s.last_update_check = int(cfg.get_value("updates", "last_check", 0))
 	return s
 
 
@@ -63,4 +72,6 @@ func duplicate_settings() -> AppSettings:
 	s.binary_path = binary_path
 	s.github_token = github_token
 	s.godot_dir = godot_dir
+	s.check_updates = check_updates
+	s.last_update_check = last_update_check
 	return s

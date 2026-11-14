@@ -1,0 +1,90 @@
+extends PanelContainer
+## Franja de "hay una versión nueva de godot-manager". `check_if_due` pregunta
+## al CLI (`self-update --check`) como mucho una vez por día; si hay una
+## nueva, se muestra con Actualizar (si se puede), Novedades y cerrar.
+## Actualizar emite `update_requested` (main lo corre en el panel de
+## progreso) y, al terminar bien, ofrece reiniciar la interfaz.
+
+signal update_requested(args: PackedStringArray, title: String)
+
+const CHECK_EVERY := 24 * 60 * 60
+
+var info: UpdateInfo
+## Ya se actualizó: lo que queda es reiniciar.
+var updated := false
+
+@onready var _text: Label = %UpdateText
+@onready var _update: Button = %UpdateNow
+@onready var _notes: Button = %UpdateNotes
+@onready var _restart: Button = %UpdateRestart
+
+
+func _ready() -> void:
+	visible = false
+	_update.pressed.connect(func() -> void:
+		update_requested.emit(GmCommands.self_update(), tr("Actualizar godot-manager a %s") % info.latest))
+	_notes.pressed.connect(func() -> void:
+		if info != null and not info.url.is_empty():
+			OS.shell_open(info.url))
+	_restart.pressed.connect(restart)
+	%UpdateClose.pressed.connect(func() -> void: visible = false)
+
+
+## Pregunta si toca (activado en Ajustes y pasó un día desde la última vez).
+## Guarda la hora en `settings` si preguntó. Devuelve si preguntó.
+func check_if_due(settings: AppSettings, now := int(Time.get_unix_time_from_system())) -> bool:
+	if not settings.check_updates or not GmCli.available:
+		return false
+	if settings.last_update_check > 0 and now - settings.last_update_check < CHECK_EVERY:
+		return false
+	settings.last_update_check = now
+	settings.save()
+	check()
+	return true
+
+
+## Pregunta ya. Los errores (sin red, un CLI viejo sin self-update) no se
+## muestran: no es algo que el usuario haya pedido.
+func check() -> void:
+	var job := GmCli.read_background(GmCommands.self_update_check())
+	await job.finished
+	var r := GmParse.parse_update_check(job.stdout) if job.succeeded() else null
+	if r != null and r.ok:
+		show_info(r.value)
+
+
+func show_info(u: UpdateInfo) -> void:
+	info = u
+	updated = false
+	if not u.update_available:
+		visible = false
+		return
+	if u.can_update:
+		_text.text = tr("Hay una versión nueva de godot-manager: %s (tenés %s).") % [u.latest, u.current]
+	else:
+		_text.text = tr("Hay una versión nueva de godot-manager: %s (tenés %s). No se puede actualizar sola: %s.") % [
+			u.latest, u.current, u.reason]
+	_update.visible = u.can_update
+	_notes.visible = not u.url.is_empty()
+	_restart.visible = false
+	visible = true
+
+
+## Lo llama main cuando terminó el job de Actualizar.
+func on_update_finished(job: CliJob) -> void:
+	if not job.succeeded():
+		return  # El error ya lo muestra el panel de progreso.
+	updated = true
+	_update.visible = false
+	_notes.visible = false
+	var editor := OS.has_feature("editor")
+	_restart.visible = not editor
+	_text.text = tr("godot-manager se actualizó a %s. Reiniciá la interfaz para usar la versión nueva.") % info.latest
+	visible = true
+
+
+## Abre la interfaz otra vez (el ejecutable ya es el nuevo) y cierra esta.
+func restart() -> void:
+	var args := OS.get_cmdline_args()
+	OS.create_process(OS.get_executable_path(), args)
+	get_tree().quit()

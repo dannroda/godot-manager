@@ -120,6 +120,16 @@ theme_type_variation = &"DimLabel"
 text = "Carpeta donde godot-manager instala las versiones."
 autowrap_mode = 3
 
+[node name="Sep3" type="HSeparator" parent="Content"]
+layout_mode = 2
+
+[node name="CheckUpdates" type="CheckBox" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Como mucho una vez por día, pregunta a GitHub si hay una release nueva de godot-manager"
+text = "Buscar actualizaciones de godot-manager al abrir"
+button_pressed = true
+
 [node name="BinaryFileDialog" type="FileDialog" parent="." unique_id=961948214]
 unique_name_in_owner = true
 title = "Elegir godot-manager"

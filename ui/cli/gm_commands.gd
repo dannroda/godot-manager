@@ -132,6 +132,16 @@ static func plugin_remove(dir: String, id: String) -> PackedStringArray:
 	return _with_dir(dir, ["plugins", "remove", id, "--yes"])
 
 
+## Si hay una versión nueva de godot-manager (2.3+); un objeto, sin eventos.
+static func self_update_check() -> PackedStringArray:
+	return ["--json", "self-update", "--check"]
+
+
+## Actualiza godot-manager (eventos, como install). La UI confirma antes.
+static func self_update() -> PackedStringArray:
+	return ["--json", "self-update", "--yes"]
+
+
 ## `godot-manager version` (sin --json: imprime solo el número).
 static func cli_version() -> PackedStringArray:
 	return ["version"]

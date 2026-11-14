@@ -132,6 +132,28 @@ static func parse_plugins(text: String) -> GmResult:
 	return GmResult.success(out)
 
 
+## `self-update --check` → UpdateInfo.
+static func parse_update_check(text: String) -> GmResult:
+	var root := _parse_json(text)
+	if not root.ok:
+		return root
+	if not root.value is Dictionary:
+		return _bad("se esperaba un objeto", text)
+	var d: Dictionary = root.value
+	var problems: Array[String] = []
+	var u := UpdateInfo.new()
+	u.current = _str(d, "current", problems, null)
+	u.latest = _str(d, "latest", problems, null)
+	u.update_available = _bool(d, "update_available", problems, false)
+	u.can_update = _bool(d, "can_update", problems, false)
+	u.reason = _str(d, "reason", problems, "")
+	u.url = _str(d, "url", problems, "")
+	u.dir = _str(d, "dir", problems, "")
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(u)
+
+
 ## Respuesta {"ok":true,…} de set, set-local, add, remove, launch/run --detach
 ## → el Dictionary entero.
 static func parse_ok(text: String) -> GmResult:

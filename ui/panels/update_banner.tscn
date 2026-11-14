@@ -1,0 +1,48 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://panels/update_banner.gd" id="1_ub"]
+
+[node name="UpdateBanner" type="PanelContainer"]
+visible = false
+theme_type_variation = &"ListPanel"
+script = ExtResource("1_ub")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="UpdateText" type="Label" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="UpdateNow" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"AccentButton"
+text = "Actualizar"
+
+[node name="UpdateNotes" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Abre la página de la release en el navegador"
+text = "Novedades"
+
+[node name="UpdateRestart" type="Button" parent="Row"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"AccentButton"
+text = "Reiniciar"
+
+[node name="UpdateClose" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Ocultar hasta la próxima vez"
+text = "✕"
+flat = true
