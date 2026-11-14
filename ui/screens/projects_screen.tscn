@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="2_okxhh"]
 [ext_resource type="PackedScene" uid="uid://1b1bcuu1v8hw" path="res://dialogs/change_version_dialog.tscn" id="3_igeof"]
 [ext_resource type="PackedScene" path="res://dialogs/project_details_dialog.tscn" id="4_pdets"]
+[ext_resource type="PackedScene" path="res://dialogs/missing_version_dialog.tscn" id="5_mvd"]
 
 [node name="ProjectsScreen" type="PanelContainer" unique_id=1011292242]
 anchors_preset = 15
@@ -179,5 +180,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="ProjectDetailsDialog" parent="." instance=ExtResource("4_pdets")]
+unique_name_in_owner = true
+visible = false
+
+[node name="MissingVersionDialog" parent="." instance=ExtResource("5_mvd")]
 unique_name_in_owner = true
 visible = false

@@ -146,6 +146,7 @@ func _rebuild() -> void:
 		row.setup(rel, _marks.get(rel.tag))
 		row.selected.connect(_on_row_selected)
 		row.activated.connect(_on_row_activated)
+		row.context_requested.connect(_on_row_context)
 		_rows.add_child(row)
 	_apply_filter()
 
@@ -185,6 +186,12 @@ func _clear_filters() -> void:
 	_search.text = ""
 	_channel.select(_channel.get_item_index(RemoteFilter.Channel.ALL))
 	_apply_filter()
+
+
+## Clic derecho en una fila: la selecciona y muestra sus acciones.
+func _on_row_context(row: Control, at: Vector2) -> PopupMenu:
+	_on_row_selected(row)
+	return RowMenu.popup(self, [%Install, %ReleaseNotes], at)
 
 
 func _on_row_selected(row: Control) -> void:

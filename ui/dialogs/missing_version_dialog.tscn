@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://dialogs/missing_version_dialog.gd" id="1_mvd"]
+
+[node name="MissingVersionDialog" type="AcceptDialog"]
+title = "Versión no instalada"
+min_size = Vector2i(480, 120)
+ok_button_text = "Instalar"
+script = ExtResource("1_mvd")
+
+[node name="Message" type="Label" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(440, 0)
+autowrap_mode = 3

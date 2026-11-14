@@ -37,6 +37,14 @@ func missing_version() -> String:
 	return str(error.extra.get("version", ""))
 
 
+## De dónde sale la versión que falta: la ruta del .godot-version, o
+## "default" si es la default global ("" si no se sabe).
+func missing_source() -> String:
+	if state != State.NOT_INSTALLED or error == null:
+		return ""
+	return str(error.extra.get("source", ""))
+
+
 func is_error() -> bool:
 	return state == State.NOT_INSTALLED or state == State.ERROR
 

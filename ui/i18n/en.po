@@ -941,3 +941,24 @@ msgstr "The project's folder, version and plugins; disable a plugin there if it 
 
 msgid "Detalles…"
 msgstr "Details…"
+
+msgid "Elegir otra versión…"
+msgstr "Choose another version…"
+
+msgid "«%s» usa la versión default, %s, que no está instalada."
+msgstr "“%s” uses the default version, %s, which is not installed."
+
+msgid "«%s» está fijado a %s, que no está instalada."
+msgstr "“%s” is pinned to %s, which is not installed."
+
+msgid "No hay otras versiones instaladas."
+msgstr "There are no other installed versions."
+
+msgid "Fija el proyecto a una de las versiones instaladas"
+msgstr "Pins the project to one of the installed versions"
+
+msgid "No hay una versión default instalada."
+msgstr "There is no installed default version."
+
+msgid "El proyecto pasa a abrirse con la default"
+msgstr "The project will open with the default"

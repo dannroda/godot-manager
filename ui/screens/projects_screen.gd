@@ -11,6 +11,7 @@ signal install_requested(args: PackedStringArray, title: String)
 signal error_reported(message: String)
 
 const ROW_SCENE := preload("res://rows/project_row.tscn")
+const MissingVersionDialog := preload("res://dialogs/missing_version_dialog.gd")
 ## Cuántos `which` corren a la vez.
 const WHICH_PARALLEL := 4
 
@@ -27,6 +28,13 @@ var _scan_thread: Thread
 ## Rutas que esperan su `which`, y cuántos corren ahora.
 var _which_pending: PackedStringArray = []
 var _which_running := 0
+## Abrir (o correr) un proyecto después de cambiarle la versión, si el cambio
+## vino de un Abrir/Correr con la versión sin instalar: {path, edit}.
+var _open_after := {}
+## Para el diálogo de versión no instalada: el proyecto, las instaladas y la default.
+var _missing_for: ProjectEntry
+var _missing_installed: Array[InstalledVersion] = []
+var _missing_default := ""
 
 @onready var _search: LineEdit = %Search
 @onready var _sort: OptionButton = %Sort
@@ -76,6 +84,8 @@ func _ready() -> void:
 	%ChangeVersion.pressed.connect(open_change_version)
 	%Details.pressed.connect(open_details)
 	%ChangeVersionDialog.change_requested.connect(change_version)
+	%ChangeVersionDialog.canceled.connect(func() -> void: _open_after = {})
+	%MissingVersionDialog.choice.connect(_on_missing_choice)
 	%InstallDialog.install_requested.connect(install_requested.emit)
 	# Una instalación, un borrado o cambiar la default cambian lo que resuelve
 	# cada proyecto; también cuando el CLI vuelve a estar disponible.
@@ -211,7 +221,7 @@ func open_selected(edit := true) -> CliJob:
 		statuses[e.path] = ProjectStatus.from_job(job)
 		_update_row(e.path)
 		_set_status(tr("«%s» usa %s, que no está instalada.") % [e.name, statuses[e.path].missing_version()])
-		_on_install_requested(statuses[e.path].missing_version())
+		ask_missing(e, 1 if edit else 0)
 		return job
 	_set_status(tr("No se pudo abrir «%s».") % e.name)
 	error_reported.emit(message)
@@ -251,11 +261,68 @@ func open_details() -> void:
 func change_version(args: PackedStringArray) -> CliJob:
 	var job := GmCli.write(args)
 	await job.finished
+	var path := args[2] if args.size() > 2 else ""
 	if job.succeeded():
-		var project := _entry(args[2]) if args.size() > 2 else null
-		_set_status(tr("Listo: «%s» %s.") % [project.name if project != null else args[2],
+		var project := _entry(path)
+		_set_status(tr("Listo: «%s» %s.") % [project.name if project != null else path,
 			tr("usa la default") if args.has("--unset") else tr("usa %s") % args[-1]])
+		if not _open_after.is_empty() and _open_after["path"] == path and project != null:
+			var edit: bool = _open_after["edit"]
+			_open_after = {}
+			selected = project
+			_update_actions()
+			open_selected(edit)
+	else:
+		_open_after = {}
 	return job
+
+
+## La versión que pide `e` no está instalada: pregunta si instalarla, fijar
+## otra de las instaladas o usar la default. `then_open`: después de elegir
+## otra versión, 1 lo abre en el editor, 0 lo corre, -1 nada.
+func ask_missing(e: ProjectEntry, then_open := -1) -> void:
+	var st: ProjectStatus = statuses.get(e.path)
+	if st == null or st.missing_version().is_empty():
+		return
+	_open_after = {} if then_open < 0 else {"path": e.path, "edit": then_open == 1}
+	var job := GmCli.read(GmCommands.list())
+	await job.finished
+	var r := GmParse.parse_list(job.stdout) if job.succeeded() else null
+	_missing_installed.clear()
+	_missing_default = ""
+	if r != null and r.ok:
+		_missing_installed.assign(r.value)
+		for v in _missing_installed:
+			if v.is_default:
+				_missing_default = v.name
+	_missing_for = e
+	%MissingVersionDialog.open_for(e.name, st.missing_version(), _missing_default,
+		_missing_installed.size(), st.missing_source() == "default")
+
+
+func _on_missing_choice(kind: StringName) -> void:
+	var e := _missing_for
+	var st: ProjectStatus = statuses.get(e.path) if e != null else null
+	if st == null:
+		return
+	match kind:
+		MissingVersionDialog.INSTALL:
+			_open_after = {}
+			_on_install_requested(st.missing_version())
+		MissingVersionDialog.OTHER:
+			%ChangeVersionDialog.open_for(e, _missing_installed, st)
+		MissingVersionDialog.DEFAULT:
+			change_version(default_args(e, st, _missing_default))
+
+
+## Cómo pasar `e` a la default: si lo fija su propio .godot-version, se borra;
+## si viene de una carpeta de más arriba, borrarlo no alcanza y se fija la
+## default en el proyecto.
+static func default_args(e: ProjectEntry, st: ProjectStatus, default_name: String) -> PackedStringArray:
+	var source := st.missing_source()
+	if not source.is_empty() and source != "default" and ProjectEntry.normalize(source.get_base_dir()) == e.path:
+		return GmCommands.unset_local(e.path)
+	return GmCommands.set_local(e.path, default_name)
 
 
 func _on_install_requested(version: String) -> void:
@@ -383,7 +450,10 @@ func _rebuild() -> void:
 		row.setup(e)
 		row.selected.connect(_on_row_selected)
 		row.activated.connect(_on_row_activated)
-		row.install_requested.connect(_on_install_requested)
+		row.context_requested.connect(_on_row_context)
+		row.install_requested.connect(func(_v: String) -> void:
+			_on_row_selected(row)
+			ask_missing(e))
 		row.set_status(statuses.get(e.path))
 		_rows.add_child(row)
 		if selected != null and e.path == selected.path:
@@ -424,6 +494,14 @@ func _select_path(path: String) -> void:
 			(func() -> void:
 				if is_instance_valid(row) and row.is_inside_tree() and scroll.is_ancestor_of(row):
 					scroll.ensure_control_visible(row)).call_deferred()
+
+
+## Clic derecho en una fila: la selecciona y muestra sus acciones.
+func _on_row_context(row: Control, at: Vector2) -> PopupMenu:
+	_on_row_selected(row)
+	# Instalar… de la fila solo se ve si a su versión le falta instalar.
+	return RowMenu.popup(self, [row.get_node("%Install"), null, %Open, %Run, null, %ChangeVersion,
+		%Details, %ShowFolder, null, %Remove], at)
 
 
 func _on_row_selected(row: Control) -> void:

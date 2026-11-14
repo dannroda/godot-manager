@@ -133,9 +133,17 @@ func test_open_three_cases() -> void:
 	screen._select_path(missing)
 	job = await screen.open_selected(true)
 	assert_false(job.succeeded())
+	# Ofrece instalarla, usar otra o la default; elegir Instalar abre el de 2.2.
+	var ask: AcceptDialog = screen.get_node("%MissingVersionDialog")
+	await wait_until(func() -> bool: return ask.visible, 5.0)
+	assert_true(ask.visible, "pregunta qué hacer")
+	assert_eq(screen._open_after, {"path": missing, "edit": true}, "después de elegir otra, lo abre")
+	ask.hide()
+	screen._on_missing_choice(&"install")
 	var dialog: ConfirmationDialog = screen.get_node("%InstallDialog")
 	assert_true(dialog.visible, "ofrece instalar")
 	assert_eq(dialog.options.version, "9.9-nope")
+	assert_eq(screen._open_after, {}, "instalar no abre después")
 	assert_eq(screen.statuses[missing].state, ProjectStatus.State.NOT_INSTALLED)
 	assert_eq(errors.size(), 0, "not_installed no es un aviso de error")
 	dialog.hide()
@@ -177,8 +185,13 @@ func test_screen_three_projects() -> void:
 	assert_eq(GmCli.history.filter(func(j: CliJob) -> bool: return j.background).size(), 0,
 		"los which de fondo no van al historial")
 
-	# Instalar… abre el diálogo de 2.2 con ese tag.
+	# Instalar… pregunta (instalar, otra, la default); Instalar abre el de 2.2.
 	(row.get_node("%Install") as Button).pressed.emit()
+	var ask: AcceptDialog = screen.get_node("%MissingVersionDialog")
+	await wait_until(func() -> bool: return ask.visible, 5.0)
+	assert_true(ask.visible)
+	ask.hide()
+	screen._on_missing_choice(&"install")
 	var dialog: ConfirmationDialog = screen.get_node("%InstallDialog")
 	assert_true(dialog.visible)
 	assert_eq(dialog.options.version, "9.9-nope")

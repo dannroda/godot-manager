@@ -136,6 +136,7 @@ func _rebuild() -> void:
 		row.setup(v)
 		row.selected.connect(_on_row_selected)
 		row.activated.connect(_on_row_activated)
+		row.context_requested.connect(_on_row_context)
 		_rows.add_child(row)
 		if selected != null and v.name == selected.name:
 			keep = v
@@ -165,6 +166,12 @@ func _clear_filters() -> void:
 	_search.text = ""
 	_filter.select(_filter.get_item_index(VersionFilter.Kind.ALL))
 	_rebuild()
+
+
+## Clic derecho en una fila: la selecciona y muestra sus acciones.
+func _on_row_context(row: Control, at: Vector2) -> PopupMenu:
+	_on_row_selected(row)
+	return RowMenu.popup(self, [%Launch, %SetDefault, null, %Templates, %Symbols, %ShowFolder, null, %Delete], at)
 
 
 func _on_row_selected(row: Control) -> void:
