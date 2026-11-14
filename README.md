@@ -29,7 +29,7 @@ It has two parts:
 
 ![Install dialog](docs/screenshots/install-dialog.png)
 
-The GUI is currently in Spanish only.
+The GUI is in English and Spanish. It uses Spanish when the system language is Spanish, and English otherwise.
 
 ## Installation
 
@@ -117,4 +117,4 @@ go test ./...                    # CLI tests
 godot --headless --path ui -s res://tests/run_tests.gd   # GUI tests
 ```
 
-The GUI's task board is in `ui/compass` (Scope Compass format).
+The GUI's translations are in `ui/i18n/en.po`; the source strings are in Spanish. The GUI's task board is in `ui/compass` (Scope Compass format).

@@ -9,7 +9,7 @@ Tiene dos partes:
 - **`godot-manager`**: una herramienta de línea de comandos escrita en Go, con un `godot` que corre la versión que pide el proyecto actual.
 - **Una interfaz gráfica opcional** parecida al Project Manager de Godot. Es un proyecto de Godot en [`ui/`](ui/) y hace todo a través de la salida `--json` del CLI.
 
-![Proyectos](docs/screenshots/projects.png)
+![Proyectos](docs/screenshots/projects.es.png)
 
 ## Qué hace
 
@@ -25,11 +25,11 @@ Tiene dos partes:
 
 | Versiones instaladas | Releases disponibles |
 |---|---|
-| ![Versiones instaladas](docs/screenshots/installed.png) | ![Releases disponibles](docs/screenshots/download.png) |
+| ![Versiones instaladas](docs/screenshots/installed.es.png) | ![Releases disponibles](docs/screenshots/download.es.png) |
 
-![Diálogo de instalación](docs/screenshots/install-dialog.png)
+![Diálogo de instalación](docs/screenshots/install-dialog.es.png)
 
-Por ahora la interfaz está solo en español.
+La interfaz está en español y en inglés: usa español si el sistema está en español, e inglés en cualquier otro caso.
 
 ## Instalación
 
@@ -117,4 +117,4 @@ go test ./...                    # tests del CLI
 godot --headless --path ui -s res://tests/run_tests.gd   # tests de la interfaz
 ```
 
-El tablero de tareas de la interfaz está en `ui/compass` (formato Scope Compass).
+Las traducciones de la interfaz están en `ui/i18n/en.po`; los textos fuente están en español. El tablero de tareas de la interfaz está en `ui/compass` (formato Scope Compass).
