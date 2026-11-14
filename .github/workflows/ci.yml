@@ -31,6 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Con los tags, `make build` le pone al CLI una versión como
+          # v2.2.0-3-gabc123; con un hash solo, la UI lo toma por un CLI viejo.
+          fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
