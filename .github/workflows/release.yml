@@ -18,10 +18,11 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: CLI para cada plataforma
         run: make dist VERSION="${GITHUB_REF_NAME#v}"

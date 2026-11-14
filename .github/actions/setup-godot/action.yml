@@ -20,7 +20,7 @@ runs:
 
     - name: Cache de Godot
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ${{ runner.temp }}/godot
