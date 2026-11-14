@@ -45,6 +45,8 @@ Cada [release](https://github.com/dannroda/godot-manager/releases/latest) trae u
 
 `SHA256SUMS` tiene el checksum de cada archivo. Descomprimilo donde quieras y abrí `godot-manager-ui`: usa el `godot-manager` que está al lado, así que no hace falta instalar nada más. Para usar `godot-manager` y `godot` desde una terminal, sumá la carpeta al `PATH`.
 
+Para actualizar, corré `godot-manager self-update`, o tocá Actualizar cuando la interfaz avise que hay una versión nueva. Reemplaza los archivos en esa misma carpeta. Si lo instalaste con un gestor de paquetes (el paquete de Arch), actualizalo por ahí.
+
 ### Arch Linux
 
 ```sh
@@ -102,6 +104,8 @@ godot-manager remove 4.5.1-stable
 
 godot-manager plugins                   # plugins del proyecto actual
 godot-manager plugins disable roto      # desactiva uno sin abrir el editor
+
+godot-manager self-update               # actualiza el propio godot-manager
 ```
 
 `godot-manager help` lista todos los comandos y opciones.

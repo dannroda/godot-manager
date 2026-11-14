@@ -105,6 +105,7 @@ func getJSON(u string, v any) (http.Header, error) {
 }
 
 type asset struct {
+	URL    string `json:"url"` // de la API (releases/assets/<id>)
 	Name   string `json:"name"`
 	Size   int64  `json:"size"`
 	Digest string `json:"digest"` // "sha256:<hex>"

@@ -19,11 +19,12 @@ const (
 	codeInvalidArgs       = "invalid_args"
 	codeUnknownCommand    = "unknown_command"
 	codeNeedsConfirmation = "needs_confirmation"
-	codeBadToken          = "bad_token"         // GITHUB_TOKEN rechazado por la API
-	codeAlreadyInstalled  = "already_installed" // add sobre un nombre existente sin --force
-	codeLaunchFailed      = "launch_failed"     // el binario no se pudo ejecutar
-	codeNotAProject       = "not_a_project"     // no hay project.godot en la carpeta ni mas arriba
-	codeNoPlugin          = "no_plugin"         // el plugin pedido no esta en el proyecto
+	codeBadToken          = "bad_token"          // GITHUB_TOKEN rechazado por la API
+	codeAlreadyInstalled  = "already_installed"  // add sobre un nombre existente sin --force
+	codeLaunchFailed      = "launch_failed"      // el binario no se pudo ejecutar
+	codeNotAProject       = "not_a_project"      // no hay project.godot en la carpeta ni mas arriba
+	codeNoPlugin          = "no_plugin"          // el plugin pedido no esta en el proyecto
+	codeCannotSelfUpdate  = "cannot_self_update" // self-update en una instalacion que no puede tocar
 	codeInternal          = "internal"
 )
 

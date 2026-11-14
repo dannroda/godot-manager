@@ -47,7 +47,7 @@ func Main(args []string) int {
 	}
 	if asJSON {
 		out.mode = modeJSON
-		if slices.Contains(eventCommands, cmd) {
+		if slices.Contains(eventCommands, cmd) || (cmd == "self-update" && !slices.Contains(args, "--check")) {
 			out.mode = modeEvents
 		}
 	}
@@ -56,6 +56,9 @@ func Main(args []string) int {
 		return 1
 	}
 
+	if runtime.GOOS == "windows" {
+		cleanOldSelf()
+	}
 	res, err := dispatch(cmd, args, dir)
 	if err != nil {
 		out.fail(err)
@@ -87,7 +90,7 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 			return nil, err
 		}
 	}
-	if cmd == "remove" || cmd == "install" || cmd == "templates" || cmd == "plugins" {
+	if cmd == "remove" || cmd == "install" || cmd == "templates" || cmd == "plugins" || cmd == "self-update" {
 		args = yesFlag(args)
 	}
 	if err := initPaths(); err != nil {
@@ -130,6 +133,8 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 		return cmdLaunch(args)
 	case "plugins":
 		return cmdPlugins(args)
+	case "self-update":
+		return cmdSelfUpdate(args)
 	case "version", "--version":
 		fmt.Println(Version)
 		return nil, nil
@@ -841,6 +846,9 @@ Comandos:
   plugins enable|disable <plugin>   Activa o desactiva un plugin en project.godot, sin abrir el
                                     editor (sirve si un plugin roto no lo deja abrir)
   plugins remove <plugin> [--yes]   Lo desactiva y borra su carpeta de addons/
+  self-update [--check] [--yes]     Actualiza godot-manager (y la interfaz, si esta en la misma
+                                    carpeta) a la ultima release; --check solo dice si hay una
+                                    nueva (con --json, un objeto)
   version                           Muestra la version de godot-manager
 
 Opciones:
@@ -848,21 +856,22 @@ Opciones:
   --dir <carpeta>, -C <carpeta>     Usa esa carpeta como directorio actual (which, set-local,
                                     run, launch, plugins); en which, set-local y plugins va despues
                                     del comando
-  --yes, -y                         Confirma sin preguntar (remove, install, templates, plugins
-                                    remove). Sin
-                                    terminal y sin --yes, lo que pide confirmacion falla
+  --yes, -y                         Confirma sin preguntar (remove, install, templates,
+                                    plugins remove, self-update). Sin terminal y sin --yes, lo
+                                    que pide confirmacion falla
 
 Salida con --json:
-  list, list-remote, which, plugins El JSON del listado o de la version que corresponde
-  install, templates, symbols       Un objeto por linea: {"event":"step","message"},
-                                    {"event":"download","file","done","total"},
+  list, list-remote, which,         El JSON del listado o de la version que corresponde
+  plugins, self-update --check
+  install, templates, symbols,      Un objeto por linea: {"event":"step","message"},
+  self-update                       {"event":"download","file","done","total"},
                                     {"event":"warn","message"}; la ultima linea es
                                     {"event":"done",...} o {"event":"error","code","message"}
   los demas                         {"ok":true,...} o {"error":{"code","message"}}
   Codigos de error: not_installed, no_default, no_release, no_build_for_platform,
   not_available, rate_limited, network, checksum, invalid_args, unknown_command,
   needs_confirmation, bad_token, already_installed, launch_failed, not_a_project,
-  no_plugin, internal
+  no_plugin, cannot_self_update, internal
 
 Variables:
   GODOT_DIR                         Raiz de las versiones (ahora: %s)
