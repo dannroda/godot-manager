@@ -12,11 +12,16 @@ runs:
   steps:
     - name: Compilar godot-manager
       shell: bash
+      env:
+        TEMPLATES: ${{ inputs.templates }}
       run: |
         make build
         echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
         echo "GODOT_DIR=$RUNNER_TEMP/godot" >> "$GITHUB_ENV"
-        echo "GODOT_VERSION=$(tr -d '[:space:]' < ui/.godot-version)" >> "$GITHUB_ENV"
+        v=$(tr -d '[:space:]' < ui/.godot-version)
+        echo "GODOT_VERSION=$v" >> "$GITHUB_ENV"
+        # La clave de la cache no admite comas.
+        echo "GODOT_CACHE_KEY=godot-$RUNNER_OS-$v-${TEMPLATES//,/-}" >> "$GITHUB_ENV"
 
     - name: Cache de Godot
       id: cache
@@ -25,7 +30,7 @@ runs:
         path: |
           ${{ runner.temp }}/godot
           ~/.local/share/godot/export_templates
-        key: godot-${{ runner.os }}-${{ env.GODOT_VERSION }}-${{ inputs.templates }}
+        key: ${{ env.GODOT_CACHE_KEY }}
 
     - name: Instalar Godot
       if: steps.cache.outputs.cache-hit != 'true'
