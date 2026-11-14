@@ -66,9 +66,9 @@ static func error_hint(err: CliError) -> String:
 		return ""
 	match err.code:
 		"rate_limited":
-			return "Cargá un GITHUB_TOKEN en Ajustes para subir el límite de pedidos a GitHub."
+			return TranslationServer.translate("Cargá un GITHUB_TOKEN en Ajustes para subir el límite de pedidos a GitHub.")
 		"bad_token":
-			return "GitHub rechazó el GITHUB_TOKEN: revisalo o borralo en Ajustes."
+			return TranslationServer.translate("GitHub rechazó el GITHUB_TOKEN: revisalo o borralo en Ajustes.")
 	return ""
 
 

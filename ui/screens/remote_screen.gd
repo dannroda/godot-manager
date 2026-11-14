@@ -83,7 +83,7 @@ func refresh() -> void:
 	# Con una lista ya cargada, un error no la borra: lo avisa main.
 	_loading_remote.notify_on_error = not releases.is_empty()
 	if releases.is_empty():
-		_show_placeholder("Cargando versiones de GitHub…", ListState.Kind.LOADING)
+		_show_placeholder(tr("Cargando versiones de GitHub…"), ListState.Kind.LOADING)
 	refresh_installed()
 	var job := _loading_remote
 	await job.finished
@@ -126,7 +126,7 @@ func _rebuild() -> void:
 		_rows.remove_child(child)
 		child.queue_free()
 	if _load_error != null:
-		var text := "No se pudo traer la lista de GitHub:\n" + _load_error.message
+		var text := tr("No se pudo traer la lista de GitHub:\n%s") % _load_error.message
 		var hint := RemoteFilter.error_hint(_load_error)
 		if not hint.is_empty():
 			text += "\n\n" + hint
@@ -135,7 +135,7 @@ func _rebuild() -> void:
 		return
 	if releases.is_empty():
 		if _is_running(_loading_remote):
-			_show_placeholder("Cargando versiones de GitHub…", ListState.Kind.LOADING)
+			_show_placeholder(tr("Cargando versiones de GitHub…"), ListState.Kind.LOADING)
 		else:
 			_show_placeholder("GitHub no devolvió ninguna versión.", ListState.Kind.INFO,
 				[["Reintentar", refresh]])

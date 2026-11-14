@@ -20,7 +20,7 @@ static func from_job(job: CliJob) -> ProjectStatus:
 		return s
 	s.error = r.error if r != null and not r.ok else GmParse.job_error(job)
 	if s.error == null:
-		s.error = CliError.make(CliError.EXIT_CODE, "which terminó con código %d" % job.exit_code)
+		s.error = CliError.make(CliError.EXIT_CODE, TranslationServer.translate("which terminó con código %d") % job.exit_code)
 	s.state = State.NOT_INSTALLED if s.error.code == "not_installed" else State.ERROR
 	return s
 
@@ -45,16 +45,16 @@ func is_error() -> bool:
 func text() -> String:
 	match state:
 		State.PINNED:
-			return "%s · fijada" % resolution.version
+			return tr("%s · fijada") % resolution.version
 		State.DEFAULT:
-			return "%s · default" % resolution.version
+			return tr("%s · default") % resolution.version
 		State.NOT_INSTALLED:
 			var v := missing_version()
-			return ("%s no instalada" % v) if not v.is_empty() else "Versión no instalada"
+			return (tr("%s no instalada") % v) if not v.is_empty() else tr("Versión no instalada")
 		State.ERROR:
 			if error.code == "no_default":
-				return "Sin versión por defecto"
-			return "Error al resolver la versión"
+				return tr("Sin versión por defecto")
+			return tr("Error al resolver la versión")
 	return "…"
 
 
@@ -62,9 +62,9 @@ func text() -> String:
 func tooltip() -> String:
 	match state:
 		State.PINNED:
-			return "Fijada por %s\n%s" % [resolution.source, resolution.path]
+			return tr("Fijada por %s\n%s") % [resolution.source, resolution.path]
 		State.DEFAULT:
-			return "El proyecto no tiene .godot-version: usa la versión por defecto.\n%s" % resolution.path
+			return tr("El proyecto no tiene .godot-version: usa la versión por defecto.\n%s") % resolution.path
 		State.NOT_INSTALLED, State.ERROR:
 			return error.message
-	return "Buscando la versión…"
+	return tr("Buscando la versión…")

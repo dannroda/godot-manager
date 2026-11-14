@@ -144,9 +144,9 @@ func _launch(job: CliJob) -> void:
 	var path := resolve_binary(wanted)
 	job.binary = path if not path.is_empty() else wanted
 	if path.is_empty():
-		var where := "en el PATH" if wanted.get_file() == wanted else "en %s" % wanted
+		var where := tr("en el PATH") if wanted.get_file() == wanted else tr("en %s") % wanted
 		job.start_error = CliError.make(CliError.NO_BINARY,
-			"No se encontró godot-manager %s. Revisá el binario en Ajustes." % where)
+			tr("No se encontró godot-manager %s. Revisá el binario en Ajustes.") % where)
 		job.state = CliJob.State.RUNNING
 		job_started.emit(job)
 		job._finish()

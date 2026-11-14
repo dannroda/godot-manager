@@ -1,0 +1,859 @@
+# Traducción al inglés de la UI de godot-manager. Los textos fuente están en español.
+msgid ""
+msgstr ""
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8-bit\n"
+
+#: main.gd
+msgid "Ver salida"
+msgstr "Show output"
+
+#: main.tscn
+msgid "Godot Manager"
+msgstr "Godot Manager"
+
+#: main.tscn
+msgid "Proyectos"
+msgstr "Projects"
+
+#: main.tscn
+msgid "Versiones"
+msgstr "Versions"
+
+#: main.tscn
+msgid "Descargar"
+msgstr "Download"
+
+#: main.tscn
+msgid "Ajustes"
+msgstr "Settings"
+
+#: main.tscn
+msgid "Reintentar"
+msgstr "Retry"
+
+#: main.tscn
+msgid "Abrir Ajustes"
+msgstr "Open Settings"
+
+#: main.tscn
+msgid "Error de godot-manager"
+msgstr "godot-manager error"
+
+#: main.tscn
+msgid "Cerrar"
+msgstr "Close"
+
+#: dialogs/add_build_dialog.gd
+msgid "*.exe ; Ejecutables"
+msgstr "*.exe ; Executables"
+
+#: dialogs/add_build_dialog.gd
+msgid "Poné un nombre para la versión."
+msgstr "Enter a name for the version."
+
+#: dialogs/add_build_dialog.gd
+msgid "Ya hay una versión llamada «%s»."
+msgstr "There is already a version called “%s”."
+
+#: dialogs/add_build_dialog.gd
+msgid "Elegí el ejecutable de Godot."
+msgstr "Choose the Godot executable."
+
+#: dialogs/add_build_dialog.gd
+msgid "Se borra la versión «%s» actual y queda esta en su lugar."
+msgstr "The current “%s” version will be deleted and replaced with this one."
+
+#: dialogs/add_build_dialog.gd
+msgid "Reemplazar"
+msgstr "Replace"
+
+#: dialogs/add_build_dialog.gd
+msgid "Agregar"
+msgstr "Add"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Agregar build propio"
+msgstr "Add custom build"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Cancelar"
+msgstr "Cancel"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Nombre"
+msgstr "Name"
+
+#: dialogs/add_build_dialog.tscn
+msgid "por ejemplo 4.5-mio"
+msgstr "for example 4.5-mine"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Ejecutable de Godot"
+msgstr "Godot executable"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Ruta al binario"
+msgstr "Path to the binary"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Examinar…"
+msgstr "Browse…"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Crea un enlace al binario en vez de copiarlo (--symlink): si recompilás, la versión se actualiza sola."
+msgstr "Links to the binary instead of copying it (--symlink): when you rebuild, the version updates itself."
+
+#: dialogs/add_build_dialog.tscn
+msgid "Enlazar en lugar de copiar"
+msgstr "Link instead of copying"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Borra la versión con ese nombre y agrega esta en su lugar (--force). Si era la versión por defecto, lo sigue siendo."
+msgstr "Deletes the version with that name and adds this one in its place (--force). If it was the default version, it stays the default."
+
+#: dialogs/add_build_dialog.tscn
+msgid "Reemplazar la existente"
+msgstr "Replace the existing one"
+
+#: dialogs/add_build_dialog.tscn
+msgid "Elegir el ejecutable de Godot"
+msgstr "Choose the Godot executable"
+
+#: dialogs/change_version_dialog.gd
+msgid "Usar la default (%s)"
+msgstr "Use the default (%s)"
+
+#: dialogs/change_version_dialog.gd
+msgid "Usar la default"
+msgstr "Use the default"
+
+#: dialogs/change_version_dialog.gd
+msgid "%s · actual"
+msgstr "%s · current"
+
+#: dialogs/change_version_dialog.gd
+msgid "Quita el .godot-version del proyecto"
+msgstr "Removes the project's .godot-version"
+
+#: dialogs/change_version_dialog.gd
+msgid "El proyecto se guardó con Godot %s; abrirlo con %s puede perder datos o no abrir."
+msgstr "The project was saved with Godot %s; opening it with %s may lose data or fail to open."
+
+#: dialogs/change_version_dialog.gd
+msgid "(sin cambios)"
+msgstr "(no changes)"
+
+#: dialogs/change_version_dialog.tscn
+msgid "Cambiar versión del proyecto"
+msgstr "Change project version"
+
+#: dialogs/change_version_dialog.tscn
+msgid "Cambiar"
+msgstr "Change"
+
+#: dialogs/change_version_dialog.tscn
+msgid "Abrir con:"
+msgstr "Open with:"
+
+#: dialogs/change_version_dialog.tscn
+msgid "Se va a correr:"
+msgstr "Will run:"
+
+#: dialogs/delete_version_dialog.tscn
+msgid "Borrar versión"
+msgstr "Delete version"
+
+#: dialogs/delete_version_dialog.tscn
+msgid "Borrar"
+msgstr "Delete"
+
+#: dialogs/delete_version_dialog.tscn
+msgid "¿Borrar esta versión?"
+msgstr "Delete this version?"
+
+#: dialogs/delete_version_dialog.tscn
+msgid "Se borra la carpeta"
+msgstr "This deletes the folder"
+
+#: dialogs/delete_version_dialog.tscn
+msgid "Es la versión por defecto: después de borrarla no va a quedar ninguna por defecto."
+msgstr "This is the default version: after deleting it there will be no default."
+
+#: dialogs/delete_version_dialog.tscn
+msgid "Borrar también sus export templates"
+msgstr "Also delete its export templates"
+
+#: dialogs/install_dialog.gd
+msgid "Instalar %s"
+msgstr "Install %s"
+
+#: dialogs/install_dialog.gd
+msgid "Instalar"
+msgstr "Install"
+
+#: dialogs/install_dialog.gd
+msgid "Export templates de %s"
+msgstr "Export templates for %s"
+
+#: dialogs/install_dialog.gd
+msgid "Instalar templates"
+msgstr "Install templates"
+
+#: dialogs/install_dialog.gd
+msgid "Símbolos de debug"
+msgstr "Debug symbols"
+
+#: dialogs/install_dialog.gd
+msgid "Símbolos de debug de los templates"
+msgstr "Template debug symbols"
+
+#: dialogs/install_dialog.gd
+msgid "%s (instalado)"
+msgstr "%s (installed)"
+
+#: dialogs/install_dialog.gd
+msgid "Instalando %s"
+msgstr "Installing %s"
+
+#: dialogs/install_dialog.gd
+msgid "Instalando templates de %s"
+msgstr "Installing templates for %s"
+
+#: dialogs/install_dialog.gd
+msgid "Descarga: %s + símbolos"
+msgstr "Download: %s + symbols"
+
+#: dialogs/install_dialog.gd
+msgid "Descarga: %s"
+msgstr "Download: %s"
+
+#: dialogs/install_dialog.gd
+msgid "Esta versión no lo trae para este sistema."
+msgstr "This version doesn't include it for this system."
+
+#: dialogs/install_dialog.tscn
+msgid "Editor:"
+msgstr "Editor:"
+
+#: dialogs/install_dialog.tscn
+msgid "Normal"
+msgstr "Standard"
+
+#: dialogs/install_dialog.tscn
+msgid "Mono (.NET)"
+msgstr "Mono (.NET)"
+
+#: dialogs/install_dialog.tscn
+msgid "Export templates"
+msgstr "Export templates"
+
+#: dialogs/settings_dialog.gd
+msgid "Ocultar"
+msgstr "Hide"
+
+#: dialogs/settings_dialog.gd
+msgid "Ver"
+msgstr "Show"
+
+#: dialogs/settings_dialog.gd
+msgid "Probando…"
+msgstr "Testing…"
+
+#: dialogs/settings_dialog.tscn
+msgid "Guardar"
+msgstr "Save"
+
+#: dialogs/settings_dialog.tscn
+msgid "Binario de godot-manager"
+msgstr "godot-manager binary"
+
+#: dialogs/settings_dialog.tscn
+msgid "Buscar en el PATH"
+msgstr "Search the PATH"
+
+#: dialogs/settings_dialog.tscn
+msgid "Ruta fija:"
+msgstr "Fixed path:"
+
+#: dialogs/settings_dialog.tscn
+msgid "/ruta/a/godot-manager"
+msgstr "/path/to/godot-manager"
+
+#: dialogs/settings_dialog.tscn
+msgid "Elegir…"
+msgstr "Choose…"
+
+#: dialogs/settings_dialog.tscn
+msgid "Probar"
+msgstr "Test"
+
+#: dialogs/settings_dialog.tscn
+msgid "GITHUB_TOKEN (opcional)"
+msgstr "GITHUB_TOKEN (optional)"
+
+#: dialogs/settings_dialog.tscn
+msgid "ghp_…"
+msgstr "ghp_…"
+
+#: dialogs/settings_dialog.tscn
+msgid "Sin token, GitHub permite 60 pedidos por hora (cada «Refrescar» de Descargar usa unos 4). Se guarda sin cifrar en los ajustes de la app."
+msgstr "Without a token, GitHub allows 60 requests per hour (each Refresh in Download uses about 4). It is stored unencrypted in the app settings."
+
+#: dialogs/settings_dialog.tscn
+msgid "GODOT_DIR (opcional)"
+msgstr "GODOT_DIR (optional)"
+
+#: dialogs/settings_dialog.tscn
+msgid "Vacío: la carpeta por defecto del CLI"
+msgstr "Empty: the CLI's default folder"
+
+#: dialogs/settings_dialog.tscn
+msgid "Carpeta donde godot-manager instala las versiones."
+msgstr "Folder where godot-manager installs versions."
+
+#: dialogs/settings_dialog.tscn
+msgid "Elegir godot-manager"
+msgstr "Choose godot-manager"
+
+#: dialogs/settings_dialog.tscn
+msgid "Elegir GODOT_DIR"
+msgstr "Choose GODOT_DIR"
+
+#: screens/installed_screen.gd
+msgid "Instalando símbolos de %s"
+msgstr "Installing symbols for %s"
+
+#: screens/installed_screen.gd
+msgid "Cargando versiones…"
+msgstr "Loading versions…"
+
+#: screens/installed_screen.gd
+msgid "No se pudo leer la lista."
+msgstr "Couldn't read the list."
+
+#: screens/installed_screen.gd
+msgid "No se pudo cargar la lista:\n%s"
+msgstr "Couldn't load the list:\n%s"
+
+#: screens/installed_screen.gd
+msgid "No hay versiones instaladas."
+msgstr "No versions installed."
+
+#: screens/installed_screen.gd
+msgid "Ninguna versión coincide con la búsqueda."
+msgstr "No version matches the search."
+
+#: screens/installed_screen.gd
+msgid "Mostrar todas"
+msgstr "Show all"
+
+#: screens/installed_screen.gd
+msgid "Esta versión ya tiene los símbolos de debug."
+msgstr "This version already has debug symbols."
+
+#: screens/installed_screen.gd
+msgid "Agrega los símbolos de debug del editor de esta versión"
+msgstr "Adds the editor debug symbols for this version"
+
+#: screens/installed_screen.tscn
+msgid "Filtrar versiones"
+msgstr "Filter versions"
+
+#: screens/installed_screen.tscn
+msgid "Refrescar"
+msgstr "Refresh"
+
+#: screens/installed_screen.tscn
+msgid "Abrir editor"
+msgstr "Open editor"
+
+#: screens/installed_screen.tscn
+msgid "Usar por defecto"
+msgstr "Set as default"
+
+#: screens/installed_screen.tscn
+msgid "Instala export templates oficiales de esta versión"
+msgstr "Installs the official export templates for this version"
+
+#: screens/installed_screen.tscn
+msgid "Export templates…"
+msgstr "Export templates…"
+
+#: screens/installed_screen.tscn
+msgid "Mostrar carpeta"
+msgstr "Show folder"
+
+#: screens/projects_screen.gd
+msgid "¿Quitar «%s» de la lista?\n%s\n\nNo se borra nada del disco."
+msgstr "Remove “%s” from the list?\n%s\n\nNothing is deleted from disk."
+
+#: screens/projects_screen.gd
+msgid "Abriendo «%s»…"
+msgstr "Opening “%s”…"
+
+#: screens/projects_screen.gd
+msgid "Corriendo «%s»…"
+msgstr "Running “%s”…"
+
+#: screens/projects_screen.gd
+msgid "Se abrió «%s» con %s."
+msgstr "Opened “%s” with %s."
+
+#: screens/projects_screen.gd
+msgid "Se corrió «%s» con %s."
+msgstr "Ran “%s” with %s."
+
+#: screens/projects_screen.gd
+msgid "godot-manager terminó con código %d"
+msgstr "godot-manager exited with code %d"
+
+#: screens/projects_screen.gd
+msgid "«%s» usa %s, que no está instalada."
+msgstr "“%s” uses %s, which is not installed."
+
+#: screens/projects_screen.gd
+msgid "No se pudo abrir «%s»."
+msgstr "Couldn't open “%s”."
+
+#: screens/projects_screen.gd
+msgid "Listo: «%s» %s."
+msgstr "Done: “%s” %s."
+
+#: screens/projects_screen.gd
+msgid "usa la default"
+msgstr "uses the default"
+
+#: screens/projects_screen.gd
+msgid "usa %s"
+msgstr "uses %s"
+
+#: screens/projects_screen.gd
+msgid "«%s» no tiene project.godot.\nPara buscar proyectos adentro de una carpeta, usá Escanear…"
+msgstr "“%s” has no project.godot.\nTo look for projects inside a folder, use Scan…"
+
+#: screens/projects_screen.gd
+msgid "Se agregó «%s»."
+msgstr "Added “%s”."
+
+#: screens/projects_screen.gd
+msgid "«%s» ya estaba en la lista."
+msgstr "“%s” was already in the list."
+
+#: screens/projects_screen.gd
+msgid "Se quitó «%s» de la lista."
+msgstr "Removed “%s” from the list."
+
+#: screens/projects_screen.gd
+msgid "Buscando proyectos en %s…"
+msgstr "Looking for projects in %s…"
+
+#: screens/projects_screen.gd
+msgid "No se encontraron proyectos en %s."
+msgstr "No projects found in %s."
+
+#: screens/projects_screen.gd
+msgid "Se encontraron %d proyectos en %s; %d nuevos."
+msgstr "Found %d projects in %s; %d new."
+
+#: screens/projects_screen.gd
+msgid "No se encontró la lista del Project Manager en\n%s"
+msgstr "Couldn't find the Project Manager list at\n%s"
+
+#: screens/projects_screen.gd
+msgid "Del Project Manager: %d nuevos, %d ya estaban."
+msgstr "From the Project Manager: %d new, %d already listed."
+
+#: screens/projects_screen.gd
+msgid "Del Project Manager: %d nuevos, %d ya estaban, %d ya no existen (no se agregaron)."
+msgstr "From the Project Manager: %d new, %d already listed, %d no longer exist (not added)."
+
+#: screens/projects_screen.gd
+msgid "No existen:"
+msgstr "Missing:"
+
+#: screens/projects_screen.gd
+msgid "Todavía no hay proyectos.\nAgregá una carpeta con project.godot, buscalos dentro de una carpeta o traé los que ya tiene el Project Manager de Godot."
+msgstr "No projects yet.\nAdd a folder with a project.godot, scan a folder for projects, or bring in the ones Godot's Project Manager already has."
+
+#: screens/projects_screen.gd
+msgid "Agregar…"
+msgstr "Add…"
+
+#: screens/projects_screen.gd
+msgid "Escanear…"
+msgstr "Scan…"
+
+#: screens/projects_screen.gd
+msgid "Importar de Godot"
+msgstr "Import from Godot"
+
+#: screens/projects_screen.gd
+msgid "Ningún proyecto coincide con la búsqueda."
+msgstr "No project matches the search."
+
+#: screens/projects_screen.gd
+msgid "Mostrar todos"
+msgstr "Show all"
+
+#: screens/projects_screen.gd
+msgid "No se pudo guardar la lista de proyectos (%s)."
+msgstr "Couldn't save the project list (%s)."
+
+#: screens/projects_screen.tscn
+msgid "Filtrar proyectos"
+msgstr "Filter projects"
+
+#: screens/projects_screen.tscn
+msgid "Ordenar:"
+msgstr "Sort:"
+
+#: screens/projects_screen.tscn
+msgid "Abre el proyecto en el editor con su versión"
+msgstr "Opens the project in the editor with its version"
+
+#: screens/projects_screen.tscn
+msgid "Abrir"
+msgstr "Open"
+
+#: screens/projects_screen.tscn
+msgid "Corre el proyecto (sin abrir el editor) con su versión"
+msgstr "Runs the project (without opening the editor) with its version"
+
+#: screens/projects_screen.tscn
+msgid "Correr"
+msgstr "Run"
+
+#: screens/projects_screen.tscn
+msgid "Fija con qué versión se abre el proyecto (.godot-version)"
+msgstr "Sets which version opens the project (.godot-version)"
+
+#: screens/projects_screen.tscn
+msgid "Cambiar versión…"
+msgstr "Change version…"
+
+#: screens/projects_screen.tscn
+msgid "Agrega una carpeta con project.godot"
+msgstr "Adds a folder with a project.godot"
+
+#: screens/projects_screen.tscn
+msgid "Busca proyectos dentro de una carpeta (y sus subcarpetas)"
+msgstr "Looks for projects inside a folder (and its subfolders)"
+
+#: screens/projects_screen.tscn
+msgid "Agrega los proyectos que ya tiene el Project Manager de Godot (solo lee su lista, no la cambia)"
+msgstr "Adds the projects Godot's Project Manager already has (only reads its list, doesn't change it)"
+
+#: screens/projects_screen.tscn
+msgid "Lo saca de esta lista; no borra nada del disco"
+msgstr "Takes it off this list; nothing is deleted from disk"
+
+#: screens/projects_screen.tscn
+msgid "Quitar de la lista"
+msgstr "Remove from list"
+
+#: screens/projects_screen.tscn
+msgid "Agregar proyecto (carpeta con project.godot)"
+msgstr "Add project (folder with a project.godot)"
+
+#: screens/projects_screen.tscn
+msgid "Buscar proyectos en una carpeta"
+msgstr "Look for projects in a folder"
+
+#: screens/projects_screen.tscn
+msgid "Escanear"
+msgstr "Scan"
+
+#: screens/projects_screen.tscn
+msgid "Quitar"
+msgstr "Remove"
+
+#: screens/remote_screen.gd
+msgid "Cargando versiones de GitHub…"
+msgstr "Loading versions from GitHub…"
+
+#: screens/remote_screen.gd
+msgid "No se pudo traer la lista de GitHub:\n%s"
+msgstr "Couldn't get the list from GitHub:\n%s"
+
+#: screens/remote_screen.tscn
+msgid "Stable: versiones estables. Dev: betas, release candidates y dev snapshots."
+msgstr "Stable: stable releases. Dev: betas, release candidates and dev snapshots."
+
+#: screens/remote_screen.tscn
+msgid "Vuelve a pedir la lista a GitHub"
+msgstr "Fetches the list from GitHub again"
+
+#: screens/remote_screen.tscn
+msgid "Instalar…"
+msgstr "Install…"
+
+#: screens/remote_screen.tscn
+msgid "Ver en GitHub"
+msgstr "View on GitHub"
+
+#: panels/job_panel.gd
+msgid "¿Cancelar «%s»?\nEl proceso se corta ya; si estaba descargando, puede quedar el archivo a medias en la carpeta temporal."
+msgstr "Cancel “%s”?\nThe process stops right away; if it was downloading, a partial file may be left in the temporary folder."
+
+#: panels/job_panel.gd
+msgid "\n\n¿Seguir con la descarga?"
+msgstr "\n\nContinue with the download?"
+
+#: panels/job_panel.gd
+msgid "Listo."
+msgstr "Done."
+
+#: panels/job_panel.gd
+msgid "(+%d en cola)"
+msgstr "(+%d queued)"
+
+#: panels/job_panel.gd
+msgid "Esperando a que termine otra operación…"
+msgstr "Waiting for another operation to finish…"
+
+#: panels/job_panel.gd
+msgid "Arrancando…"
+msgstr "Starting…"
+
+#: panels/job_panel.gd
+msgid "Listo. Templates instalados: %s"
+msgstr "Done. Templates installed: %s"
+
+#: panels/job_panel.tscn
+msgid "Cancelar la operación"
+msgstr "Cancel the operation"
+
+#: panels/job_panel.tscn
+msgid "Seguir"
+msgstr "Continue"
+
+#: panels/job_panel.tscn
+msgid "Descarga grande"
+msgstr "Large download"
+
+#: panels/job_panel.tscn
+msgid "No"
+msgstr "No"
+
+#: panels/output_panel.gd
+msgid "Salida"
+msgstr "Output"
+
+#: panels/output_panel.gd
+msgid " · %d con error"
+msgstr " · %d failed"
+
+#: panels/output_panel.gd
+msgid "→ no arrancó: %s"
+msgstr "→ didn't start: %s"
+
+#: panels/output_panel.gd
+msgid "→ en cola…"
+msgstr "→ queued…"
+
+#: panels/output_panel.gd
+msgid "→ corriendo…"
+msgstr "→ running…"
+
+#: panels/output_panel.gd
+msgid "→ cancelado"
+msgstr "→ cancelled"
+
+#: panels/output_panel.gd
+msgid "→ código %d%s"
+msgstr "→ code %d%s"
+
+#: panels/output_panel.gd
+msgid "\n… (%d caracteres más)"
+msgstr "\n… (%d more characters)"
+
+#: panels/output_panel.tscn
+msgid "Copiar"
+msgstr "Copy"
+
+#: panels/output_panel.tscn
+msgid "Limpiar"
+msgstr "Clear"
+
+#: cli/cli_job.gd
+msgid "No se pudo ejecutar %s"
+msgstr "Couldn't run %s"
+
+#: cli/gm_cli.gd
+msgid "en el PATH"
+msgstr "on the PATH"
+
+#: cli/gm_cli.gd
+msgid "en %s"
+msgstr "at %s"
+
+#: cli/gm_cli.gd
+msgid "No se encontró godot-manager %s. Revisá el binario en Ajustes."
+msgstr "godot-manager wasn't found %s. Check the binary in Settings."
+
+#: cli/gm_parse.gd
+msgid "Este godot-manager es la versión %s; la UI necesita la %d.x o más nueva."
+msgstr "This godot-manager is version %s; the UI needs %d.x or newer."
+
+#: cli/gm_parse.gd
+msgid "Este godot-manager no entiende 'version': parece una versión vieja (la 1.x, en bash). La UI necesita la %d.x o más nueva."
+msgstr "This godot-manager doesn't understand 'version': it looks like an old version (1.x, in bash). The UI needs %d.x or newer."
+
+#: cli/gm_parse.gd
+msgid "Se canceló la prueba de godot-manager."
+msgstr "The godot-manager check was cancelled."
+
+#: cli/gm_parse.gd
+msgid "\nSalida (código %d):\n%s"
+msgstr "\nOutput (code %d):\n%s"
+
+#: cli/gm_parse.gd
+msgid "godot-manager terminó con código %d sin decir por qué."
+msgstr "godot-manager exited with code %d without saying why."
+
+#: cli/gm_parse.gd
+msgid "el CLI no devolvió nada"
+msgstr "the CLI returned nothing"
+
+#: cli/gm_parse.gd
+msgid "Salida inesperada del CLI: %s\n%s"
+msgstr "Unexpected CLI output: %s\n%s"
+
+#: app/install_options.gd
+msgid "No hay versión elegida."
+msgstr "No version chosen."
+
+#: app/install_options.gd
+msgid "Elegí al menos una plataforma para los templates."
+msgstr "Choose at least one platform for the templates."
+
+#: app/project_list.gd
+msgid "Última modificación"
+msgstr "Last modified"
+
+#: app/project_list.gd
+msgid "Ruta"
+msgstr "Path"
+
+#: app/project_status.gd
+msgid "which terminó con código %d"
+msgstr "which exited with code %d"
+
+#: app/project_status.gd
+msgid "%s · fijada"
+msgstr "%s · pinned"
+
+#: app/project_status.gd
+msgid "%s · default"
+msgstr "%s · default"
+
+#: app/project_status.gd
+msgid "%s no instalada"
+msgstr "%s not installed"
+
+#: app/project_status.gd
+msgid "Versión no instalada"
+msgstr "Version not installed"
+
+#: app/project_status.gd
+msgid "Sin versión por defecto"
+msgstr "No default version"
+
+#: app/project_status.gd
+msgid "Error al resolver la versión"
+msgstr "Error resolving the version"
+
+#: app/project_status.gd
+msgid "Fijada por %s\n%s"
+msgstr "Pinned by %s\n%s"
+
+#: app/project_status.gd
+msgid "El proyecto no tiene .godot-version: usa la versión por defecto.\n%s"
+msgstr "The project has no .godot-version: it uses the default version.\n%s"
+
+#: app/project_status.gd
+msgid "Buscando la versión…"
+msgstr "Resolving the version…"
+
+#: app/remote_filter.gd
+msgid "Cargá un GITHUB_TOKEN en Ajustes para subir el límite de pedidos a GitHub."
+msgstr "Set a GITHUB_TOKEN in Settings to raise the GitHub request limit."
+
+#: app/remote_filter.gd
+msgid "GitHub rechazó el GITHUB_TOKEN: revisalo o borralo en Ajustes."
+msgstr "GitHub rejected the GITHUB_TOKEN: check it or remove it in Settings."
+
+#: app/remote_filter.gd
+msgid "Stable"
+msgstr "Stable"
+
+#: app/remote_filter.gd
+msgid "Dev"
+msgstr "Dev"
+
+#: app/remote_filter.gd
+msgid "Todas"
+msgstr "All"
+
+#: app/version_filter.gd
+msgid "Mono"
+msgstr "Mono"
+
+#: app/version_filter.gd
+msgid "Con símbolos"
+msgstr "With symbols"
+
+#: app/version_filter.gd
+msgid "Builds propios"
+msgstr "Custom builds"
+
+#: rows/project_row.gd
+msgid "Versión de Godot con que se guardó el proyecto (config/features)"
+msgstr "Godot version the project was saved with (config/features)"
+
+#: rows/project_row.gd
+msgid "No encontrado"
+msgstr "Not found"
+
+#: rows/project_row.gd
+msgid "La carpeta o su project.godot ya no existen"
+msgstr "The folder or its project.godot no longer exists"
+
+#: rows/project_row.gd
+msgid "project.godot ilegible"
+msgstr "Unreadable project.godot"
+
+#: rows/project_row.gd
+msgid "No se pudo leer project.godot"
+msgstr "Couldn't read project.godot"
+
+#: rows/remote_row.gd
+msgid "Instalada"
+msgstr "Installed"
+
+#: rows/remote_row.gd
+msgid "Mono instalada"
+msgstr "Mono installed"
+
+#: rows/remote_row.gd
+msgid "godot-manager no instala el editor de esta versión en este sistema."
+msgstr "godot-manager doesn't install the editor for this version on this system."
+
+#: rows/version_row.gd
+msgid "Versión por defecto"
+msgstr "Default version"
+
+#: rows/version_row.gd
+msgid "Símbolos"
+msgstr "Symbols"
+
+#: rows/version_row.gd
+msgid "Build propio"
+msgstr "Custom build"
+
+#: rows/version_row.gd
+msgid "Templates: %s"
+msgstr "Templates: %s"

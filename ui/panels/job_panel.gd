@@ -37,8 +37,7 @@ func _ready() -> void:
 		if e.is_empty():
 			return
 		_cancel_target = e["job"]
-		_cancel_dialog.dialog_text = ("¿Cancelar «%s»?\nEl proceso se corta ya; si estaba descargando, " +
-			"puede quedar el archivo a medias en la carpeta temporal.") % e["title"]
+		_cancel_dialog.dialog_text = tr("¿Cancelar «%s»?\nEl proceso se corta ya; si estaba descargando, puede quedar el archivo a medias en la carpeta temporal.") % e["title"]
 		_cancel_dialog.popup_centered())
 	_cancel_dialog.confirmed.connect(func() -> void:
 		if _cancel_target != null and not _cancel_target.is_done():
@@ -117,14 +116,14 @@ func _on_finished(entry: Dictionary) -> void:
 	if err != null and err.code == NEEDS_CONFIRMATION and not job.cancelled:
 		_confirm_args = job.args
 		_confirm_title = entry["title"]
-		_confirm_dialog.dialog_text = err.message + "\n\n¿Seguir con la descarga?"
+		_confirm_dialog.dialog_text = err.message + tr("\n\n¿Seguir con la descarga?")
 		_confirm_dialog.popup_centered()
 	_refresh()
 
 
 ## Deja el resultado a la vista unos segundos (si no arranca otro antes).
 func _show_result(entry: Dictionary) -> void:
-	_result = {"title": entry["title"], "status": entry.get("status", "Listo."),
+	_result = {"title": entry["title"], "status": entry.get("status", tr("Listo.")),
 		"warnings": entry["warnings"]}
 	_result_serial += 1
 	var serial := _result_serial
@@ -158,13 +157,13 @@ func _refresh() -> void:
 	for other in _entries:
 		if other != e and not (other["job"] as CliJob).is_done():
 			more += 1
-	_queue.text = "(+%d en cola)" % more if more > 0 else ""
+	_queue.text = tr("(+%d en cola)") % more if more > 0 else ""
 	var p: float = e.get("progress", -1.0)
 	_progress.indeterminate = p < 0.0
 	_progress.show_percentage = p >= 0.0
 	if p >= 0.0:
 		_progress.value = p * 100.0
-	_status.text = "Esperando a que termine otra operación…" if waiting else e.get("status", "Arrancando…")
+	_status.text = tr("Esperando a que termine otra operación…") if waiting else e.get("status", tr("Arrancando…"))
 	_show_warnings(e["warnings"])
 
 
@@ -183,8 +182,7 @@ static func describe_download(ev: CliEvent) -> String:
 
 ## Texto del `done`; si trae `platforms` (templates), cuáles quedaron.
 static func describe_done(ev: CliEvent) -> String:
-	var text := "Listo."
 	var platforms: Variant = ev.data.get("platforms")
 	if platforms is Array and not (platforms as Array).is_empty():
-		text += " Templates instalados: " + ", ".join(PackedStringArray(platforms))
-	return text
+		return TranslationServer.translate("Listo. Templates instalados: %s") % ", ".join(PackedStringArray(platforms))
+	return TranslationServer.translate("Listo.")

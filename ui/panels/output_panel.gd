@@ -84,11 +84,11 @@ func _render() -> void:
 
 func _update_title() -> void:
 	var failed := _jobs.filter(func(j: CliJob) -> bool: return GmParse.job_error(j) != null and j.is_done()).size()
-	var title := "Salida"
+	var title := tr("Salida")
 	if not _jobs.is_empty():
 		title += " (%d)" % _jobs.size()
 	if failed > 0:
-		title += " · %d con error" % failed
+		title += tr(" · %d con error") % failed
 	_toggle.text = title
 
 
@@ -106,21 +106,21 @@ func _job_text(job: CliJob, bbcode: bool) -> String:
 func _status_line(job: CliJob, bbcode: bool) -> String:
 	var secs := " (%.1f s)" % (job.duration_msec() / 1000.0)
 	if job.start_error != null:
-		return _paint("→ no arrancó: " + job.start_error.message, COLOR_ERR, bbcode)
+		return _paint(TranslationServer.translate("→ no arrancó: %s") % job.start_error.message, COLOR_ERR, bbcode)
 	match job.state:
 		CliJob.State.QUEUED:
-			return _paint("→ en cola…", COLOR_DIM, bbcode)
+			return _paint(tr("→ en cola…"), COLOR_DIM, bbcode)
 		CliJob.State.RUNNING:
-			return _paint("→ corriendo…", COLOR_DIM, bbcode)
+			return _paint(tr("→ corriendo…"), COLOR_DIM, bbcode)
 	if job.cancelled:
-		return _paint("→ cancelado" + secs, COLOR_DIM, bbcode)
-	return _paint("→ código %d%s" % [job.exit_code, secs], COLOR_OK if job.exit_code == 0 else COLOR_ERR, bbcode)
+		return _paint(tr("→ cancelado") + secs, COLOR_DIM, bbcode)
+	return _paint(tr("→ código %d%s") % [job.exit_code, secs], COLOR_OK if job.exit_code == 0 else COLOR_ERR, bbcode)
 
 
 static func _trim(text: String) -> String:
 	if text.length() <= MAX_STREAM_CHARS:
 		return text
-	return text.left(MAX_STREAM_CHARS) + "\n… (%d caracteres más)" % (text.length() - MAX_STREAM_CHARS)
+	return text.left(MAX_STREAM_CHARS) + TranslationServer.translate("\n… (%d caracteres más)") % (text.length() - MAX_STREAM_CHARS)
 
 
 static func _escape(text: String, bbcode: bool) -> String:

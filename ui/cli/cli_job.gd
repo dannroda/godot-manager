@@ -94,7 +94,7 @@ func _start(path: String) -> void:
 	started_msec = Time.get_ticks_msec()
 	var info := OS.execute_with_pipe(path, args, false)
 	if info.is_empty():
-		start_error = CliError.make(CliError.START_FAILED, "No se pudo ejecutar %s" % path)
+		start_error = CliError.make(CliError.START_FAILED, tr("No se pudo ejecutar %s") % path)
 		_finish()
 		return
 	pid = info["pid"]

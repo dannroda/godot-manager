@@ -49,12 +49,12 @@ func fill(p: ProjectEntry, installed: Array[InstalledVersion], status: ProjectSt
 	_project_name.text = p.name
 	_project_name.tooltip_text = p.path
 	_list.clear()
-	var default_label := "Usar la default" + (" (%s)" % default_name if not default_name.is_empty() else "")
-	_list.add_item(default_label + (" · actual" if _uses_default(status) else ""))
-	_list.set_item_tooltip(USE_DEFAULT, "Quita el .godot-version del proyecto")
+	var default_label := (tr("Usar la default (%s)") % default_name) if not default_name.is_empty() else tr("Usar la default")
+	_list.add_item((tr("%s · actual") % default_label) if _uses_default(status) else default_label)
+	_list.set_item_tooltip(USE_DEFAULT, tr("Quita el .godot-version del proyecto"))
 	var select := USE_DEFAULT
 	for v in versions:
-		var i := _list.add_item(v.name + (" · actual" if v.name == current else ""))
+		var i := _list.add_item((tr("%s · actual") % v.name) if v.name == current else v.name)
 		_list.set_item_tooltip(i, v.path)
 		if v.name == current:
 			select = i
@@ -108,11 +108,11 @@ func _uses_default(status: ProjectStatus) -> bool:
 func _update() -> void:
 	var v := chosen()
 	var older := older_than_project(v, project)
-	_warning.text = ("El proyecto se guardó con Godot %s; abrirlo con %s puede perder datos o no abrir." %
+	_warning.text = (tr("El proyecto se guardó con Godot %s; abrirlo con %s puede perder datos o no abrir.") %
 		[project.created_with(), v.name]) if older else ""
 	_warning.visible = older
 	var args := command()
-	_command.text = CliJob.format_command(args) if not args.is_empty() else "(sin cambios)"
+	_command.text = CliJob.format_command(args) if not args.is_empty() else tr("(sin cambios)")
 	# Sin reset_size(): si el aviso aparece el diálogo crece solo, y al
 	# desaparecer no se achica (así los botones no saltan bajo el mouse).
 	get_ok_button().disabled = args.is_empty()

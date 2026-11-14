@@ -61,9 +61,9 @@ func command() -> PackedStringArray:
 ## Por qué no se puede confirmar todavía ("" si se puede).
 func problem() -> String:
 	if version.is_empty():
-		return "No hay versión elegida."
+		return tr("No hay versión elegida.")
 	if wants_templates() and platforms.is_empty():
-		return "Elegí al menos una plataforma para los templates."
+		return tr("Elegí al menos una plataforma para los templates.")
 	return ""
 
 

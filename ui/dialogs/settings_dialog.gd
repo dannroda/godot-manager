@@ -26,7 +26,7 @@ func _ready() -> void:
 	_use_path.button_group = group
 	_use_fixed.button_group = group
 	if OS.get_name() == "Windows":
-		_binary_dialog.filters = PackedStringArray(["*.exe ; Ejecutables"])
+		_binary_dialog.filters = PackedStringArray([tr("*.exe ; Ejecutables")])
 		_binary_path.placeholder_text = "C:\\ruta\\a\\godot-manager.exe"
 	_use_path.toggled.connect(func(_on: bool) -> void: _update_enabled())
 	_binary_path.text_changed.connect(func(_t: String) -> void: _clear_test())
@@ -38,7 +38,7 @@ func _ready() -> void:
 	_test_binary.pressed.connect(_run_test)
 	_show_token.toggled.connect(func(on: bool) -> void:
 		_token.secret = not on
-		_show_token.text = "Ocultar" if on else "Ver")
+		_show_token.text = tr("Ocultar") if on else tr("Ver"))
 	%BrowseDir.pressed.connect(func() -> void:
 		if not _godot_dir.text.is_empty():
 			_dir_dialog.current_dir = _godot_dir.text
@@ -84,7 +84,7 @@ func _clear_test() -> void:
 func _run_test() -> void:
 	var binary := current_settings().binary()
 	_test_binary.disabled = true
-	_test_result.text = "Probando…"
+	_test_result.text = tr("Probando…")
 	_test_result.remove_theme_color_override("font_color")
 	var r: GmResult = await GmCli.probe(binary)
 	_test_binary.disabled = false

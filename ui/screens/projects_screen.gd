@@ -59,7 +59,7 @@ func _ready() -> void:
 	%Remove.pressed.connect(func() -> void:
 		if selected == null:
 			return
-		_remove_dialog.dialog_text = "¿Quitar «%s» de la lista?\n%s\n\nNo se borra nada del disco." % [
+		_remove_dialog.dialog_text = tr("¿Quitar «%s» de la lista?\n%s\n\nNo se borra nada del disco.") % [
 			selected.name, selected.path]
 		_remove_dialog.reset_size()
 		_remove_dialog.popup_centered()
@@ -196,23 +196,23 @@ func open_selected(edit := true) -> CliJob:
 	var e := selected
 	var job := GmCli.read(GmCommands.open_project(e.path) if edit else GmCommands.run_project(e.path))
 	job.notify_on_error = false
-	_set_status(("Abriendo «%s»…" if edit else "Corriendo «%s»…") % e.name)
+	_set_status((tr("Abriendo «%s»…") if edit else tr("Corriendo «%s»…")) % e.name)
 	await job.finished
 	if job.succeeded():
 		var ok := GmParse.parse_ok(job.stdout)
 		var version := str((ok.value as Dictionary).get("version", "")) if ok.ok else ""
-		_set_status(("Se abrió «%s» con %s." if edit else "Se corrió «%s» con %s.") % [e.name, version])
+		_set_status((tr("Se abrió «%s» con %s.") if edit else tr("Se corrió «%s» con %s.")) % [e.name, version])
 		return job
 	var err := GmParse.job_error(job)
-	var message := err.message if err != null else "godot-manager terminó con código %d" % job.exit_code
+	var message := err.message if err != null else tr("godot-manager terminó con código %d") % job.exit_code
 	if err != null and err.code == "not_installed":
 		# Es la misma respuesta que da which: la fila se actualiza con esto.
 		statuses[e.path] = ProjectStatus.from_job(job)
 		_update_row(e.path)
-		_set_status("«%s» usa %s, que no está instalada." % [e.name, statuses[e.path].missing_version()])
+		_set_status(tr("«%s» usa %s, que no está instalada.") % [e.name, statuses[e.path].missing_version()])
 		_on_install_requested(statuses[e.path].missing_version())
 		return job
-	_set_status("No se pudo abrir «%s»." % e.name)
+	_set_status(tr("No se pudo abrir «%s».") % e.name)
 	error_reported.emit(message)
 	return job
 
@@ -245,8 +245,8 @@ func change_version(args: PackedStringArray) -> CliJob:
 	await job.finished
 	if job.succeeded():
 		var project := _entry(args[2]) if args.size() > 2 else null
-		_set_status("Listo: «%s» %s." % [project.name if project != null else args[2],
-			"usa la default" if args.has("--unset") else "usa " + args[-1]])
+		_set_status(tr("Listo: «%s» %s.") % [project.name if project != null else args[2],
+			tr("usa la default") if args.has("--unset") else tr("usa %s") % args[-1]])
 	return job
 
 
@@ -258,14 +258,14 @@ func _on_install_requested(version: String) -> void:
 func add_project(dir: String) -> bool:
 	var e := ProjectEntry.read(dir)
 	if e.missing:
-		_show_message("«%s» no tiene project.godot.\nPara buscar proyectos adentro de una carpeta, usá Escanear…" % e.path)
+		_show_message(tr("«%s» no tiene project.godot.\nPara buscar proyectos adentro de una carpeta, usá Escanear…") % e.path)
 		return false
 	if list.add(e.path):
 		entries.append(e)
 		_save()
-		_set_status("Se agregó «%s»." % e.name)
+		_set_status(tr("Se agregó «%s».") % e.name)
 	else:
-		_set_status("«%s» ya estaba en la lista." % e.name)
+		_set_status(tr("«%s» ya estaba en la lista.") % e.name)
 	_select_path(e.path)
 	resolve_versions(PackedStringArray([e.path]))
 	return true
@@ -277,7 +277,7 @@ func remove_project(path: String) -> void:
 	var p := ProjectEntry.normalize(path)
 	for i in entries.size():
 		if entries[i].path == p:
-			_set_status("Se quitó «%s» de la lista." % entries[i].name)
+			_set_status(tr("Se quitó «%s» de la lista.") % entries[i].name)
 			entries.remove_at(i)
 			break
 	statuses.erase(p)
@@ -295,7 +295,7 @@ func scan_folder(dir: String) -> int:
 	var root := ProjectEntry.normalize(dir)
 	list.last_scan_dir = root
 	_set_busy(true)
-	_set_status("Buscando proyectos en %s…" % root)
+	_set_status(tr("Buscando proyectos en %s…") % root)
 	_scan_thread = Thread.new()
 	_scan_thread.start(ProjectList.scan.bind(root, ProjectList.SCAN_DEPTH))
 	if entries.is_empty():
@@ -314,9 +314,9 @@ func scan_folder(dir: String) -> int:
 	_save()
 	_set_busy(false)
 	if found.is_empty():
-		_set_status("No se encontraron proyectos en %s." % root)
+		_set_status(tr("No se encontraron proyectos en %s.") % root)
 	else:
-		_set_status("Se encontraron %d proyectos en %s; %d nuevos." % [found.size(), root, added])
+		_set_status(tr("Se encontraron %d proyectos en %s; %d nuevos.") % [found.size(), root, added])
 	_rebuild()
 	if not new_paths.is_empty():
 		resolve_versions(new_paths)
@@ -327,7 +327,7 @@ func scan_folder(dir: String) -> int:
 ## existen y no estaban. Devuelve cuántos agregó.
 func import_from_pm(cfg_path: String) -> int:
 	if not FileAccess.file_exists(cfg_path):
-		_show_message("No se encontró la lista del Project Manager en\n%s" % cfg_path)
+		_show_message(tr("No se encontró la lista del Project Manager en\n%s") % cfg_path)
 		return 0
 	var pm := ProjectList.read_pm_list(cfg_path)
 	var existing: PackedStringArray = pm["existing"]
@@ -338,11 +338,12 @@ func import_from_pm(cfg_path: String) -> int:
 			entries.append(ProjectEntry.read(p))
 			new_paths.append(p)
 	_save()
-	var text := "Del Project Manager: %d nuevos, %d ya estaban" % [new_paths.size(), existing.size() - new_paths.size()]
+	var text := tr("Del Project Manager: %d nuevos, %d ya estaban.") % [new_paths.size(), existing.size() - new_paths.size()]
 	if not gone.is_empty():
-		text += ", %d ya no existen (no se agregaron)" % gone.size()
-	_set_status(text + ".")
-	_status.tooltip_text = text + "." + ("\n\nNo existen:\n" + "\n".join(gone) if not gone.is_empty() else "")
+		text = tr("Del Project Manager: %d nuevos, %d ya estaban, %d ya no existen (no se agregaron).") % [
+			new_paths.size(), existing.size() - new_paths.size(), gone.size()]
+	_set_status(text)
+	_status.tooltip_text = text + ("\n\n" + tr("No existen:") + "\n" + "\n".join(gone) if not gone.is_empty() else "")
 	_rebuild()
 	if not new_paths.is_empty():
 		resolve_versions(new_paths)
@@ -381,18 +382,17 @@ func _rebuild() -> void:
 			keep = e
 			row.is_selected = true
 	if shown.is_empty() and is_scanning():
-		_placeholder.show_state("Buscando proyectos en %s…" % list.last_scan_dir, ListState.Kind.LOADING)
+		_placeholder.show_state(tr("Buscando proyectos en %s…") % list.last_scan_dir, ListState.Kind.LOADING)
 		_rows.get_parent().visible = false
 	elif shown.is_empty() and entries.is_empty():
-		_placeholder.show_state("Todavía no hay proyectos.\nAgregá una carpeta con project.godot, buscalos "
-			+ "dentro de una carpeta o traé los que ya tiene el Project Manager de Godot.", ListState.Kind.INFO, [
-				["Agregar…", func() -> void: %Add.pressed.emit()],
-				["Escanear…", func() -> void: %Scan.pressed.emit()],
-				["Importar de Godot", func() -> void: %ImportPM.pressed.emit()]])
+		_placeholder.show_state(tr("Todavía no hay proyectos.\nAgregá una carpeta con project.godot, buscalos dentro de una carpeta o traé los que ya tiene el Project Manager de Godot."), ListState.Kind.INFO, [
+				[tr("Agregar…"), func() -> void: %Add.pressed.emit()],
+				[tr("Escanear…"), func() -> void: %Scan.pressed.emit()],
+				[tr("Importar de Godot"), func() -> void: %ImportPM.pressed.emit()]])
 		_rows.get_parent().visible = false
 	elif shown.is_empty():
-		_placeholder.show_state("Ningún proyecto coincide con la búsqueda.", ListState.Kind.INFO,
-			[["Mostrar todos", func() -> void:
+		_placeholder.show_state(tr("Ningún proyecto coincide con la búsqueda."), ListState.Kind.INFO,
+			[[tr("Mostrar todos"), func() -> void:
 				_search.text = ""
 				_rebuild()]])
 		_rows.get_parent().visible = false
@@ -466,7 +466,7 @@ func _show_message(text: String) -> void:
 func _save() -> void:
 	var err := list.save(list_path)
 	if err != OK:
-		_set_status("No se pudo guardar la lista de proyectos (%s)." % error_string(err))
+		_set_status(tr("No se pudo guardar la lista de proyectos (%s).") % error_string(err))
 
 
 ## Carpeta inicial de los selectores: la pedida si existe; si no, el home.

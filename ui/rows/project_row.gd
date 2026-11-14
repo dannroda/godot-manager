@@ -52,7 +52,7 @@ func set_status(s: ProjectStatus) -> void:
 		_uses.add_theme_color_override(&"font_color", ERROR_COLOR)
 	else:
 		_uses.remove_theme_color_override(&"font_color")
-	_install.tooltip_text = "Instalar %s" % s.missing_version()
+	_install.tooltip_text = tr("Instalar %s") % s.missing_version()
 
 
 func _fill() -> void:
@@ -64,11 +64,11 @@ func _fill() -> void:
 		child.queue_free()
 	var made := project.created_with()
 	if not made.is_empty():
-		_add_tag(made, "Versión de Godot con que se guardó el proyecto (config/features)")
+		_add_tag(made, tr("Versión de Godot con que se guardó el proyecto (config/features)"))
 	if project.missing:
-		_add_tag("No encontrado", "La carpeta o su project.godot ya no existen")
+		_add_tag(tr("No encontrado"), tr("La carpeta o su project.godot ya no existen"))
 	elif project.unreadable:
-		_add_tag("project.godot ilegible", "No se pudo leer project.godot")
+		_add_tag(tr("project.godot ilegible"), tr("No se pudo leer project.godot"))
 	modulate.a = 0.55 if project.missing else 1.0
 	set_status(status)
 

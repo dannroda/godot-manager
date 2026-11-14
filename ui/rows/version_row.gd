@@ -25,20 +25,20 @@ func setup(v: InstalledVersion) -> void:
 
 func _fill() -> void:
 	_star.modulate.a = 1.0 if version.is_default else 0.0
-	_star.tooltip_text = "Versión por defecto" if version.is_default else ""
+	_star.tooltip_text = tr("Versión por defecto") if version.is_default else ""
 	_name.text = version.name
 	_path.text = version.path
 	_path.tooltip_text = version.path
 	for child in _tags.get_children():
 		child.queue_free()
 	if version.mono:
-		_add_tag("Mono")
+		_add_tag(tr("Mono"))
 	if version.debug_symbols:
-		_add_tag("Símbolos")
+		_add_tag(tr("Símbolos"))
 	if version.custom:
-		_add_tag("Build propio")
+		_add_tag(tr("Build propio"))
 	if not version.template_platforms.is_empty():
-		_add_tag("Templates: " + ", ".join(version.template_platforms))
+		_add_tag(tr("Templates: %s") % ", ".join(version.template_platforms))
 
 
 func _add_tag(text: String) -> void:

@@ -167,15 +167,15 @@ static func parse_cli_version(job: CliJob) -> GmResult:
 		if major >= MIN_CLI_MAJOR:
 			return GmResult.success(first)
 		return GmResult.failure(CliError.make(OLD_CLI,
-			"Este godot-manager es la versión %s; la UI necesita la %d.x o más nueva." % [first, MIN_CLI_MAJOR]))
+			TranslationServer.translate("Este godot-manager es la versión %s; la UI necesita la %d.x o más nueva.") % [first, MIN_CLI_MAJOR]))
 	var output := (job.stdout + job.stderr).strip_edges()
 	if output.length() > MAX_ORIGINAL:
 		output = output.left(MAX_ORIGINAL) + "…"
-	var msg := "Este godot-manager no entiende 'version': parece una versión vieja (la 1.x, en bash). La UI necesita la %d.x o más nueva." % MIN_CLI_MAJOR
+	var msg := TranslationServer.translate("Este godot-manager no entiende 'version': parece una versión vieja (la 1.x, en bash). La UI necesita la %d.x o más nueva.") % MIN_CLI_MAJOR
 	if job.cancelled:
-		msg = "Se canceló la prueba de godot-manager."
+		msg = TranslationServer.translate("Se canceló la prueba de godot-manager.")
 	if not output.is_empty():
-		msg += "\nSalida (código %d):\n%s" % [job.exit_code, output]
+		msg += TranslationServer.translate("\nSalida (código %d):\n%s") % [job.exit_code, output]
 	return GmResult.failure(CliError.make(OLD_CLI, msg))
 
 
@@ -201,7 +201,7 @@ static func job_error(job: CliJob) -> CliError:
 	var err := job.stderr.strip_edges()
 	if not err.is_empty():
 		return CliError.make(CliError.EXIT_CODE, err.trim_prefix("Error: ").trim_prefix("error: "))
-	return CliError.make(CliError.EXIT_CODE, "godot-manager terminó con código %d sin decir por qué." % job.exit_code)
+	return CliError.make(CliError.EXIT_CODE, TranslationServer.translate("godot-manager terminó con código %d sin decir por qué.") % job.exit_code)
 
 
 ## "4.8.1-beta3" → [4, 8, 1]; lo que no sea número cuenta como 0.
@@ -245,7 +245,7 @@ static func is_newer(a: String, b: String) -> bool:
 static func _parse_json(text: String) -> GmResult:
 	var trimmed := text.strip_edges()
 	if trimmed.is_empty():
-		return GmResult.failure(CliError.make(CliError.BAD_OUTPUT, "el CLI no devolvió nada"))
+		return GmResult.failure(CliError.make(CliError.BAD_OUTPUT, TranslationServer.translate("el CLI no devolvió nada")))
 	var json := JSON.new()
 	if json.parse(trimmed) != OK:
 		var why := json.get_error_message()
@@ -275,7 +275,7 @@ static func _bad(why: String, original: String) -> GmResult:
 	var shown := original.strip_edges()
 	if shown.length() > MAX_ORIGINAL:
 		shown = shown.left(MAX_ORIGINAL) + "…"
-	var msg := "Salida inesperada del CLI: %s\n%s" % [why, shown]
+	var msg := TranslationServer.translate("Salida inesperada del CLI: %s\n%s") % [why, shown]
 	return GmResult.failure(CliError.make(CliError.BAD_OUTPUT, msg, {"original": original}))
 
 

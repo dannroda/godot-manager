@@ -55,8 +55,8 @@ func fill(r: RemoteVersion) -> void:
 	options = InstallOptions.new()
 	options.version = r.tag
 	_version.text = r.tag
-	title = "Instalar " + r.tag
-	ok_button_text = "Instalar"
+	title = tr("Instalar %s") % r.tag
+	ok_button_text = tr("Instalar")
 	_set_install_mode(true)
 	_normal.set_pressed_no_signal(true)
 	_mono.set_pressed_no_signal(false)
@@ -74,8 +74,8 @@ func fill_templates(v: InstalledVersion) -> void:
 	release = null
 	options = InstallOptions.for_templates(v)
 	_version.text = v.name
-	title = "Export templates de " + v.name
-	ok_button_text = "Instalar templates"
+	title = tr("Export templates de %s") % v.name
+	ok_button_text = tr("Instalar templates")
 	_set_install_mode(false)
 	_normal.set_pressed_no_signal(not v.mono)
 	_mono.set_pressed_no_signal(v.mono)
@@ -108,19 +108,21 @@ func _popup() -> void:
 func _set_install_mode(install: bool) -> void:
 	%EditionRow.visible = install
 	_templates.visible = install
-	_symbols.text = "Símbolos de debug" if install else "Símbolos de debug de los templates"
+	_symbols.text = tr("Símbolos de debug") if install else tr("Símbolos de debug de los templates")
 
 
 ## "linux (instalado)" en las que ya están.
 func _label_platforms(installed: PackedStringArray) -> void:
 	for p: String in _platform_boxes:
-		(_platform_boxes[p] as CheckBox).text = p + (" (instalado)" if p in installed else "")
+		(_platform_boxes[p] as CheckBox).text = (tr("%s (instalado)") % p) if p in installed else p
 
 
 ## "Instalando 4.8-beta3 (mono)", para el panel de progreso.
 static func title_for(o: InstallOptions) -> String:
-	var what := "Instalando " if o.mode == InstallOptions.Mode.INSTALL else "Instalando templates de "
-	return what + o.version + (" (mono)" if o.mono else "")
+	var what := o.version + (" (mono)" if o.mono else "")
+	if o.mode == InstallOptions.Mode.INSTALL:
+		return TranslationServer.translate("Instalando %s") % what
+	return TranslationServer.translate("Instalando templates de %s") % what
 
 
 ## Pasa lo que hay en pantalla a `options` y actualiza lo que depende de eso.
@@ -141,8 +143,8 @@ func _read_ui() -> void:
 	_grid.visible = options.wants_templates()
 	_command.text = CliJob.format_command(options.command())
 	var bytes := options.download_size(release)
-	_size.text = "Descarga: %s%s" % [String.humanize_size(bytes),
-		" + símbolos" if options.debug_symbols else ""] if bytes > 0 else ""
+	var size_fmt := tr("Descarga: %s + símbolos") if options.debug_symbols else tr("Descarga: %s")
+	_size.text = size_fmt % String.humanize_size(bytes) if bytes > 0 else ""
 	_size.visible = bytes > 0
 	var why := options.problem()
 	_hint.text = why

@@ -21,6 +21,17 @@ var settings: AppSettings
 @onready var _error_text: Label = %ErrorText
 
 
+## Inglés salvo que el sistema esté en español. Va en _init, antes de que los
+## hijos armen sus textos.
+func _init() -> void:
+	TranslationServer.set_locale(ui_locale(OS.get_locale_language()))
+
+
+## Los textos fuente están en español; cualquier otro idioma ve el inglés.
+static func ui_locale(os_language: String) -> String:
+	return "es" if os_language == "es" else "en"
+
+
 func _ready() -> void:
 	_setup_window()
 	_tabs.tab_changed.connect(_show_screen)
@@ -43,7 +54,7 @@ func _ready() -> void:
 			&"remote": %RemoteScreen}.get(tab)
 		if target != null:
 			_tabs.current_tab = _screens.find(target))
-	_error_dialog.add_button("Ver salida", true, "show_output")
+	_error_dialog.add_button(tr("Ver salida"), true, "show_output")
 	_error_dialog.custom_action.connect(func(action: StringName) -> void:
 		if action == &"show_output":
 			_error_dialog.hide()

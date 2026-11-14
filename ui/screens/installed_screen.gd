@@ -56,7 +56,7 @@ func _ready() -> void:
 	%TemplatesDialog.install_requested.connect(install_requested.emit)
 	%Symbols.pressed.connect(func() -> void:
 		if selected != null and not selected.custom and not selected.debug_symbols:
-			install_requested.emit(GmCommands.symbols(selected.name), "Instalando símbolos de " + selected.name))
+			install_requested.emit(GmCommands.symbols(selected.name), tr("Instalando símbolos de %s") % selected.name))
 	visibility_changed.connect(func() -> void:
 		if is_visible_in_tree():
 			refresh())
@@ -97,7 +97,7 @@ func refresh() -> void:
 	_loading = GmCli.read(GmCommands.list())
 	_loading.notify_on_error = false
 	if versions.is_empty():
-		_show_placeholder("Cargando versiones…", ListState.Kind.LOADING)
+		_show_placeholder(tr("Cargando versiones…"), ListState.Kind.LOADING)
 	await _loading.finished
 	var job := _loading
 	var r := GmParse.parse_list(job.stdout) if job.succeeded() else null
@@ -106,7 +106,7 @@ func refresh() -> void:
 		_load_error = ""
 	else:
 		var err := GmParse.job_error(job) if r == null else r.error
-		_load_error = err.message if err != null else "No se pudo leer la lista."
+		_load_error = err.message if err != null else tr("No se pudo leer la lista.")
 	_rebuild()
 
 
@@ -125,8 +125,8 @@ func _rebuild() -> void:
 		_rows.remove_child(child)
 		child.queue_free()
 	if not _load_error.is_empty():
-		_show_placeholder("No se pudo cargar la lista:\n" + _load_error, ListState.Kind.ERROR,
-			[["Reintentar", refresh]])
+		_show_placeholder(tr("No se pudo cargar la lista:\n%s") % _load_error, ListState.Kind.ERROR,
+			[[tr("Reintentar"), refresh]])
 		_select(null)
 		return
 	var shown := visible_versions()
@@ -141,12 +141,12 @@ func _rebuild() -> void:
 			keep = v
 			row.is_selected = true
 	if shown.is_empty() and versions.is_empty():
-		_show_placeholder("No hay versiones instaladas.", ListState.Kind.INFO, [
+		_show_placeholder(tr("No hay versiones instaladas."), ListState.Kind.INFO, [
 			["Ir a Descargar", func() -> void: tab_requested.emit(&"remote")],
-			["Agregar build propio", func() -> void: %AddBuild.pressed.emit()]])
+			[tr("Agregar build propio"), func() -> void: %AddBuild.pressed.emit()]])
 	elif shown.is_empty():
-		_show_placeholder("Ninguna versión coincide con la búsqueda.", ListState.Kind.INFO,
-			[["Mostrar todas", _clear_filters]])
+		_show_placeholder(tr("Ninguna versión coincide con la búsqueda."), ListState.Kind.INFO,
+			[[tr("Mostrar todas"), _clear_filters]])
 	else:
 		_placeholder.visible = false
 		_rows.get_parent().visible = true
@@ -231,8 +231,8 @@ func _update_actions() -> void:
 		%Symbols.disabled = true
 	if not none and selected.debug_symbols:
 		%Symbols.disabled = true
-	%Symbols.tooltip_text = "Esta versión ya tiene los símbolos de debug." \
-		if not none and selected.debug_symbols else "Agrega los símbolos de debug del editor de esta versión"
+	%Symbols.tooltip_text = tr("Esta versión ya tiene los símbolos de debug.") \
+		if not none and selected.debug_symbols else tr("Agrega los símbolos de debug del editor de esta versión")
 	if _busy > 0:
 		for button: Button in [%SetDefault, %Delete, %AddBuild]:
 			button.disabled = true

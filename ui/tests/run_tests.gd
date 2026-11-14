@@ -15,6 +15,9 @@ var _skipped := 0
 
 
 func _initialize() -> void:
+	# Los tests comparan los textos fuente (en español), sea cual sea el idioma
+	# del sistema.
+	TranslationServer.set_locale("es")
 	_run.call_deferred()
 
 

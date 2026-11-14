@@ -188,6 +188,11 @@ gm_prev_tab={
 )]
 }
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://i18n/en.po")
+locale/fallback="es"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

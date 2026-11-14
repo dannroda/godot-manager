@@ -20,7 +20,7 @@ var taken: PackedStringArray = []
 
 func _ready() -> void:
 	if OS.get_name() == "Windows":
-		_file_dialog.filters = PackedStringArray(["*.exe ; Ejecutables"])
+		_file_dialog.filters = PackedStringArray([tr("*.exe ; Ejecutables")])
 	_name.text_changed.connect(func(_t: String) -> void: _validate())
 	_path.text_changed.connect(func(_t: String) -> void: _validate())
 	_replace.toggled.connect(func(_on: bool) -> void: _validate())
@@ -63,11 +63,11 @@ func command() -> PackedStringArray:
 func problem() -> String:
 	var bin_name := _name.text.strip_edges()
 	if bin_name.is_empty():
-		return "Poné un nombre para la versión."
+		return tr("Poné un nombre para la versión.")
 	if _name_taken() and not _replace.button_pressed:
-		return "Ya hay una versión llamada «%s»." % bin_name
+		return tr("Ya hay una versión llamada «%s».") % bin_name
 	if _path.text.strip_edges().is_empty():
-		return "Elegí el ejecutable de Godot."
+		return tr("Elegí el ejecutable de Godot.")
 	return ""
 
 
@@ -80,10 +80,10 @@ func _validate() -> void:
 	var replacing := _name_taken() and _replace.button_pressed
 	_hint.text = why
 	if why.is_empty() and replacing:
-		_hint.text = "Se borra la versión «%s» actual y queda esta en su lugar." % _name.text.strip_edges()
+		_hint.text = tr("Se borra la versión «%s» actual y queda esta en su lugar.") % _name.text.strip_edges()
 	_replace.visible = _name_taken()
 	get_ok_button().disabled = not why.is_empty()
-	ok_button_text = "Reemplazar" if replacing else "Agregar"
+	ok_button_text = tr("Reemplazar") if replacing else tr("Agregar")
 
 
 func _submit() -> void:

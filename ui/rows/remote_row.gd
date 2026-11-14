@@ -34,13 +34,13 @@ func _fill() -> void:
 	for child in _tags.get_children():
 		child.queue_free()
 	if release.prerelease:
-		_add_tag("Dev")
+		_add_tag(tr("Dev"))
 	if marks != null and marks.normal:
-		_add_tag("Instalada")
+		_add_tag(tr("Instalada"))
 	if marks != null and marks.mono:
-		_add_tag("Mono instalada")
+		_add_tag(tr("Mono instalada"))
 	modulate.a = 1.0 if release.editor else 0.5
-	tooltip_text = "" if release.editor else "godot-manager no instala el editor de esta versión en este sistema."
+	tooltip_text = "" if release.editor else tr("godot-manager no instala el editor de esta versión en este sistema.")
 
 
 func _add_tag(text: String) -> void:
