@@ -117,6 +117,21 @@ static func run_project(dir: String) -> PackedStringArray:
 	return _with_dir(dir, ["run", "--detach"])
 
 
+## Los plugins del proyecto de `dir` (2.3+).
+static func plugins(dir: String) -> PackedStringArray:
+	return _with_dir(dir, ["plugins"])
+
+
+## Activa o desactiva un plugin en el project.godot de `dir`.
+static func plugin_enable(dir: String, id: String, enable: bool) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "enable" if enable else "disable", id])
+
+
+## Desactiva un plugin y borra su carpeta. La UI confirma antes: va --yes.
+static func plugin_remove(dir: String, id: String) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "remove", id, "--yes"])
+
+
 ## `godot-manager version` (sin --json: imprime solo el número).
 static func cli_version() -> PackedStringArray:
 	return ["version"]

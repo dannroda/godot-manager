@@ -37,4 +37,7 @@ jobs:
           cache: false
       - uses: ./.github/actions/setup-godot
       - name: Tests de la interfaz
+        # GM_BIN: los tests de integración corren contra este godot-manager.
+        env:
+          GM_BIN: ${{ github.workspace }}/bin/godot-manager
         run: godot --headless --path ui -s res://tests/run_tests.gd

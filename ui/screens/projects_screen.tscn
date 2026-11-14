@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://nuqhd7dy8x" path="res://rows/list_state.tscn" id="2_cqxe7"]
 [ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="2_okxhh"]
 [ext_resource type="PackedScene" uid="uid://1b1bcuu1v8hw" path="res://dialogs/change_version_dialog.tscn" id="3_igeof"]
+[ext_resource type="PackedScene" path="res://dialogs/project_details_dialog.tscn" id="4_pdets"]
 
 [node name="ProjectsScreen" type="PanelContainer" unique_id=1011292242]
 anchors_preset = 15
@@ -97,6 +98,13 @@ tooltip_text = "Fija con qué versión se abre el proyecto (.godot-version)"
 disabled = true
 text = "Cambiar versión…"
 
+[node name="Details" type="Button" parent="Layout/Body/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Carpeta, versión y plugins del proyecto; desde ahí se desactiva un plugin que no deja abrir el editor"
+disabled = true
+text = "Detalles…"
+
 [node name="ShowFolder" type="Button" parent="Layout/Body/Actions" unique_id=1680188527]
 unique_name_in_owner = true
 layout_mode = 2
@@ -169,3 +177,7 @@ unique_name_in_owner = true
 
 [node name="ChangeVersionDialog" parent="." unique_id=110441867 instance=ExtResource("3_igeof")]
 unique_name_in_owner = true
+
+[node name="ProjectDetailsDialog" parent="." instance=ExtResource("4_pdets")]
+unique_name_in_owner = true
+visible = false

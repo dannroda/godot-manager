@@ -100,6 +100,38 @@ static func parse_which(text: String) -> GmResult:
 	return GmResult.success(r)
 
 
+## `plugins` → Array[ProjectPlugin], en el orden del CLI.
+static func parse_plugins(text: String) -> GmResult:
+	var root := _parse_json(text)
+	if not root.ok:
+		return root
+	if not root.value is Dictionary:
+		return _bad("se esperaba un objeto con 'plugins'", text)
+	var problems: Array[String] = []
+	var out: Array[ProjectPlugin] = []
+	var items := _arr(root.value, "plugins", problems, true)
+	for i in items.size():
+		if not items[i] is Dictionary:
+			problems.append("plugins[%d] no es un objeto" % i)
+			continue
+		var item: Dictionary = items[i]
+		var p := ProjectPlugin.new()
+		p.id = _str(item, "id", problems, null)
+		p.name = _str(item, "name", problems, "")
+		p.description = _str(item, "description", problems, "")
+		p.author = _str(item, "author", problems, "")
+		p.version = _str(item, "version", problems, "")
+		p.script_path = _str(item, "script", problems, "")
+		p.path = _str(item, "path", problems, "")
+		p.enabled = _bool(item, "enabled", problems, false)
+		p.missing = _bool(item, "missing", problems, false)
+		p.problems = _str_list(item, "problems", problems)
+		out.append(p)
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(out)
+
+
 ## Respuesta {"ok":true,…} de set, set-local, add, remove, launch/run --detach
 ## → el Dictionary entero.
 static func parse_ok(text: String) -> GmResult:

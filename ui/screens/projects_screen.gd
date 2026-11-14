@@ -74,6 +74,7 @@ func _ready() -> void:
 	%Run.pressed.connect(func() -> void: open_selected(false))
 	%ImportPM.pressed.connect(func() -> void: import_from_pm(ProjectList.pm_config_path()))
 	%ChangeVersion.pressed.connect(open_change_version)
+	%Details.pressed.connect(open_details)
 	%ChangeVersionDialog.change_requested.connect(change_version)
 	%InstallDialog.install_requested.connect(install_requested.emit)
 	# Una instalación, un borrado o cambiar la default cambian lo que resuelve
@@ -236,6 +237,13 @@ func open_change_version() -> void:
 	var installed: Array[InstalledVersion] = []
 	installed.assign(r.value)
 	%ChangeVersionDialog.open_for(e, installed, statuses.get(e.path))
+
+
+## Detalles del seleccionado, con sus plugins.
+func open_details() -> void:
+	if selected == null or selected.missing:
+		return
+	%ProjectDetailsDialog.open_for(selected, statuses.get(selected.path))
 
 
 ## Corre `set-local` / `set-local --unset` por la cola de escrituras; al
@@ -442,7 +450,7 @@ func _select(e: ProjectEntry) -> void:
 func _update_actions() -> void:
 	var none := selected == null
 	%Remove.disabled = none
-	for button: Button in [%ShowFolder, %Open, %Run, %ChangeVersion]:
+	for button: Button in [%ShowFolder, %Open, %Run, %ChangeVersion, %Details]:
 		button.disabled = none or selected.missing
 
 

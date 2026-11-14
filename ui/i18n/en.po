@@ -857,3 +857,87 @@ msgstr "Custom build"
 #: rows/version_row.gd
 msgid "Templates: %s"
 msgstr "Templates: %s"
+
+msgid "Detalles del proyecto"
+msgstr "Project details"
+
+msgid "Carpeta:"
+msgstr "Folder:"
+
+msgid "Guardado con:"
+msgstr "Saved with:"
+
+msgid "Abre con:"
+msgstr "Opens with:"
+
+msgid "Vuelve a leer los plugins del proyecto"
+msgstr "Reads the project's plugins again"
+
+msgid "Recargar"
+msgstr "Reload"
+
+msgid "Los cambios se guardan en project.godot. Si el proyecto está abierto en el editor, cerralo antes: Godot puede volver a escribir la lista de plugins al guardar."
+msgstr "Changes are saved to project.godot. If the project is open in the editor, close it first: Godot may write the plugin list again when it saves."
+
+msgid "Desinstalar plugin"
+msgstr "Uninstall plugin"
+
+msgid "Desinstalar"
+msgstr "Uninstall"
+
+msgid "no se sabe"
+msgstr "unknown"
+
+msgid "Leyendo plugins…"
+msgstr "Reading plugins…"
+
+msgid "godot-manager no está disponible: revisá Ajustes."
+msgstr "godot-manager is not available: check Settings."
+
+msgid "El proyecto no tiene plugins en addons/."
+msgstr "The project has no plugins in addons/."
+
+msgid "Plugins: %d · activos: %d · con problemas: %d"
+msgstr "Plugins: %d · enabled: %d · with problems: %d"
+
+msgid "Plugins: %d · activos: %d"
+msgstr "Plugins: %d · enabled: %d"
+
+msgid "Se activó «%s»."
+msgstr "Enabled “%s”."
+
+msgid "Se desactivó «%s»."
+msgstr "Disabled “%s”."
+
+msgid "Se desinstaló «%s»."
+msgstr "Uninstalled “%s”."
+
+msgid "¿Quitar «%s» de project.godot?\nSu carpeta ya no existe."
+msgstr "Remove “%s” from project.godot?\nIts folder no longer exists."
+
+msgid "¿Desinstalar «%s»?\nSe desactiva y se borra la carpeta:\n%s\n\nNo se puede deshacer."
+msgstr "Uninstall “%s”?\nIt is disabled and this folder is deleted:\n%s\n\nThis can't be undone."
+
+msgid "Activo"
+msgstr "Enabled"
+
+msgid "Activa o desactiva el plugin en project.godot"
+msgstr "Enables or disables the plugin in project.godot"
+
+msgid "Desinstalar…"
+msgstr "Uninstall…"
+
+msgid "Lo saca de project.godot"
+msgstr "Removes it from project.godot"
+
+msgid "Lo desactiva y borra su carpeta"
+msgstr "Disables it and deletes its folder"
+
+msgid "Este godot-manager no maneja plugins: hace falta la versión 2.3 o posterior."
+msgstr "This godot-manager doesn't handle plugins: version 2.3 or later is needed."
+
+msgid "Carpeta, versión y plugins del proyecto; desde ahí se desactiva un plugin que no deja abrir el editor"
+msgstr "The project's folder, version and plugins; disable a plugin there if it keeps the editor from opening"
+
+msgid "Detalles…"
+msgstr "Details…"

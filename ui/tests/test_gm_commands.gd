@@ -60,3 +60,11 @@ func test_launch_and_open_project() -> void:
 	assert_eq(GmCommands.launch("4.3", ["-p"]), PackedStringArray(["--json", "launch", "--detach", "4.3", "-p"]))
 	assert_eq(GmCommands.open_project("/home/yo/a b"),
 		PackedStringArray(["--json", "--dir", "/home/yo/a b", "run", "--detach", "-e"]))
+
+
+func test_plugins() -> void:
+	var d := "/home/yo/Mis Juegos/p"
+	assert_eq(GmCommands.plugins(d), PackedStringArray(["--json", "--dir", d, "plugins"]))
+	assert_eq(GmCommands.plugin_enable(d, "a/b", true), PackedStringArray(["--json", "--dir", d, "plugins", "enable", "a/b"]))
+	assert_eq(GmCommands.plugin_enable(d, "x", false), PackedStringArray(["--json", "--dir", d, "plugins", "disable", "x"]))
+	assert_eq(GmCommands.plugin_remove(d, "x"), PackedStringArray(["--json", "--dir", d, "plugins", "remove", "x", "--yes"]))

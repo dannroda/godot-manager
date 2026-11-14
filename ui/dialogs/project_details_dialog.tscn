@@ -1,0 +1,103 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://dialogs/project_details_dialog.gd" id="1_pdd"]
+
+[node name="ProjectDetailsDialog" type="AcceptDialog"]
+title = "Detalles del proyecto"
+size = Vector2i(640, 560)
+min_size = Vector2i(560, 440)
+ok_button_text = "Cerrar"
+script = ExtResource("1_pdd")
+
+[node name="Content" type="VBoxContainer" parent="."]
+theme_override_constants/separation = 8
+
+[node name="ProjectName" type="Label" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+text_overrun_behavior = 3
+
+[node name="Info" type="GridContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+columns = 2
+
+[node name="FolderLabel" type="Label" parent="Content/Info"]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Carpeta:"
+
+[node name="Folder" type="Label" parent="Content/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+text_overrun_behavior = 3
+
+[node name="CreatedLabel" type="Label" parent="Content/Info"]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Guardado con:"
+
+[node name="CreatedWith" type="Label" parent="Content/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OpensLabel" type="Label" parent="Content/Info"]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Abre con:"
+
+[node name="OpensWith" type="Label" parent="Content/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Sep" type="HSeparator" parent="Content"]
+layout_mode = 2
+
+[node name="PluginsHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="PluginsStatus" type="Label" parent="Content/PluginsHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_type_variation = &"DimLabel"
+text_overrun_behavior = 3
+
+[node name="Reload" type="Button" parent="Content/PluginsHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Vuelve a leer los plugins del proyecto"
+text = "Recargar"
+
+[node name="ListPanel" type="PanelContainer" parent="Content"]
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ListPanel"
+
+[node name="Scroll" type="ScrollContainer" parent="Content/ListPanel"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Plugins" type="VBoxContainer" parent="Content/ListPanel/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Note" type="Label" parent="Content"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Los cambios se guardan en project.godot. Si el proyecto está abierto en el editor, cerralo antes: Godot puede volver a escribir la lista de plugins al guardar."
+autowrap_mode = 3
+
+[node name="RemoveDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Desinstalar plugin"
+ok_button_text = "Desinstalar"
+cancel_button_text = "Cancelar"

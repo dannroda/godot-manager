@@ -218,3 +218,30 @@ func test_version_sorting() -> void:
 	var tags := ["3.6.3-stable", "4.8-beta2", "4.7.2-stable", "4.8-beta3", "4.8-dev1"]
 	tags.sort_custom(GmParse.is_newer)
 	assert_eq(tags, ["4.8-beta3", "4.8-beta2", "4.8-dev1", "4.7.2-stable", "3.6.3-stable"])
+
+
+func test_parse_plugins() -> void:
+	var text := """{"project": "/p", "plugins": [
+		{"id": "good", "name": "Good", "description": "d", "author": "Ana", "version": "1.2",
+		 "script": "plugin.gd", "path": "/p/addons/good", "enabled": true, "missing": false, "problems": []},
+		{"id": "gone", "name": "", "path": "/p/addons/gone", "enabled": true, "missing": true,
+		 "problems": ["está activo en project.godot pero la carpeta no existe"]}]}"""
+	var r := GmParse.parse_plugins(text)
+	if not assert_true(r.ok, str(r.error)):
+		return
+	assert_eq(r.value.size(), 2)
+	var good: ProjectPlugin = r.value[0]
+	assert_eq(good.display_name(), "Good")
+	assert_eq(good.version, "1.2")
+	assert_true(good.enabled)
+	assert_false(good.has_problems())
+	var gone: ProjectPlugin = r.value[1]
+	assert_eq(gone.display_name(), "gone", "sin name usa la carpeta")
+	assert_true(gone.missing)
+	assert_true(gone.has_problems())
+
+
+func test_parse_plugins_errors() -> void:
+	assert_eq(GmParse.parse_plugins("""{"error": {"code": "not_a_project", "message": "x"}}""").error.code, "not_a_project")
+	assert_eq(GmParse.parse_plugins("""{"project": "/p"}""").error.code, CliError.BAD_OUTPUT)
+	assert_eq(GmParse.parse_plugins("""{"plugins": [{"name": "sin id"}]}""").error.code, CliError.BAD_OUTPUT)
