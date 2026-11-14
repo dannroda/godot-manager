@@ -46,8 +46,36 @@ func defaultGodotDir() (string, error) {
 		}
 		return "", errors.New("LOCALAPPDATA no esta definida (o defini GODOT_DIR)")
 	default:
-		return "/opt/godot", nil
+		data, err := dataHome()
+		if err != nil {
+			return "", err
+		}
+		return unixGodotDir(legacyGodotDir, data), nil
 	}
+}
+
+// Carpeta de siempre en Linux. Se sigue usando si ya existe (instalaciones
+// viejas, o un /opt/godot preparado a mano); si no, las versiones van a la
+// carpeta de datos del usuario, donde se puede escribir sin sudo.
+const legacyGodotDir = "/opt/godot"
+
+func unixGodotDir(legacy, data string) string {
+	if fi, err := os.Stat(legacy); err == nil && fi.IsDir() {
+		return legacy
+	}
+	return filepath.Join(data, "godot-manager")
+}
+
+// $XDG_DATA_HOME, o ~/.local/share.
+func dataHome() (string, error) {
+	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
+		return d, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".local", "share"), nil
 }
 
 // Donde el editor busca los export templates.
@@ -61,13 +89,9 @@ func defaultTemplatesBase() (string, error) {
 		}
 		return filepath.Join(d, "Godot", "export_templates"), nil
 	default:
-		d := os.Getenv("XDG_DATA_HOME")
-		if d == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return "", err
-			}
-			d = filepath.Join(home, ".local", "share")
+		d, err := dataHome()
+		if err != nil {
+			return "", err
 		}
 		return filepath.Join(d, "godot", "export_templates"), nil
 	}

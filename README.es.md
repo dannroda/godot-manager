@@ -43,7 +43,7 @@ Cada [release](https://github.com/dannroda/godot-manager/releases/latest) trae u
 | `godot-manager-windows-amd64.zip` | `godot-manager.exe`, `godot.exe` y la interfaz (`godot-manager-ui.exe`) |
 | `godot-manager-linux-arm64.tar.gz`, `godot-manager-windows-arm64.zip` | solo el CLI |
 
-`SHA256SUMS` tiene el checksum de cada archivo. Descomprimilo y poné la carpeta en el `PATH`. La interfaz usa el `godot-manager` que está al lado.
+`SHA256SUMS` tiene el checksum de cada archivo. Descomprimilo donde quieras y abrí `godot-manager-ui`: usa el `godot-manager` que está al lado, así que no hace falta instalar nada más. Para usar `godot-manager` y `godot` desde una terminal, sumá la carpeta al `PATH`.
 
 ### Arch Linux
 
@@ -76,7 +76,7 @@ godot --headless --path ui --export-release Linux "$PWD/godot-manager-ui.x86_64"
 
 | | Linux | Windows |
 |---|---|---|
-| Versiones (`GODOT_DIR`) | `/opt/godot` (tu usuario tiene que poder escribir ahí) | `%LOCALAPPDATA%\godot-manager` |
+| Versiones (`GODOT_DIR`) | `/opt/godot` si existe; si no, `~/.local/share/godot-manager` | `%LOCALAPPDATA%\godot-manager` |
 | Export templates | `~/.local/share/godot/export_templates` | `%APPDATA%\Godot\export_templates` |
 
 Definí `GODOT_DIR` para guardar las versiones en otro lado. Los templates van donde los busca el editor de Godot, así que el editor los puede usar enseguida.

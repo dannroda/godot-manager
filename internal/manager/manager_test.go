@@ -278,3 +278,17 @@ func TestPlatformInstalled3x(t *testing.T) {
 		t.Errorf("plataformas 3.x: %v", got)
 	}
 }
+
+func TestUnixGodotDir(t *testing.T) {
+	data := t.TempDir()
+	legacy := filepath.Join(t.TempDir(), "godot")
+	if got, want := unixGodotDir(legacy, data), filepath.Join(data, "godot-manager"); got != want {
+		t.Errorf("sin %s: %s, quiero %s", legacy, got, want)
+	}
+	if err := os.Mkdir(legacy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := unixGodotDir(legacy, data); got != legacy {
+		t.Errorf("con %s: %s", legacy, got)
+	}
+}
