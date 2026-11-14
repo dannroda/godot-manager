@@ -44,7 +44,7 @@ jobs:
           for t in linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
             d="$RUNNER_TEMP/pkg/godot-manager-$t"
             mkdir -p "$d"
-            cp dist/$t/* README.md README.es.md "$d/"
+            cp dist/$t/* README.md README.es.md LICENSE "$d/"
             case $t in
               linux-amd64)   cp "$RUNNER_TEMP/gui/linux/"* "$d/" ;;
               windows-amd64) cp "$RUNNER_TEMP/gui/windows/"* "$d/" ;;

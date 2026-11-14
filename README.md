@@ -1,6 +1,6 @@
 # godot-manager
 
-**English** · [Español](README.es.md)
+**English** · [Español](README.es.md) · [Website](https://dann.com.ar/en/godot-manager/)
 
 A version manager for [Godot](https://godotengine.org) on Linux and Windows. It installs official builds (stable, dev, .NET/mono), export templates and debug symbols, and picks the right editor for each project through a `.godot-version` file.
 
@@ -143,3 +143,7 @@ git tag v2.2.0 && git push origin v2.2.0
 ```
 
 The GUI's translations are in `ui/i18n/en.po`; the source strings are in Spanish. The GUI's task board is in `ui/compass` (Scope Compass format).
+
+## License
+
+[MIT](LICENSE).

@@ -4,7 +4,7 @@ pkgver=2.2.0
 pkgrel=1
 pkgdesc="Instala y selecciona versiones de Godot (stable, dev, mono, export templates, simbolos de debug) por proyecto"
 arch=('x86_64' 'aarch64')
-license=('unknown')
+license=('MIT')
 makedepends=('go')
 optdepends=('gdb: usar los simbolos de debug (godot-manager symbols)')
 provides=('godot')
@@ -20,4 +20,5 @@ build() {
 package() {
     install -Dm755 "$srcdir/godot-manager" "$pkgdir/usr/bin/godot-manager"
     install -Dm755 "$srcdir/godot" "$pkgdir/usr/bin/godot"
+    install -Dm644 "$startdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

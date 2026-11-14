@@ -1,6 +1,6 @@
 # godot-manager
 
-[English](README.md) · **Español**
+[English](README.md) · **Español** · [Sitio](https://dann.com.ar/es/godot-manager/)
 
 Un gestor de versiones de [Godot](https://godotengine.org) para Linux y Windows. Instala builds oficiales (stable, dev, .NET/mono), export templates y símbolos de debug, y elige el editor que corresponde a cada proyecto mediante un archivo `.godot-version`.
 
@@ -143,3 +143,7 @@ git tag v2.2.0 && git push origin v2.2.0
 ```
 
 Las traducciones de la interfaz están en `ui/i18n/en.po`; los textos fuente están en español. El tablero de tareas de la interfaz está en `ui/compass` (formato Scope Compass).
+
+## Licencia
+
+[MIT](LICENSE).
