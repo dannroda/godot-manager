@@ -1,0 +1,67 @@
+name: Release
+
+# Un tag vX.Y.Z arma una release en borrador con los binarios. Se publica a
+# mano desde GitHub después de revisar las notas. Los nombres de los assets
+# no llevan versión: la landing enlaza releases/latest/download/<asset>.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: CLI para cada plataforma
+        run: make dist VERSION="${GITHUB_REF_NAME#v}"
+
+      - uses: ./.github/actions/setup-godot
+        with:
+          templates: linux,windows
+
+      - name: Exportar la interfaz
+        run: |
+          mkdir -p "$RUNNER_TEMP/gui/linux" "$RUNNER_TEMP/gui/windows"
+          godot --headless --path ui --export-release Linux "$RUNNER_TEMP/gui/linux/godot-manager-ui.x86_64"
+          godot --headless --path ui --export-release Windows "$RUNNER_TEMP/gui/windows/godot-manager-ui.exe"
+          ls -l "$RUNNER_TEMP/gui"/*
+
+      - name: Empaquetar
+        run: |
+          mkdir -p out
+          for t in linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
+            d="$RUNNER_TEMP/pkg/godot-manager-$t"
+            mkdir -p "$d"
+            cp dist/$t/* README.md README.es.md "$d/"
+            case $t in
+              linux-amd64)   cp "$RUNNER_TEMP/gui/linux/"* "$d/" ;;
+              windows-amd64) cp "$RUNNER_TEMP/gui/windows/"* "$d/" ;;
+            esac
+            case $t in
+              linux-*)   tar -C "$RUNNER_TEMP/pkg" -czf "out/godot-manager-$t.tar.gz" "godot-manager-$t" ;;
+              windows-*) (cd "$RUNNER_TEMP/pkg" && zip -qr "$GITHUB_WORKSPACE/out/godot-manager-$t.zip" "godot-manager-$t") ;;
+            esac
+          done
+          (cd out && sha256sum * > SHA256SUMS)
+          ls -l out
+          cat out/SHA256SUMS
+
+      - name: Release en borrador
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" out/* --draft $prerelease \
+            --title "godot-manager ${GITHUB_REF_NAME#v}" --generate-notes

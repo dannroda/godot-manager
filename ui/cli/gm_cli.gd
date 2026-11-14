@@ -108,9 +108,10 @@ func is_busy() -> bool:
 	return not _running.is_empty() or not _write_queue.is_empty()
 
 
-## Ruta absoluta del binario: `bin_name` si es una ruta, o la primera
-## coincidencia en PATH. Vacío si no se encuentra.
-static func resolve_binary(bin_name: String) -> String:
+## Ruta absoluta del binario: `bin_name` si es una ruta; si no, el que está
+## junto al ejecutable de la UI (el paquete de la release trae los dos) o la
+## primera coincidencia en PATH. Vacío si no se encuentra.
+static func resolve_binary(bin_name: String, app_dir := bundled_dir()) -> String:
 	if bin_name.is_empty():
 		return ""
 	if bin_name.is_absolute_path() or bin_name.contains("/") or bin_name.contains("\\"):
@@ -119,12 +120,23 @@ static func resolve_binary(bin_name: String) -> String:
 	var candidates: PackedStringArray = [bin_name]
 	if windows and not bin_name.to_lower().ends_with(".exe"):
 		candidates.insert(0, bin_name + ".exe")
-	for dir in path_dirs(OS.get_environment("PATH"), windows):
+	var dirs := path_dirs(OS.get_environment("PATH"), windows)
+	if not app_dir.is_empty():
+		dirs.insert(0, app_dir)
+	for dir in dirs:
 		for c in candidates:
 			var full := dir.path_join(c)
 			if FileAccess.file_exists(full):
 				return full
 	return ""
+
+
+## Carpeta del ejecutable exportado. Vacío en el editor, donde el ejecutable
+## es Godot.
+static func bundled_dir() -> String:
+	if OS.has_feature("editor"):
+		return ""
+	return OS.get_executable_path().get_base_dir()
 
 
 ## Las carpetas de un PATH: `;` en Windows (donde una entrada puede venir

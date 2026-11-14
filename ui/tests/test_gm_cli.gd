@@ -191,6 +191,19 @@ func test_resolve_binary_in_path() -> void:
 	assert_eq(GmCliScript.resolve_binary("/bin/sh"), "/bin/sh")
 
 
+## El binario junto al ejecutable de la UI gana sobre el del PATH.
+func test_resolve_binary_next_to_app() -> void:
+	var dir := OS.get_temp_dir().path_join("gm_bundled_test")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var name := "godot-manager.exe" if OS.get_name() == "Windows" else "godot-manager"
+	FileAccess.open(dir.path_join(name), FileAccess.WRITE).close()
+	assert_eq(GmCliScript.resolve_binary("godot-manager", dir), dir.path_join(name))
+	assert_eq(GmCliScript.resolve_binary("no-existe-esto-123", dir), "")
+	DirAccess.remove_absolute(dir.path_join(name))
+	DirAccess.remove_absolute(dir)
+	assert_eq(GmCliScript.bundled_dir(), "", "en el editor no hay carpeta propia")
+
+
 ## 4.3: PATH de Windows (con `;` y entradas entre comillas) y de Linux.
 func test_path_dirs() -> void:
 	assert_eq(GmCliScript.path_dirs("C:\\Windows;\"C:\\Program Files\\gm\";;C:\\x ", true),
