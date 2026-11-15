@@ -6,11 +6,11 @@ Las tareas y los hitos de este proyecto viven en `compass/`, en el formato de Sc
 
 - **Usá la CLI `scompass`, no edites los JSON a mano.** Valida, escribe en formato canónico, regenera el export markdown y, si hay un hub corriendo, avisa al instante a la UI web y al dock de Godot.
 - Corré los comandos desde cualquier carpeta del proyecto (busca `compass/` hacia arriba) o con `--dir <proyecto>`.
-- Si `scompass` no está en el PATH: `node <carpeta de scope-compass>/hub/bin/scompass.js`.
+- Si `scompass` no está en el PATH: la ruta al binario de la release, o `node <carpeta de scope-compass>/hub/bin/scompass.js` desde un clon del repo.
 - Agregá `--json` para leer la salida desde un programa. Código de salida 0 si anduvo; el error va por stderr.
 - No hace falta que el hub esté corriendo: sin hub, la CLI escribe directo en `compass/`. Con el Inicio corriendo (`scompass home`), la CLI pasa por él solo (lo encuentra en el registro).
 - Si la CLI avisa que el hub es de otra versión, reinicialo con `scompass restart` antes de seguir: un hub viejo puede no conocer campos nuevos.
-- Los cambios quedan como archivos modificados en `compass/` (y en el export markdown). Commitealos solo si te lo piden. `scompass list` termina con cuántos hay sin commitear (`uncommitted` en `--json`).
+- Los cambios quedan como archivos modificados en `compass/` (y en el export markdown). Commitealos solo si te lo piden, y en el repo del tablero: `git -C compass …`, que es el del proyecto si `compass/` es una carpeta suya y el propio si es un enlace o un submódulo (ver *Dónde vive el tablero*). `scompass list` termina con cuántos hay sin commitear (`uncommitted` en `--json`).
 
 ## MCP
 
@@ -19,7 +19,7 @@ Si en tus herramientas aparece el servidor `scompass` (`list_tasks`, `show_task`
 Para tenerlo en Claude Code en todos los proyectos (toma el de la carpeta de la sesión; `dir` en cada herramienta apunta a otro):
 
 ```sh
-claude mcp add --scope user scompass -- node <carpeta de scope-compass>/hub/bin/scompass.js mcp
+claude mcp add --scope user scompass -- scompass mcp
 ```
 
 Los hitos (`compass://milestone/<id>`), las tareas (`compass://task/<id>`) y los documentos (`compass://doc/<alias>`) se adjuntan con `@scompass:…`.
@@ -201,6 +201,24 @@ scompass doc search "salto doble"            # líneas con todas las palabras, c
 scompass doc status                          # estado de git de cada documento y su último commit
 scompass doc diff gdd                        # cambios sin commitear y las secciones que tocan
 ```
+
+## Dónde vive el tablero
+
+Los tableros son del usuario, no del proyecto: `scompass init` crea el tablero en `~/.local/share/scope-compass/boards/<nombre>/` (en Windows, `%LOCALAPPDATA%\scope-compass\boards\`) y `compass/` queda como un enlace (symlink; junction en Windows) que el proyecto excluye en `.git/info/exclude`. Así el tablero no se publica con el código. Los tipos:
+
+- enlazado: lo de arriba. Si la carpeta de tableros es la raíz de un repo de git, ese repo es el de todos los tableros y cada uno es una subcarpeta; si no, cada tablero tiene su propio repo;
+- submódulo: `compass/` es un submódulo de git con el repo del tablero, para compartirlo con otros;
+- en el proyecto: una carpeta del proyecto, en su mismo repo (`init --in-project`, los tableros de antes y los de un proyecto en `/tmp`).
+
+Para la CLI, el MCP, la web y el dock da lo mismo: siempre es `<proyecto>/compass`. Lo que cambia es dónde se commitea (`git -C compass`).
+
+```sh
+scompass board                   # dónde está: en el proyecto, enlazado o submódulo, con su rama y su origin (--json)
+scompass board move [<nombre>]   # saca un tablero de los de antes a boards/<nombre> con su historial; compass/ queda como enlace y fuera del índice del proyecto
+scompass board link <nombre>     # en otro equipo, después de clonar el repo del tablero en boards/<nombre>: crea el enlace
+```
+
+`board move` pasa el export markdown a `compass/tareas.md` (adentro del tablero) y deja lo que no estaba commiteado sin commitear en el tablero; la baja de `compass/` en el proyecto queda en su índice para commitear. Con el repo de todos los tableros, el historial entra en un commit (el único que hace la app); con un repo por tablero, no commitea nada. No lo corras con un hub o el Inicio sirviendo el proyecto.
 
 ## Proyectos del equipo
 

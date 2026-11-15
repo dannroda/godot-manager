@@ -3,6 +3,3 @@
 /android/
 # Exportaciones (export_presets.cfg)
 /build/
-# Tablero de tareas (Scope Compass): vive fuera del repo
-/compass/
-/docs/tareas.md
