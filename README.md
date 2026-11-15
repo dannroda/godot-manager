@@ -149,7 +149,7 @@ Pushes and pull requests run both test suites on GitHub Actions (the CLI on Linu
 git tag v2.2.0 && git push origin v2.2.0
 ```
 
-The GUI's translations are in `ui/i18n/en.po`; the source strings are in Spanish. The GUI's task board is in `ui/compass` (Scope Compass format).
+The GUI's translations are in `ui/i18n/en.po`; the source strings are in Spanish.
 
 ## License
 

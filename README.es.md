@@ -149,7 +149,7 @@ Cada push y pull request corre los dos juegos de tests en GitHub Actions (el CLI
 git tag v2.2.0 && git push origin v2.2.0
 ```
 
-Las traducciones de la interfaz están en `ui/i18n/en.po`; los textos fuente están en español. El tablero de tareas de la interfaz está en `ui/compass` (formato Scope Compass).
+Las traducciones de la interfaz están en `ui/i18n/en.po`; los textos fuente están en español.
 
 ## Licencia
 
