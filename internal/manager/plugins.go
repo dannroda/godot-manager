@@ -33,7 +33,7 @@ type plugin struct {
 	Script      string   `json:"script"`
 	Path        string   `json:"path"` // carpeta del plugin
 	Enabled     bool     `json:"enabled"`
-	Missing     bool     `json:"missing"`  // activo en project.godot pero sin carpeta
+	Missing     bool     `json:"missing"`  // activo en project.godot pero sin carpeta o sin plugin.cfg
 	Problems    []string `json:"problems"` // vacio si esta bien
 }
 
@@ -137,11 +137,15 @@ func projectPlugins(proj string) ([]plugin, error) {
 		ps = append(ps, p)
 	}
 	for id := range enabled {
-		ps = append(ps, plugin{
+		p := plugin{
 			ID: id, Path: filepath.Join(proj, "addons", filepath.FromSlash(id)),
 			Enabled: true, Missing: true,
 			Problems: []string{"está activo en project.godot pero la carpeta no existe"},
-		})
+		}
+		if isDir(p.Path) {
+			p.Problems[0] = "está activo en project.godot pero su carpeta no tiene plugin.cfg"
+		}
+		ps = append(ps, p)
 	}
 	sort.Slice(ps, func(i, j int) bool { return ps[i].ID < ps[j].ID })
 	return ps, nil
@@ -154,6 +158,9 @@ func findPluginDirs(addons string) []string {
 	filepath.WalkDir(addons, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || !d.IsDir() || path == addons {
 			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") {
+			return fs.SkipDir // oculta, como la .x.borrar de un remove
 		}
 		rel, _ := filepath.Rel(addons, path)
 		if strings.Count(filepath.ToSlash(rel), "/") >= 3 {
@@ -251,12 +258,17 @@ func removePlugin(proj, id string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	i := slices.IndexFunc(ps, func(p plugin) bool { return p.ID == id })
-	if i < 0 {
+	var p plugin
+	if i := slices.IndexFunc(ps, func(p plugin) bool { return p.ID == id }); i >= 0 {
+		p = ps[i]
+	} else if rel := filepath.FromSlash(id); filepath.IsLocal(rel) && filepath.Clean(rel) != "." && isDir(filepath.Join(proj, "addons", rel)) {
+		// carpeta sin plugin.cfg (por ejemplo, la que dejo un remove viejo a medias)
+		p = plugin{ID: id, Path: filepath.Join(proj, "addons", rel), Missing: true}
+	} else {
 		return nil, errf(codeNoPlugin, "no hay un plugin '%s' en %s", id, filepath.Join(proj, "addons"))
 	}
-	p := ps[i]
-	if !p.Missing {
+	hasDir := isDir(p.Path)
+	if hasDir {
 		out.step("Se va a borrar %s (%s)", p.Path, humanSize(dirSize(p.Path)))
 	}
 	ok, err := confirm(fmt.Sprintf("¿Desinstalar el plugin '%s'?", id))
@@ -267,21 +279,39 @@ func removePlugin(proj, id string) (map[string]any, error) {
 		out.step("Cancelado.")
 		return nil, nil
 	}
-	// primero se desactiva: si borrar falla a mitad, el editor igual abre
+	// Primero se aparta la carpeta con un rename: en Windows falla si hay un
+	// archivo abierto adentro (el editor, por ejemplo), y entonces no se toco
+	// nada. Borrar directo dejaba el plugin a medias: sin plugin.cfg y sin
+	// poder reintentar.
+	trash := filepath.Join(filepath.Dir(p.Path), "."+filepath.Base(p.Path)+".borrar")
+	if hasDir {
+		os.RemoveAll(trash) // de un remove anterior que no pudo terminar
+		if err := os.Rename(p.Path, trash); err != nil {
+			return nil, errors.Join(fmt.Errorf("no se pudo apartar %s (¿hay un archivo abierto, por ejemplo en el editor?); no se cambió nada", p.Path), err)
+		}
+	}
 	if p.Enabled {
 		if err := setPluginEnabled(proj, id, false); err != nil {
+			if hasDir {
+				os.Rename(trash, p.Path)
+			}
 			return nil, err
 		}
 	}
 	removed := ""
-	if !p.Missing {
-		if err := os.RemoveAll(p.Path); err != nil {
-			return nil, err
+	if hasDir {
+		if err := os.RemoveAll(trash); err != nil {
+			return nil, errors.Join(fmt.Errorf("el plugin '%s' quedó desactivado y fuera de addons, pero no se pudo borrar %s", id, trash), err)
 		}
 		removed = p.Path
 	}
 	out.step("Plugin '%s' desinstalado", id)
 	return map[string]any{"plugin": id, "removed": removed}, nil
+}
+
+func isDir(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
 }
 
 // project.godot como lineas, con lo necesario para tocar `enabled`.

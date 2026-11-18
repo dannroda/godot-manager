@@ -217,6 +217,58 @@ func TestRemovePlugin(t *testing.T) {
 	}
 }
 
+// Una carpeta sin plugin.cfg (un plugin roto o un remove viejo a medias) se
+// marca bien y se puede borrar; las ocultas no se listan.
+func TestRemovePluginWithoutCfg(t *testing.T) {
+	proj := pluginProject(t)
+	writeFiles(t, proj, map[string]string{
+		"addons/gone/plugin.gd":         "",
+		"addons/half/plugin.gd":         "",
+		"addons/.old.borrar/plugin.cfg": "[plugin]\nname=\"Old\"\n",
+	})
+	defer func(v bool) { assumeYes = v }(assumeYes)
+	assumeYes = true
+	ps, err := projectPlugins(proj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range ps {
+		if strings.HasPrefix(p.ID, ".") {
+			t.Errorf("lista la oculta %s", p.ID)
+		}
+		if p.ID == "gone" && (!p.Missing || !strings.Contains(p.Problems[0], "no tiene plugin.cfg")) {
+			t.Errorf("gone: %+v", p)
+		}
+	}
+	for _, id := range []string{"gone", "half"} {
+		res, err := removePlugin(proj, id)
+		if err != nil {
+			t.Fatal(id, err)
+		}
+		dir := filepath.Join(proj, "addons", id)
+		if res["removed"] != dir {
+			t.Errorf("%s: %v", id, res)
+		}
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			t.Errorf("%s: la carpeta sigue", id)
+		}
+		if _, err := os.Stat(filepath.Join(proj, "addons", "."+id+".borrar")); !os.IsNotExist(err) {
+			t.Errorf("%s: quedo la carpeta apartada", id)
+		}
+	}
+	if strings.Contains(readFile(t, filepath.Join(proj, "project.godot")), "addons/gone") {
+		t.Error("gone sigue activo")
+	}
+	for _, id := range []string{"../addons", ".", "good/.."} {
+		if _, err := removePlugin(proj, id); err == nil {
+			t.Errorf("%s: borro fuera de addons o addons entera", id)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(proj, "addons", "broken")); err != nil {
+		t.Error("addons quedo tocada")
+	}
+}
+
 func TestFindProject(t *testing.T) {
 	proj := pluginProject(t)
 	wd, _ := os.Getwd()
