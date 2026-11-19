@@ -1,4 +1,4 @@
-# Maintainer: Dann Roda <contact@dann.com.ar>
+# Maintainer: Daniel Rodriguez Aires <contact@dann.com.ar>
 #
 # Generado por tools/packaging.go en github.com/dannroda/godot-manager: no editar a mano.
 pkgname=godot-manager-bin

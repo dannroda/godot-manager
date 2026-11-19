@@ -65,7 +65,7 @@ type data struct {
 	Version, Desktop, Icon, AMD64, ARM64 string
 }
 
-var pkgbuild = template.Must(template.New("").Parse(`# Maintainer: Dann Roda <contact@dann.com.ar>
+var pkgbuild = template.Must(template.New("").Parse(`# Maintainer: Daniel Rodriguez Aires <contact@dann.com.ar>
 #
 # Generado por tools/packaging.go en github.com/` + repo + `: no editar a mano.
 pkgname=godot-manager-bin
