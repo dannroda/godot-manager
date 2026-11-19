@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" width="96" alt="">
+
 # godot-manager
 
 **English** · [Español](README.es.md) · [Website](https://dann.com.ar/en/godot-manager/)
