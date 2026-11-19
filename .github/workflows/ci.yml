@@ -33,7 +33,6 @@ jobs:
     runs-on: macos-latest
     env:
       GITHUB_TOKEN: ${{ github.token }}
-      GODOT_DIR: ${{ runner.temp }}/godot
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -43,6 +42,7 @@ jobs:
       - run: make build
       - name: Instalar y correr
         run: |
+          export GODOT_DIR="$RUNNER_TEMP/godot"
           gm=bin/godot-manager
           for v in 4.5.1-stable 4.8-beta3; do
             $gm install "$v" --yes
