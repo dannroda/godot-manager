@@ -1,0 +1,47 @@
+# Changelog
+
+All notable changes to godot-manager. The release workflow (Actions → Release → Run workflow) publishes the **Unreleased** section as the release notes and turns it into the new version's section, so write entries here, in English, as changes land. Versions before 2.4.0 are on the [releases page](https://github.com/dannroda/godot-manager/releases).
+
+## [Unreleased]
+
+## [2.4.0] - 2026-11-19
+
+### Plugins
+
+- `godot-manager plugins add` installs plugins from the [Godot Asset Store](https://store.godotengine.org) (`store:publisher/slug`) or from a GitHub repo's releases (`github:owner/repo`), picking the newest version that works with the project's Godot.
+- Each project tracks its plugins in `plugins.json` (what it asks for) and `plugins.lock` (exact versions, zip sha256 and a hash of every file). You can commit both, and `plugins install` rebuilds `addons/` from them.
+- New subcommands:
+  - `plugins search`: search the Asset Store.
+  - `plugins outdated`: shows new versions that work with the project's Godot, and which ones need a newer Godot.
+  - `plugins update`: never overwrites files you changed by hand unless you pass `--force`.
+  - `plugins pin` / `plugins unpin`: freeze a plugin on a version, or let it follow the newest one again.
+- **Presets**: `presets save|add|show|drop|remove` keep the plugins you always use, and `plugins apply <preset>` adds them to a project.
+- **`godot-manager new`** creates an empty Godot 4 project with a pinned version, a renderer and a plugin preset.
+- The work is done by [`pluginkit/`](https://github.com/dannroda/godot-manager/tree/main/pluginkit), a GDScript library that editor addons can use too. The CLI runs it with an installed Godot 4.2+.
+
+### GUI
+
+- **Projects → New…** creates a project with a Godot version and a plugin preset.
+- A project's details let you:
+  - add plugins from the Asset Store or GitHub (godot-agent and scope-compass are one click away);
+  - check for and apply updates;
+  - pin or unpin a version;
+  - install missing plugins;
+  - apply or save presets.
+- The Versions tab marks versions that have a newer release in their series and upgrades them. **Free up space** deletes the versions no project uses.
+- Settings can put godot-manager on the `PATH`.
+
+### CLI
+
+- **macOS support**: installs the `.app` (universal or per architecture) and the dSYM debug symbols. There are release archives for `darwin-amd64` and `darwin-arm64`.
+- **`outdated` / `upgrade`**: find newer releases in a version's series and install them with the same extras.
+- **`prune`**: deletes the versions that neither the default nor any of your projects use.
+- **`path add|remove`**: puts `godot-manager` and `godot` on the `PATH`.
+- **`completion bash|zsh|fish|powershell`**: shell completion.
+- `self-update` detects Scoop, Homebrew and system packages and tells you to update through them.
+- `godot-manager.exe` and `godot.exe` now have the app icon.
+
+### Packaging
+
+- **Scoop**: `scoop bucket add godot-manager https://github.com/dannroda/godot-manager` then `scoop install godot-manager`.
+- **Arch Linux**: `packaging/arch/PKGBUILD` builds a `godot-manager-bin` package from the release binaries, for use with `makepkg -si`.

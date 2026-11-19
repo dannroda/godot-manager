@@ -2,7 +2,8 @@ name: Paquetes
 
 # Al publicar una release estable, actualiza el PKGBUILD de Arch
 # (packaging/arch) y el manifest de Scoop (bucket/) con sus checksums, y los
-# sube a main.
+# sube a main. Lo llama release.yml; el evento release cubre las que se
+# publican a mano desde GitHub.
 on:
   release:
     types: [published]
@@ -10,6 +11,11 @@ on:
     inputs:
       tag:
         description: Tag de la release (vX.Y.Z)
+        required: true
+  workflow_call:
+    inputs:
+      tag:
+        type: string
         required: true
 
 permissions:
@@ -23,8 +29,11 @@ jobs:
     steps:
       - name: Solo estables
         id: stable
+        env:
+          PRERELEASE: ${{ github.event.release.prerelease || false }}
         run: |
           case "$TAG" in *-*) echo "skip=true" >> "$GITHUB_OUTPUT" ;; esac
+          if [ "$PRERELEASE" = true ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v7
         if: steps.stable.outputs.skip != 'true'
         with:

@@ -217,10 +217,10 @@ godot --headless --path ui -s res://tests/run_tests.gd   # tests de la interfaz
 godot --headless --path pluginkit -s res://tests/run_tests.gd   # tests de la librería de plugins
 ```
 
-Cada push y pull request corre los tres juegos de tests en GitHub Actions (el CLI en Linux, Windows y macOS, y además una instalación real de Godot en macOS). Un tag `vX.Y.Z` arma todos los archivos y crea una release en borrador; revisá las notas y publicala desde GitHub. Al publicar una estable se actualizan el PKGBUILD de Arch y el manifest de Scoop (`tools/packaging.go`).
+Cada push y pull request corre los tres juegos de tests en GitHub Actions (el CLI en Linux, Windows y macOS, y además una instalación real de Godot en macOS). Cada cambio va a la sección **Unreleased** de [`CHANGELOG.md`](CHANGELOG.md), en inglés, a medida que entra. Para sacar una release, corré **Actions → Release → Run workflow** sobre `main` con `patch`, `minor`, `major` o una versión exacta. El workflow corre los tests, arma todos los archivos, pasa la sección Unreleased a la versión nueva, la commitea con el tag `vX.Y.Z` y publica la release con esa sección como notas. Si es estable, después se actualizan el PKGBUILD de Arch y el manifest de Scoop (`tools/packaging.go`).
 
 ```sh
-git tag v2.4.0 && git push origin v2.4.0
+gh workflow run release.yml -f bump=patch
 ```
 
 Los íconos de los `.exe` salen de `cmd/*/rsrc_windows_*.syso`; si cambia `ui/icon.ico`, se regeneran con `go run tools/winres.go`.

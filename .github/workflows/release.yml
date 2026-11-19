@@ -1,14 +1,28 @@
 name: Release
 
-# Un tag vX.Y.Z arma una release en borrador con los binarios. Se publica a
-# mano desde GitHub después de revisar las notas. Los nombres de los assets
-# no llevan versión: la landing enlaza releases/latest/download/<asset>.
+# A mano, desde Actions → Release → Run workflow (sobre main): corre los tests, calcula la versión
+# a partir del último tag vX.Y.Z, compila los binarios y la interfaz, pasa la sección Unreleased de
+# CHANGELOG.md (en inglés) a la versión nueva, la commitea en main con el tag vX.Y.Z y publica la
+# release con los archivos y esa sección como notas. Si es estable, después actualiza los paquetes.
+# Los nombres de los assets no llevan versión: la landing enlaza releases/latest/download/<asset>.
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "patch, minor, major or an exact version (X.Y.Z or X.Y.Z-rc1)"
+        required: true
+        default: patch
+      prerelease:
+        description: "Mark as a pre-release"
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
@@ -16,16 +30,53 @@ jobs:
 
   release:
     needs: test
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Versión
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          VERSION=$(sh .github/scripts/next-version.sh "$BUMP")
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "tag v$VERSION already exists" >&2
+            exit 1
+          fi
+          case "$VERSION" in *-*) PRERELEASE=true ;; esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "v$VERSION (prerelease: $PRERELEASE)"
+
+      # Las notas salen de CHANGELOG.md (en inglés), no de los commits (en español). Si la sección
+      # Unreleased está vacía falla acá, antes de compilar nada.
+      - name: Notas
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 .github/scripts/changelog.py notes > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+          python3 .github/scripts/changelog.py release "$VERSION"
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: false
 
       - name: CLI para cada plataforma
-        run: make dist VERSION="${GITHUB_REF_NAME#v}"
+        run: make dist VERSION="${{ steps.version.outputs.version }}"
 
       - uses: ./.github/actions/setup-godot
         with:
@@ -40,29 +91,54 @@ jobs:
 
       - name: Empaquetar
         run: |
-          mkdir -p out
+          out="$RUNNER_TEMP/out"
+          mkdir -p "$out"
           for t in linux-amd64 linux-arm64 windows-amd64 windows-arm64 darwin-amd64 darwin-arm64; do
             d="$RUNNER_TEMP/pkg/godot-manager-$t"
             mkdir -p "$d"
-            cp dist/$t/* README.md README.es.md LICENSE "$d/"
+            cp dist/$t/* README.md README.es.md CHANGELOG.md LICENSE "$d/"
             case $t in
               linux-amd64)   cp "$RUNNER_TEMP/gui/linux/"* "$d/" ;;
               windows-amd64) cp "$RUNNER_TEMP/gui/windows/"* "$d/" ;;
             esac
             case $t in
-              linux-*|darwin-*) tar -C "$RUNNER_TEMP/pkg" -czf "out/godot-manager-$t.tar.gz" "godot-manager-$t" ;;
-              windows-*) (cd "$RUNNER_TEMP/pkg" && zip -qr "$GITHUB_WORKSPACE/out/godot-manager-$t.zip" "godot-manager-$t") ;;
+              linux-*|darwin-*) tar -C "$RUNNER_TEMP/pkg" -czf "$out/godot-manager-$t.tar.gz" "godot-manager-$t" ;;
+              windows-*) (cd "$RUNNER_TEMP/pkg" && zip -qr "$out/godot-manager-$t.zip" "godot-manager-$t") ;;
             esac
           done
-          (cd out && sha256sum * > SHA256SUMS)
-          ls -l out
-          cat out/SHA256SUMS
+          (cd "$out" && sha256sum * > SHA256SUMS)
+          ls -l "$out"
+          cat "$out/SHA256SUMS"
 
-      - name: Release en borrador
+      # Recién con todo compilado: si algo falla antes, no queda un tag sin release.
+      - name: Commit y tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Release $TAG" -- CHANGELOG.md
+          git tag "$TAG"
+          git push origin HEAD:main "$TAG"
+
+      - name: Publicar
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
-          prerelease=""
-          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" out/* --draft $prerelease \
-            --title "godot-manager ${GITHUB_REF_NAME#v}" --generate-notes
+          flag=""
+          if [ "$PRERELEASE" = true ]; then flag="--prerelease"; fi
+          gh release create "$TAG" "$RUNNER_TEMP"/out/* $flag \
+            --title "godot-manager ${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md"
+
+  # Una release creada con el GITHUB_TOKEN no dispara el evento release de packaging.yml, así que
+  # se llama acá, en un job aparte para poder reintentarlo solo ("Re-run failed jobs").
+  packages:
+    needs: release
+    if: ${{ needs.release.outputs.prerelease != 'true' }}
+    uses: ./.github/workflows/packaging.yml
+    permissions:
+      contents: write
+    with:
+      tag: ${{ needs.release.outputs.tag }}
