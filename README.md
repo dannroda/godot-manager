@@ -1,6 +1,4 @@
-<img src="docs/logo.svg" width="96" alt="">
-
-# godot-manager
+<p align="center"><img src="docs/banner.svg" alt="godot-manager"></p>
 
 **English** · [Español](README.es.md) · [Website](https://dann.com.ar/en/godot-manager/)
 
