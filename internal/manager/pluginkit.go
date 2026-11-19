@@ -267,6 +267,8 @@ func kitError(code string, d map[string]any) error {
 		c, msg = codeInvalidArgs, fmt.Sprintf("ya hay un plugin '%s' en plugins.json (de %s): elegí otro nombre con --name", name, source)
 	case "bad_manifest":
 		c, msg = codeInvalidArgs, "plugins.json no es JSON válido"
+	case "bad_preset":
+		c, msg = codeNoPreset, fmt.Sprintf("%s no existe o no es JSON válido", str(d["path"]))
 	default:
 		c, msg = codeInternal, "la librería de plugins falló: "+code
 	}

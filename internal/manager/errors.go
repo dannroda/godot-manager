@@ -28,6 +28,7 @@ const (
 	codePackageManaged    = "package_managed"    // path add/remove en una instalacion de un gestor de paquetes
 	codePluginConflicts   = "plugin_conflicts"   // instalar un plugin pisaria archivos que no son suyos o se cambiaron a mano
 	codeIncompatible      = "incompatible"       // la version del plugin no anda con el Godot del proyecto
+	codeNoPreset          = "no_preset"          // el preset pedido no existe
 	codeInternal          = "internal"
 )
 

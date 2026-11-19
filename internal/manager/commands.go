@@ -16,7 +16,7 @@ var Version = "dev"
 
 // Comandos que con --json emiten eventos (uno por linea) en vez de un solo
 // objeto.
-var eventCommands = []string{"install", "templates", "symbols", "upgrade"}
+var eventCommands = []string{"install", "templates", "symbols", "upgrade", "new"}
 
 func Main(args []string) int {
 	// opciones globales, antes del comando
@@ -42,7 +42,7 @@ func Main(args []string) int {
 		cmd, args = args[0], args[1:]
 	}
 	// --json tambien vale despues del comando en los que solo leen
-	if cmd == "list" || cmd == "list-remote" || cmd == "which" || cmd == "plugins" || cmd == "outdated" || cmd == "path" || cmd == "prune" {
+	if cmd == "list" || cmd == "list-remote" || cmd == "which" || cmd == "plugins" || cmd == "outdated" || cmd == "path" || cmd == "prune" || cmd == "presets" {
 		args, asJSON = jsonFlag(args, asJSON)
 	}
 	if asJSON {
@@ -134,6 +134,10 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 		return cmdLaunch(args)
 	case "plugins":
 		return cmdPlugins(args)
+	case "presets":
+		return cmdPresets(args)
+	case "new":
+		return cmdNew(args)
 	case "self-update":
 		return cmdSelfUpdate(args)
 	case "outdated":
@@ -905,9 +909,23 @@ Comandos:
                                     (no los fijados). No pisa archivos cambiados a mano sin --force
   plugins pin <nombre> [version]    Fija un plugin en la version instalada (o en otra, que instala)
   plugins unpin <nombre>            Lo suelta: update lo lleva a la mas nueva
+  plugins apply <preset> [--no-enable] [--force]
+                                    Suma al proyecto los plugins de un preset y los instala
                                     (search, add, install, outdated, update y pin usan un Godot
                                     4.2+ instalado para correr; --godot <ver> cambia la version
                                     del proyecto con la que se eligen plugins)
+  presets [list]                    Lista los presets de plugins (en $GODOT_DIR/presets)
+  presets show <nombre>             Muestra los plugins de un preset
+  presets save <nombre> [--pin] [--force]
+                                    Guarda los plugins.json del proyecto actual como preset (--pin:
+                                    cada plugin fijado en la version que tiene instalada)
+  presets add <nombre> <fuente>[@version]... [--prerelease]
+                                    Agrega plugins a un preset (lo crea si no existe)
+  presets drop <nombre> <plugin>... Saca plugins de un preset
+  presets remove <nombre>           Borra un preset
+  new <carpeta> [--name n] [--version v] [--renderer forward_plus|mobile|gl_compatibility]
+      [--preset p] [--no-enable]    Crea un proyecto de Godot 4 vacio (con .godot-version si se
+                                    pasa --version) y le instala los plugins del preset
   outdated                          Lista las versiones instaladas que tienen una mas nueva de la
                                     misma serie (4.7.1-stable -> 4.7.2-stable, 4.8-beta3 -> 4.8-rc1)
   upgrade <ver>                     Instala la mas nueva de su serie con lo mismo que tenia (mono,
@@ -940,15 +958,15 @@ Salida con --json:
   plugins, outdated, path,
   self-update --check
   install, templates, symbols,      Un objeto por linea: {"event":"step","message"},
-  upgrade, self-update, plugins     {"event":"download","file","done","total"},
-  add|install|update|pin
+  upgrade, self-update, new,        {"event":"download","file","done","total"},
+  plugins add|install|update|pin|apply
                                     {"event":"warn","message"}; la ultima linea es
                                     {"event":"done",...} o {"event":"error","code","message"}
   los demas                         {"ok":true,...} o {"error":{"code","message"}}
   Codigos de error: not_installed, no_default, no_release, no_build_for_platform,
   not_available, rate_limited, network, checksum, invalid_args, unknown_command,
   needs_confirmation, bad_token, already_installed, launch_failed, not_a_project,
-  no_plugin, cannot_self_update, package_managed, plugin_conflicts, incompatible, internal
+  no_plugin, cannot_self_update, package_managed, plugin_conflicts, incompatible, no_preset, internal
 
 Variables:
   GODOT_DIR                         Raiz de las versiones (ahora: %s)

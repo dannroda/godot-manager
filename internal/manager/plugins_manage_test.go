@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -153,5 +154,19 @@ func TestKitGodot(t *testing.T) {
 	}
 	if _, err := kitGodot(); err == nil {
 		t.Error("sin un Godot 4.2+ tiene que fallar")
+	}
+}
+
+// Un proyecto sin plugins: listas vacías en el JSON, no null (la UI exige 'plugins').
+func TestPluginsJSONEmptyLists(t *testing.T) {
+	proj := t.TempDir()
+	writeFiles(t, proj, map[string]string{"project.godot": "config_version=5\n"})
+	ps, err := projectPlugins(proj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(pluginList{Project: proj, Plugins: ps, Pending: pendingPlugins(proj, ps)})
+	if s := string(data); !strings.Contains(s, `"plugins":[]`) || !strings.Contains(s, `"pending":[]`) {
+		t.Errorf("JSON: %s", s)
 	}
 }

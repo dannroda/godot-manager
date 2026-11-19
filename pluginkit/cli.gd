@@ -4,7 +4,7 @@ extends SceneTree
 ##     --project <dir> --out <archivo.json> [--godot 4.5.1] [--temp <dir>] [--force] [args...]
 ## Operaciones: search <texto> [página], add <fuente[@versión]> [--name n] [--pin] [--prerelease],
 ## install, outdated, update [nombres...], pin <nombre> [versión], unpin <nombre>,
-## remove <nombre>, status.
+## remove <nombre>, status, apply <preset.json>, preset-add <preset.json> <fuente[@versión]>...
 ## El progreso sale por stdout, una línea por aviso: `@pk {"progress": ..., ...}`. El resultado
 ## (lo que devuelve la operación, con `error` si falló) va a --out como JSON. Sale con 0 o 1.
 
@@ -81,6 +81,14 @@ func _call(kit: RefCounted, rest: Array, options: Dictionary, flags: Dictionary)
 			return kit.remove(rest[0]) if rest.size() == 1 else _usage()
 		"status":
 			return kit.status()
+		"apply":
+			if rest.size() != 1:
+				return _usage()
+			return await kit.apply(rest[0])
+		"preset-add":
+			if rest.size() < 2:
+				return _usage()
+			return kit.preset_add(rest[0], PackedStringArray(rest.slice(1)), flags.prerelease)
 		"version":
 			return {"version": Kit.VERSION}
 	return _usage()

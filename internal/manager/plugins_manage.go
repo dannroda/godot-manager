@@ -15,7 +15,7 @@ import (
 // acá se leen las opciones, se activan los plugins en project.godot y se muestra el resultado.
 
 // Subcomandos de plugins que usan la librería y, con --json, emiten eventos de progreso.
-var kitSubcommands = []string{"add", "install", "update", "pin"}
+var kitSubcommands = []string{"add", "install", "update", "pin", "apply"}
 
 // Opciones de los subcomandos que usan la librería. Devuelve los argumentos que quedan.
 type kitFlags struct {

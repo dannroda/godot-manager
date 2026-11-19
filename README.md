@@ -128,6 +128,9 @@ godot-manager plugins add github:dannroda/godot-agent@v0.1.32   # pinned to that
 godot-manager plugins outdated          # newer versions that work with the project's Godot
 godot-manager plugins update            # update everything that isn't pinned
 godot-manager plugins install           # what plugins.json asks for, at the plugins.lock versions
+godot-manager presets save my-plugins   # this project's plugins.json as a preset
+godot-manager plugins apply my-plugins  # add a preset's plugins to another project
+godot-manager new ~/games/next --version 4.5.1-stable --preset my-plugins
 
 godot-manager outdated                  # installed versions with a newer release in their series
 godot-manager upgrade 4.7.1-stable      # install 4.7.2-stable with the same extras
@@ -145,6 +148,8 @@ Two JSON files in the project root keep track of it, so you can commit them and 
 
 - `plugins.json`: what the project asks for. A plugin with a `version` is pinned (`plugins pin`/`unpin`, or `add source@version`).
 - `plugins.lock`: what got installed: exact version, the zip's sha256 and a hash of every file. `install` verifies the zip, and `update` won't overwrite files you changed by hand unless you pass `--force`.
+
+**Presets** are the plugins you usually use, saved in `$GODOT_DIR/presets/<name>.json` (the same format as `plugins.json`). Create one with `presets save <name>` in a project (`--pin` freezes each plugin at the version installed there, for projects that stay on the same Godot) or with `presets add <name> <source>[@version]...`. `plugins apply <preset>` adds a preset's plugins to a project, and `new <folder> --preset <name>` creates an empty Godot 4 project (with `.godot-version` if you pass `--version`) that already has them.
 
 The work is done by [`pluginkit/`](pluginkit/README.md), a GDScript library that godot-manager runs with an installed Godot 4.2+ (no window), and that editor addons can use too.
 
@@ -194,7 +199,7 @@ The GUI is a Godot 4.8 project in [`ui/`](ui/). It uses the `godot-manager` in i
 
 It has three tabs:
 
-- **Projects**: your project list, the version each one resolves to, and buttons to open, run, change the version or install a missing one. Its details show the project's plugins, so you can disable one that keeps the editor from opening. It can import the list from Godot's Project Manager.
+- **Projects**: your project list, the version each one resolves to, and buttons to open, run, change the version or install a missing one. **New…** creates an empty project with a Godot version and a plugin preset. Its details show the project's plugins, so you can disable one that keeps the editor from opening; there you can also add plugins from the Asset Store or GitHub (ours, godot-agent and scope-compass, are one click away), check for and apply updates that work with the project's Godot, pin or unpin a version, and apply or save presets. It can import the list from Godot's Project Manager.
 - **Versions**: installed versions, with buttons to set the default, add export templates and debug symbols, or add your own build. It marks the versions with a newer release in their series and upgrades them, and **Free up space** deletes the ones no project uses.
 - **Download**: official releases with filters, sizes and an install dialog.
 

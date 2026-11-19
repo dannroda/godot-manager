@@ -933,9 +933,6 @@ msgstr "Removes it from project.godot"
 msgid "Lo desactiva y borra su carpeta"
 msgstr "Disables it and deletes its folder"
 
-msgid "Este godot-manager no maneja plugins: hace falta la versión 2.3 o posterior."
-msgstr "This godot-manager doesn't handle plugins: version 2.3 or later is needed."
-
 msgid "Carpeta, versión y plugins del proyecto; desde ahí se desactiva un plugin que no deja abrir el editor"
 msgstr "The project's folder, version and plugins; disable a plugin there if it keeps the editor from opening"
 
@@ -1095,3 +1092,261 @@ msgstr "Add to PATH"
 #: dialogs/settings_dialog.tscn
 msgid "Terminal"
 msgstr "Terminal"
+
+msgid "Agregar %s"
+msgstr "Add %s"
+
+msgid "Buscá por nombre: se muestran los que andan con el Godot del proyecto."
+msgstr "Search by name: only plugins that work with the project's Godot are shown."
+
+msgid "Buscando «%s»…"
+msgstr "Searching for “%s”…"
+
+msgid "La búsqueda falló."
+msgstr "The search failed."
+
+msgid "No hay resultados para «%s» que anden con este Godot."
+msgstr "No results for “%s” that work with this Godot."
+
+msgid "Resultados para «%s»: %d"
+msgstr "Results for “%s”: %d"
+
+msgid "Agentes de IA (Claude, Codex…) dentro del editor"
+msgstr "AI agents (Claude, Codex…) inside the editor"
+
+msgid "Tablero de tareas del proyecto en el editor"
+msgstr "The project's task board in the editor"
+
+msgid "Agregar plugin"
+msgstr "Add plugin"
+
+msgid "Nuestros plugins:"
+msgstr "Our plugins:"
+
+msgid "Buscar en el Asset Store de Godot…"
+msgstr "Search the Godot Asset Store…"
+
+msgid "Buscar"
+msgstr "Search"
+
+msgid "Más resultados"
+msgstr "More results"
+
+msgid "Otra fuente: github:owner/repo, store:publisher/slug o la URL"
+msgstr "Another source: github:owner/repo, store:publisher/slug or the URL"
+
+msgid "Queda en esa versión: Actualizar no lo toca (sirve si el proyecto usa un Godot fijo)"
+msgstr "It stays on that version: Update leaves it alone (useful if the project sticks to one Godot)"
+
+msgid "Fijar la versión que se instale"
+msgstr "Pin the installed version"
+
+msgid "La default (%s)"
+msgstr "The default (%s)"
+
+msgid "La default"
+msgstr "The default"
+
+msgid "Ninguno"
+msgstr "None"
+
+msgid "Poné un nombre."
+msgstr "Enter a name."
+
+msgid "Elegí una carpeta que exista."
+msgstr "Choose a folder that exists."
+
+msgid "Ya hay una carpeta con archivos en %s."
+msgstr "There is already a folder with files at %s."
+
+msgid "Se crea en %s"
+msgstr "It will be created at %s"
+
+msgid "No hay presets: se guardan desde los detalles de un proyecto (Presets → Guardar como preset…)."
+msgstr "No presets yet: save one from a project's details (Presets → Save as preset…)."
+
+msgid "Sin plugins."
+msgstr "No plugins."
+
+msgid "Proyecto nuevo"
+msgstr "New project"
+
+msgid "Crear"
+msgstr "Create"
+
+msgid "Nombre:"
+msgstr "Name:"
+
+msgid "Mi juego"
+msgstr "My game"
+
+msgid "En la carpeta:"
+msgstr "In folder:"
+
+msgid "Versión de Godot:"
+msgstr "Godot version:"
+
+msgid "Con una versión puntual, el proyecto la fija en su .godot-version; con la default, sigue a la default"
+msgstr "With a specific version, the project pins it in its .godot-version; with the default, it follows the default"
+
+msgid "Renderer:"
+msgstr "Renderer:"
+
+msgid "Plugins:"
+msgstr "Plugins:"
+
+msgid "Un preset de plugins: se instalan las versiones que andan con la versión de Godot elegida"
+msgstr "A plugin preset: installs the versions that work with the chosen Godot version"
+
+msgid "Carpeta donde crear el proyecto"
+msgstr "Folder to create the project in"
+
+msgid "Elegir"
+msgstr "Choose"
+
+msgid "Se instalaron los plugins de plugins.json."
+msgstr "The plugins in plugins.json were installed."
+
+msgid "Aplicar «%s»"
+msgstr "Apply “%s”"
+
+msgid "Guardar como preset…"
+msgstr "Save as preset…"
+
+msgid "Guarda los plugins de plugins.json de este proyecto para usarlos en otros"
+msgstr "Saves this project's plugins.json plugins to use in other projects"
+
+msgid "sin instalar: %d"
+msgstr "not installed: %d"
+
+msgid "Se instaló «%s»."
+msgstr "Installed “%s”."
+
+msgid "Se actualizaron los plugins."
+msgstr "The plugins were updated."
+
+msgid "Se actualizó «%s»."
+msgstr "Updated “%s”."
+
+msgid "«%s» quedó fijado en %s."
+msgstr "“%s” is now pinned to %s."
+
+msgid "«%s» ya no está fijado."
+msgstr "“%s” is no longer pinned."
+
+msgid "Se aplicó el preset «%s»."
+msgstr "Applied the “%s” preset."
+
+msgid "Se guardó el preset «%s»."
+msgstr "Saved the “%s” preset."
+
+msgid "Buscando versiones nuevas…"
+msgstr "Looking for new versions…"
+
+msgid "No hay plugins instalados con «Agregar plugin»: solo esos se pueden actualizar."
+msgstr "No plugins were installed with “Add plugin”: only those can be updated."
+
+msgid "Los plugins están al día para este Godot."
+msgstr "The plugins are up to date for this Godot."
+
+msgid "Hay versiones nuevas: %d"
+msgstr "New versions available: %d"
+
+msgid "¿Sacar «%s» de plugins.json?\nTodavía no está instalado."
+msgstr "Remove “%s” from plugins.json?\nIt isn't installed yet."
+
+msgid "sin instalar"
+msgstr "not installed"
+
+msgid "fijado"
+msgstr "pinned"
+
+msgid "%s pide %s"
+msgstr "%s needs %s"
+
+msgid "la instalada no anda con el Godot del proyecto"
+msgstr "the installed version doesn't work with the project's Godot"
+
+msgid "Instala %s (no pisa archivos cambiados a mano)"
+msgstr "Installs %s (files changed by hand are not overwritten)"
+
+msgid "Soltar"
+msgstr "Unpin"
+
+msgid "Fijar"
+msgstr "Pin"
+
+msgid "Vuelve a seguir la versión más nueva que ande"
+msgstr "Goes back to following the newest version that works"
+
+msgid "Queda en %s: Actualizar no lo toca"
+msgstr "Stays on %s: Update leaves it alone"
+
+msgid "Lo saca de plugins.json"
+msgstr "Removes it from plugins.json"
+
+msgid "Este godot-manager no maneja esto: hace falta una versión más nueva (Ajustes)."
+msgstr "This godot-manager can't do this: a newer version is needed (Settings)."
+
+msgid "Busca en el Asset Store de Godot o instala desde GitHub; lo anota en plugins.json y plugins.lock"
+msgstr "Search the Godot Asset Store or install from GitHub; it's recorded in plugins.json and plugins.lock"
+
+msgid "Agregar plugin…"
+msgstr "Add plugin…"
+
+msgid "Busca versiones nuevas de los plugins instalados con «Agregar plugin» que anden con el Godot del proyecto"
+msgstr "Looks for new versions, that work with the project's Godot, of the plugins installed with “Add plugin”"
+
+msgid "Buscar actualizaciones"
+msgstr "Check for updates"
+
+msgid "Actualiza los que tienen una versión nueva y no están fijados"
+msgstr "Updates the ones that have a new version and aren't pinned"
+
+msgid "Actualizar todo"
+msgstr "Update all"
+
+msgid "Instala lo que pide plugins.json en las versiones de plugins.lock"
+msgstr "Installs what plugins.json asks for, at the plugins.lock versions"
+
+msgid "Instalar faltantes"
+msgstr "Install missing"
+
+msgid "Presets de plugins: los que solés usar, para sumarlos a un proyecto de una vez"
+msgstr "Plugin presets: the plugins you usually use, to add them to a project in one go"
+
+msgid "Presets"
+msgstr "Presets"
+
+msgid "Guardar como preset"
+msgstr "Save as preset"
+
+msgid "Nombre del preset (si ya existe, se reemplaza):"
+msgstr "Preset name (an existing one is replaced):"
+
+msgid "por ejemplo: mis-plugins"
+msgstr "for example: my-plugins"
+
+msgid "Para proyectos con el mismo Godot: cada plugin queda fijado en la versión que tiene instalada este proyecto"
+msgstr "For projects on the same Godot: each plugin is pinned to the version this project has installed"
+
+msgid "Fijar las versiones instaladas"
+msgstr "Pin the installed versions"
+
+msgid "Creando %s"
+msgstr "Creating %s"
+
+msgid "Crea un proyecto vacío con la versión de Godot y los plugins (un preset) que elijas"
+msgstr "Creates an empty project with the Godot version and the plugins (a preset) you choose"
+
+msgid "Nuevo…"
+msgstr "New…"
+
+msgid "Godot %s a %s"
+msgstr "Godot %s to %s"
+
+msgid "Godot %s o anterior"
+msgstr "Godot %s or older"
+
+msgid "otra versión de Godot"
+msgstr "another Godot version"

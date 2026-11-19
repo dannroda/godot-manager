@@ -342,6 +342,34 @@ func test_pin_unpin_remove() -> void:
 	check(not FileAccess.file_exists(project.path_join(Lockfile.LOCK)), "sin lock vacío")
 
 
+func test_presets() -> void:
+	var project := make_project("preset")
+	var kit := store_kit(project)
+	var preset := base.path_join("presets/base.json")
+	var made: Dictionary = kit.preset_add(preset, PackedStringArray(["pub/thing@1.0.0", "github:me/tool"]))
+	eq(made.added, ["thing", "tool"], "agregados")
+	eq(Lockfile.read_plugins(preset).thing, {"source": "store:pub/thing", "version": "1.0.0"}, "con @versión queda fijado")
+	check(kit.preset_add(preset, PackedStringArray(["nada"])).has("error"), "fuente inválida")
+	kit.preset_add(preset, PackedStringArray([]))
+	var only_thing := base.path_join("presets/thing.json")
+	kit.preset_add(only_thing, PackedStringArray(["pub/thing@1.0.0"]))
+	Lockfile.write_manifest(project, {"mine": {"source": "store:me/mine"}})
+	var applied: Dictionary = await kit.apply(only_thing)
+	# mine no está en el Store falso: install falla en él, pero el preset ya quedó anotado
+	eq(applied.get("error", ""), "not_found", "lo que falta de antes también se instala")
+	eq(Lockfile.read_manifest(project).keys().size(), 2, "sumado al plugins.json que había")
+	Lockfile.write_manifest(project, {})
+	applied = await kit.apply(only_thing)
+	eq(applied.added, ["thing"], "agregado")
+	eq(applied.installed[0].version, "v1.0.0", "en la versión del preset")
+	applied = await kit.apply(only_thing)
+	eq(applied.kept, ["thing"], "la segunda vez ya estaba")
+	eq(applied.ok, ["thing"], "y no se reinstala")
+	Lockfile.write_manifest(project, {"thing": {"source": "github:otro/thing"}})
+	eq((await kit.apply(only_thing)).get("error", ""), "name_taken", "mismo nombre, otra fuente")
+	eq((await kit.apply(base.path_join("no-existe.json"))).get("error", ""), "bad_preset", "preset que no existe")
+
+
 func test_github_source_keeps_url() -> void:
 	var project := make_project("github")
 	var http := FakeHttp.new()

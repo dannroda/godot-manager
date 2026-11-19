@@ -68,6 +68,8 @@ func cmdPlugins(args []string) (map[string]any, error) {
 		return cmdPluginsUpdate(proj, args)
 	case "pin", "unpin":
 		return cmdPluginsPin(proj, args, sub == "pin")
+	case "apply":
+		return cmdPluginsApply(proj, args)
 	case "list":
 		if len(args) > 0 {
 			return nil, errf(codeInvalidArgs, "sobra '%s'", args[0])
@@ -85,7 +87,7 @@ func cmdPlugins(args []string) (map[string]any, error) {
 		}
 		return enablePlugin(proj, args[0], sub == "enable")
 	}
-	return nil, errf(codeInvalidArgs, "subcomando desconocido '%s' (list, enable, disable, remove, search, add, install, outdated, update, pin, unpin)", sub)
+	return nil, errf(codeInvalidArgs, "subcomando desconocido '%s' (list, enable, disable, remove, search, add, install, outdated, update, pin, unpin, apply)", sub)
 }
 
 // Carpeta con project.godot: la actual o una de mas arriba.
@@ -181,7 +183,7 @@ func projectPlugins(proj string) ([]plugin, error) {
 		enabled[pluginID(e)] = true
 	}
 	managed := managedFolders(proj)
-	var ps []plugin
+	ps := []plugin{}
 	for _, id := range findPluginDirs(filepath.Join(proj, "addons")) {
 		p := readPlugin(proj, id)
 		p.Enabled = enabled[id]

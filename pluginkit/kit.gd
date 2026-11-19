@@ -7,7 +7,8 @@ extends RefCounted
 ## Cada operación devuelve un Dictionary; si falla, con `error` (un código) y `details`.
 ## Códigos: invalid_source, no_connection, not_found, rate_limited, http_error, bad_response,
 ## bad_zip, empty_zip, write_failed, checksum_mismatch, conflicts, no_release, no_such_version,
-## incompatible, not_in_manifest, not_installed, name_taken, bad_manifest, lock_write_failed.
+## incompatible, not_in_manifest, not_installed, name_taken, bad_manifest, bad_preset,
+## lock_write_failed.
 
 const Versions := preload("versions.gd")
 const Sources := preload("sources.gd")
@@ -308,6 +309,68 @@ func status() -> Dictionary:
 			"missing": state.missing.size(), "folders": locked.get("folders", []),
 		})
 	return {"plugins": result, "manifest_error": Lockfile.manifest_error(project)}
+
+
+# --- presets -------------------------------------------------------------------------------------
+# Un preset es un archivo con la forma de plugins.json: los plugins que uno suele usar, para
+# sumarlos a un proyecto de una vez.
+
+## Suma los plugins del preset de `path` a plugins.json (los que ya están quedan como estaban) e
+## instala. `{added: [name], kept: [name], installed: [...], ok: [name], extra: [name]}`.
+func apply(path: String) -> Dictionary:
+	var bad := Lockfile.file_error(path)
+	if not bad.is_empty() or not FileAccess.file_exists(path):
+		return _fail("bad_preset", {"path": path})
+	bad = Lockfile.manifest_error(project)
+	if not bad.is_empty():
+		return _fail(bad)
+	var preset := Lockfile.read_plugins(path)
+	var manifest := Lockfile.read_manifest(project)
+	var added := []
+	var kept := []
+	for name: String in _sorted(preset):
+		var wanted: Dictionary = preset[name]
+		if manifest.has(name):
+			if manifest[name].get("source", "") != wanted.get("source", ""):
+				return _fail("name_taken", {"name": name, "source": manifest[name].get("source", "")})
+			kept.append(name)
+			continue
+		manifest[name] = wanted.duplicate()
+		added.append(name)
+	if Lockfile.write_manifest(project, manifest) != OK:
+		return _fail("write_failed", {"path": Lockfile.MANIFEST})
+	var done := await install()
+	if done.has("error"):
+		return done
+	done["added"] = added
+	done["kept"] = kept
+	return done
+
+
+## Agrega fuentes (con @versión opcional, que la fija) al preset de `path`; lo crea si no existe.
+## No baja nada. `{added: [name], plugins: {...}}`.
+func preset_add(path: String, specs: PackedStringArray, prerelease: bool = false) -> Dictionary:
+	var bad := Lockfile.file_error(path)
+	if not bad.is_empty():
+		return _fail("bad_preset", {"path": path})
+	var plugins := Lockfile.read_plugins(path)
+	var added := []
+	for spec: String in specs:
+		var parts := Sources.split_version(spec)
+		var source := Sources.parse(parts[0])
+		if source.has("error"):
+			return _fail("invalid_source", {"source": spec})
+		var entry := {"source": source.source}
+		if not parts[1].is_empty():
+			entry["version"] = parts[1]
+		if prerelease:
+			entry["prerelease"] = true
+		plugins[source.name] = entry
+		added.append(source.name)
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	if Lockfile.write_plugins(path, plugins) != OK:
+		return _fail("write_failed", {"path": path})
+	return {"added": added, "plugins": plugins}
 
 
 # --- interno -------------------------------------------------------------------------------------

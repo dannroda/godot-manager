@@ -18,11 +18,24 @@ var enabled := false
 var missing := false
 ## Lo que le falta (plugin.cfg ilegible, script que no existe…), en el texto del CLI.
 var problems: PackedStringArray = []
+## Lo instaló `plugins add` (está en plugins.lock): su nombre ahí, de dónde viene
+## ("store:pub/slug", "github:owner/repo") y la versión instalada.
+var managed_name := ""
+var source := ""
+var locked_version := ""
+## Fijado en plugins.json: update no lo toca.
+var pinned := false
+## Está en plugins.json pero no instalado (no tiene carpeta ni datos de plugin.cfg).
+var pending := false
 
 
 ## El nombre que se muestra: el de plugin.cfg, o la carpeta.
 func display_name() -> String:
 	return name if not name.is_empty() else id
+
+
+func is_managed() -> bool:
+	return not managed_name.is_empty()
 
 
 func has_problems() -> bool:

@@ -1,10 +1,11 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://dialogs/project_details_dialog.gd" id="1_pdd"]
+[ext_resource type="PackedScene" path="res://dialogs/add_plugin_dialog.tscn" id="2_apd"]
 
 [node name="ProjectDetailsDialog" type="AcceptDialog"]
 title = "Detalles del proyecto"
-size = Vector2i(640, 560)
+size = Vector2i(780, 720)
 min_size = Vector2i(560, 440)
 ok_button_text = "Cerrar"
 script = ExtResource("1_pdd")
@@ -73,6 +74,42 @@ layout_mode = 2
 tooltip_text = "Vuelve a leer los plugins del proyecto"
 text = "Recargar"
 
+[node name="PluginActions" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="AddPlugin" type="Button" parent="Content/PluginActions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Busca en el Asset Store de Godot o instala desde GitHub; lo anota en plugins.json y plugins.lock"
+text = "Agregar plugin…"
+
+[node name="CheckUpdates" type="Button" parent="Content/PluginActions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Busca versiones nuevas de los plugins instalados con «Agregar plugin» que anden con el Godot del proyecto"
+text = "Buscar actualizaciones"
+
+[node name="UpdateAll" type="Button" parent="Content/PluginActions"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Actualiza los que tienen una versión nueva y no están fijados"
+text = "Actualizar todo"
+
+[node name="InstallPending" type="Button" parent="Content/PluginActions"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Instala lo que pide plugins.json en las versiones de plugins.lock"
+text = "Instalar faltantes"
+
+[node name="Presets" type="MenuButton" parent="Content/PluginActions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Presets de plugins: los que solés usar, para sumarlos a un proyecto de una vez"
+text = "Presets"
+flat = false
+
 [node name="ListPanel" type="PanelContainer" parent="Content"]
 custom_minimum_size = Vector2(0, 240)
 layout_mode = 2
@@ -101,3 +138,30 @@ unique_name_in_owner = true
 title = "Desinstalar plugin"
 ok_button_text = "Desinstalar"
 cancel_button_text = "Cancelar"
+
+[node name="AddPluginDialog" parent="." instance=ExtResource("2_apd")]
+unique_name_in_owner = true
+
+[node name="SavePresetDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "Guardar como preset"
+ok_button_text = "Guardar"
+cancel_button_text = "Cancelar"
+
+[node name="Box" type="VBoxContainer" parent="SavePresetDialog"]
+
+[node name="Label" type="Label" parent="SavePresetDialog/Box"]
+layout_mode = 2
+text = "Nombre del preset (si ya existe, se reemplaza):"
+
+[node name="PresetName" type="LineEdit" parent="SavePresetDialog/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+placeholder_text = "por ejemplo: mis-plugins"
+
+[node name="PresetPin" type="CheckBox" parent="SavePresetDialog/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Para proyectos con el mismo Godot: cada plugin queda fijado en la versión que tiene instalada este proyecto"
+text = "Fijar las versiones instaladas"

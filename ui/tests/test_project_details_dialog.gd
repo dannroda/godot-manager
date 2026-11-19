@@ -144,3 +144,85 @@ func _remove_tree(dir: String) -> void:
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir.path_join(f))
 	DirAccess.remove_absolute(dir)
+
+
+func _managed(id: String, pinned := false) -> ProjectPlugin:
+	var p := _plugin(id)
+	p.managed_name = id + "-plugin"
+	p.source = "store:pub/" + id
+	p.locked_version = "v1.0.0"
+	p.pinned = pinned
+	return p
+
+
+func _update(name: String, latest: String, newer: bool, blocked := "") -> PluginUpdate:
+	var u := PluginUpdate.new()
+	u.name = name
+	u.version = "v1.0.0"
+	u.latest = latest
+	u.newer = newer
+	u.blocked_version = blocked
+	u.blocked_min = "4.6" if not blocked.is_empty() else ""
+	return u
+
+
+func test_managed_and_pending_rows() -> void:
+	var pending := ProjectPlugin.new()
+	pending.pending = true
+	pending.managed_name = "later"
+	pending.name = "later"
+	pending.source = "github:a/later"
+	dialog.show_plugins([_managed("a", true), _plugin("b"), pending] as Array[ProjectPlugin])
+	assert_eq(_status(), "Plugins: 2 · activos: 2 · sin instalar: 1")
+	var a := _rows()[0]
+	assert_has((a.find_child("Meta", true, false) as Label).text, "store:pub/a · fijado")
+	assert_eq((a.find_child("Pin", true, false) as Button).text, "Soltar")
+	assert_true(_rows()[1].find_child("Pin", true, false) == null, "instalado a mano: no se fija")
+	var later := _rows()[2]
+	assert_true(later.find_child("Enabled", true, false) == null, "sin instalar no se activa")
+	assert_has((later.find_child("Meta", true, false) as Label).text, "sin instalar")
+	assert_true((dialog.get_node("%InstallPending") as Button).visible)
+
+
+func test_updates_show_on_rows() -> void:
+	dialog.show_plugins([_managed("a"), _managed("b", true), _managed("c")] as Array[ProjectPlugin])
+	assert_false((dialog.get_node("%UpdateAll") as Button).visible)
+	dialog.show_updates([_update("a-plugin", "v2.0.0", true), _update("b-plugin", "v2.0.0", true),
+		_update("c-plugin", "v1.0.0", false, "v3.0.0")])
+	assert_eq(_status(), "Hay versiones nuevas: 2")
+	assert_eq(dialog.updatable(), PackedStringArray(["a-plugin"]), "el fijado no")
+	assert_true((dialog.get_node("%UpdateAll") as Button).visible)
+	assert_eq((_rows()[0].find_child("UpdateNote", true, false) as Label).text, "Nueva: v2.0.0")
+	assert_true(_rows()[0].find_child("Update", true, false) != null)
+	assert_true(_rows()[1].find_child("Update", true, false) == null, "fijado: sin botón Actualizar")
+	assert_eq((_rows()[2].find_child("UpdateNote", true, false) as Label).text, "v3.0.0 pide Godot 4.6+")
+
+
+func test_presets_menu() -> void:
+	var p := PluginPreset.new()
+	p.name = "mios"
+	p.plugins.append({"name": "a", "source": "store:x/a", "version": ""})
+	dialog.show_presets([p])
+	var menu := (dialog.get_node("%Presets") as MenuButton).get_popup()
+	assert_eq(menu.get_item_text(0), "Aplicar «mios»")
+	assert_eq(menu.get_item_text(menu.item_count - 1), "Guardar como preset…")
+
+
+func test_save_preset_and_pending_with_cli() -> void:
+	if not _setup_cli():
+		return
+	if not fx.setup():
+		fail(fx.last_error)
+		return
+	_write("plugins.json", '{"plugins": {"later": {"source": "github:a/later"}}}')
+	dialog.fill(ProjectEntry.read(project_dir), null)
+	await dialog.load_plugins()
+	var pending: Array = dialog.plugins.filter(func(p: ProjectPlugin) -> bool: return p.pending)
+	assert_eq(pending.size(), 1)
+	var job: CliJob = await dialog.save_preset("mios", false)
+	assert_true(job.succeeded(), job.stdout + job.stderr)
+	assert_eq(_status(), "Se guardó el preset «mios».")
+	await dialog.load_presets()
+	assert_eq(dialog.presets.size(), 1)
+	assert_eq(dialog.presets[0].summary(), "later")
+	fx.teardown()

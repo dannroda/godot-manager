@@ -12,7 +12,7 @@ import (
 var completionCommands = []string{
 	"list", "list-remote", "install", "symbols", "templates", "add", "remove",
 	"set", "set-local", "which", "run", "launch", "plugins", "outdated",
-	"upgrade", "prune", "path", "self-update", "completion", "version", "help",
+	"upgrade", "prune", "path", "presets", "new", "self-update", "completion", "version", "help",
 }
 
 // Comandos cuyo primer argumento es una version instalada.
@@ -28,7 +28,9 @@ var completionOptions = map[string][]string{
 	"set-local":   {"--unset"},
 	"run":         {"--detach"},
 	"launch":      {"--detach"},
-	"plugins":     {"list", "enable", "disable", "remove", "search", "add", "install", "outdated", "update", "pin", "unpin", "--yes", "--force", "--pin", "--godot"},
+	"plugins":     {"list", "enable", "disable", "remove", "search", "add", "install", "outdated", "update", "pin", "unpin", "apply", "--yes", "--force", "--pin", "--godot"},
+	"presets":     {"list", "show", "save", "add", "drop", "remove", "--pin", "--force"},
+	"new":         {"--name", "--version", "--renderer", "--preset", "--no-enable"},
 	"prune":       {"--dry-run", "--yes"},
 	"path":        {"add", "remove"},
 	"self-update": {"--check", "--yes"},

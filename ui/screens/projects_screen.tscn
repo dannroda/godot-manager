@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://1b1bcuu1v8hw" path="res://dialogs/change_version_dialog.tscn" id="3_igeof"]
 [ext_resource type="PackedScene" path="res://dialogs/project_details_dialog.tscn" id="4_pdets"]
 [ext_resource type="PackedScene" path="res://dialogs/missing_version_dialog.tscn" id="5_mvd"]
+[ext_resource type="PackedScene" path="res://dialogs/new_project_dialog.tscn" id="6_npd"]
 
 [node name="ProjectsScreen" type="PanelContainer" unique_id=1011292242]
 anchors_preset = 15
@@ -115,6 +116,12 @@ text = "Mostrar carpeta"
 [node name="Sep" type="HSeparator" parent="Layout/Body/Actions" unique_id=1161981444]
 layout_mode = 2
 
+[node name="NewProject" type="Button" parent="Layout/Body/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Crea un proyecto vacío con la versión de Godot y los plugins (un preset) que elijas"
+text = "Nuevo…"
+
 [node name="Add" type="Button" parent="Layout/Body/Actions" unique_id=1928560243]
 unique_name_in_owner = true
 layout_mode = 2
@@ -186,3 +193,6 @@ visible = false
 [node name="MissingVersionDialog" parent="." instance=ExtResource("5_mvd")]
 unique_name_in_owner = true
 visible = false
+
+[node name="NewProjectDialog" parent="." instance=ExtResource("6_npd")]
+unique_name_in_owner = true

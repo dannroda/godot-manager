@@ -18,7 +18,12 @@ const SCHEMA := 1
 
 
 static func read_manifest(project: String) -> Dictionary:
-	return _plugins(_read(project.path_join(MANIFEST)))
+	return read_plugins(project.path_join(MANIFEST))
+
+
+## Los pedidos de un archivo con la forma de plugins.json (un preset, por ejemplo).
+static func read_plugins(path: String) -> Dictionary:
+	return _plugins(_read(path))
 
 
 static func read_lock(project: String) -> Dictionary:
@@ -27,7 +32,10 @@ static func read_lock(project: String) -> Dictionary:
 
 ## Si plugins.json no se pudo leer (existe pero no es JSON válido): "" si está bien.
 static func manifest_error(project: String) -> String:
-	var path := project.path_join(MANIFEST)
+	return file_error(project.path_join(MANIFEST))
+
+
+static func file_error(path: String) -> String:
 	if FileAccess.file_exists(path) and not _read(path) is Dictionary:
 		return "bad_manifest"
 	return ""
@@ -36,7 +44,10 @@ static func manifest_error(project: String) -> String:
 ## Guarda los pedidos manteniendo lo demás que tenga el archivo (claves que agregue otra
 ## herramienta).
 static func write_manifest(project: String, plugins: Dictionary) -> int:
-	var path := project.path_join(MANIFEST)
+	return write_plugins(project.path_join(MANIFEST), plugins)
+
+
+static func write_plugins(path: String, plugins: Dictionary) -> int:
 	var data: Variant = _read(path)
 	var doc: Dictionary = data if data is Dictionary else {}
 	doc["plugins"] = plugins

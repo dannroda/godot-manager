@@ -49,6 +49,8 @@ func _ready() -> void:
 		screen.install_requested.connect(func(args: PackedStringArray, title: String) -> void:
 			%JobPanel.run(args, title))
 	%ProjectsScreen.error_reported.connect(show_cli_error)
+	%ProjectsScreen.job_started.connect(func(job: CliJob, title: String) -> void:
+		%JobPanel.track(job, title))
 	%UpdateBanner.update_requested.connect(_run_update)
 	%InstalledScreen.tab_requested.connect(func(tab: StringName) -> void:
 		var target: Control = {&"projects": %ProjectsScreen, &"installed": %InstalledScreen,

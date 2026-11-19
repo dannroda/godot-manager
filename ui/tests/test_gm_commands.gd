@@ -86,3 +86,29 @@ func test_path() -> void:
 	assert_eq(GmCommands.path_status(), PackedStringArray(["--json", "path"]))
 	assert_eq(GmCommands.path_change(true), PackedStringArray(["--json", "path", "add"]))
 	assert_eq(GmCommands.path_change(false), PackedStringArray(["--json", "path", "remove"]))
+
+
+func test_plugin_store_commands() -> void:
+	var d := "/home/yo/Mis Juegos/p"
+	var base := PackedStringArray(["--json", "--dir", d, "plugins"])
+	assert_eq(GmCommands.plugin_search(d, "dialogue manager", 2), base + PackedStringArray(["search", "dialogue manager", "--page", "2"]))
+	assert_eq(GmCommands.plugin_add(d, "github:a/b@v1"), base + PackedStringArray(["add", "github:a/b@v1"]))
+	assert_eq(GmCommands.plugin_add(d, "a/b", true), base + PackedStringArray(["add", "a/b", "--pin"]))
+	assert_eq(GmCommands.plugin_install(d), base + PackedStringArray(["install"]))
+	assert_eq(GmCommands.plugin_outdated(d), base + PackedStringArray(["outdated"]))
+	assert_eq(GmCommands.plugin_update(d), base + PackedStringArray(["update"]))
+	assert_eq(GmCommands.plugin_update(d, ["x", "y"]), base + PackedStringArray(["update", "x", "y"]))
+	assert_eq(GmCommands.plugin_pin(d, "x"), base + PackedStringArray(["pin", "x"]))
+	assert_eq(GmCommands.plugin_unpin(d, "x"), base + PackedStringArray(["unpin", "x"]))
+	assert_eq(GmCommands.plugin_apply(d, "mios"), base + PackedStringArray(["apply", "mios"]))
+
+
+func test_presets_and_new() -> void:
+	assert_eq(GmCommands.presets(), PackedStringArray(["--json", "presets"]))
+	assert_eq(GmCommands.preset_save("/p", "mios", true),
+		PackedStringArray(["--json", "--dir", "/p", "presets", "save", "mios", "--force", "--pin"]))
+	assert_eq(GmCommands.preset_remove("mios"), PackedStringArray(["--json", "presets", "remove", "mios"]))
+	assert_eq(GmCommands.new_project("/j/Mi juego", "Mi juego"),
+		PackedStringArray(["--json", "new", "/j/Mi juego", "--name", "Mi juego", "--renderer", "forward_plus"]))
+	assert_eq(GmCommands.new_project("/j/x", "x", "4.5-stable", "mobile", "mios"),
+		PackedStringArray(["--json", "new", "/j/x", "--name", "x", "--renderer", "mobile", "--version", "4.5-stable", "--preset", "mios"]))

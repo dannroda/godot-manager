@@ -280,3 +280,53 @@ func test_parse_path() -> void:
 	assert_true(st.on_path)
 	assert_eq(st.target, "PATH del usuario")
 	assert_eq(st.managed, "")
+
+
+func test_parse_managed_plugins() -> void:
+	var r := GmParse.parse_plugins('{"project":"/p","plugins":[{"id":"x","name":"X","path":"/p/addons/x","enabled":true,"managed":{"name":"x-plugin","source":"store:a/x","version":"v1.2","pinned":true}},{"id":"y","managed":null}],"pending":[{"name":"z","source":"github:a/z","version":"","pinned":false}]}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	var list: Array = r.value
+	assert_eq(list.size(), 3)
+	var x: ProjectPlugin = list[0]
+	assert_true(x.is_managed())
+	assert_eq([x.managed_name, x.source, x.locked_version, x.pinned], ["x-plugin", "store:a/x", "v1.2", true])
+	assert_false((list[1] as ProjectPlugin).is_managed(), "instalado a mano")
+	var z: ProjectPlugin = list[2]
+	assert_true(z.pending)
+	assert_eq(z.display_name(), "z")
+
+
+func test_parse_plugin_outdated() -> void:
+	var r := GmParse.parse_plugin_outdated('{"ok":true,"godot":"4.5","plugins":[{"name":"dm","source":"store:n/dm","version":"v3.10.5","latest":"v3.10.5","newer":false,"pinned":false,"incompatible":false,"blocked":{"version":"v4.2.0","godot_min":"4.6","godot_max":""}},{"name":"ga","version":"v0.1.30","latest":"v0.1.32","newer":true,"pinned":true,"blocked":{}}]}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	var list: Array = r.value
+	var dm: PluginUpdate = list[0]
+	assert_false(dm.newer)
+	assert_eq(dm.blocked_version, "v4.2.0")
+	assert_eq(dm.blocked_godot(), "Godot 4.6+")
+	var ga: PluginUpdate = list[1]
+	assert_true(ga.newer)
+	assert_true(ga.pinned)
+	assert_eq(ga.blocked_version, "")
+	assert_eq(GmParse.parse_plugin_outdated('{"error":{"code":"network","message":"sin red"}}').error.code, "network")
+
+
+func test_parse_plugin_search() -> void:
+	var r := GmParse.parse_plugin_search('{"ok":true,"count":30,"pages":2,"assets":[{"source":"store:n/dm","name":"Dialogue Manager","publisher":"Nathan","description":"Diálogos","license":"MIT","score":62,"store_url":"https://s"}]}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	assert_eq(r.value.pages, 2)
+	var a: StoreAsset = r.value.assets[0]
+	assert_eq([a.source, a.name, a.publisher, a.score], ["store:n/dm", "Dialogue Manager", "Nathan", 62])
+	assert_false(GmParse.parse_plugin_search('{"ok":true,"assets":[{"name":"sin fuente"}]}').ok)
+
+
+func test_parse_presets() -> void:
+	var r := GmParse.parse_presets('{"dir":"/gm/presets","presets":[{"name":"mios","path":"/gm/presets/mios.json","plugins":[{"name":"a","source":"store:x/a","version":"v1"},{"name":"b","source":"github:x/b","version":""}]}]}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	var p: PluginPreset = r.value[0]
+	assert_eq(p.name, "mios")
+	assert_eq(p.summary(), "a v1, b")

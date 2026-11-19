@@ -9,6 +9,8 @@ signal selection_changed(project: ProjectEntry)
 signal install_requested(args: PackedStringArray, title: String)
 ## Un error del CLI para el aviso de main (el mensaje tal cual).
 signal error_reported(message: String)
+## Una escritura larga ya lanzada (crear un proyecto) para el panel de progreso.
+signal job_started(job: CliJob, title: String)
 
 const ROW_SCENE := preload("res://rows/project_row.tscn")
 const MissingVersionDialog := preload("res://dialogs/missing_version_dialog.gd")
@@ -56,6 +58,10 @@ func _ready() -> void:
 		list.sort = _sort.get_selected_id() as ProjectList.Sort
 		_save()
 		_rebuild())
+	%NewProject.pressed.connect(func() -> void:
+		var base := selected.path.get_base_dir() if selected != null else list.last_scan_dir
+		%NewProjectDialog.open_with(_start_dir(base)))
+	%NewProjectDialog.create_requested.connect(create_project)
 	%Add.pressed.connect(func() -> void:
 		_add_dialog.current_dir = _start_dir(selected.path.get_base_dir() if selected != null else "")
 		_add_dialog.popup_centered_clamped(Vector2i(760, 480)))
@@ -330,6 +336,17 @@ func _on_install_requested(version: String) -> void:
 
 
 ## Agrega la carpeta si tiene project.godot; si no, avisa.
+## Corre `new` (con el panel de progreso) y, si quedó un project.godot, lo
+## agrega a la lista; aunque fallen los plugins del preset, el proyecto existe.
+func create_project(args: PackedStringArray, path: String) -> CliJob:
+	var job := GmCli.write(args)
+	job_started.emit(job, tr("Creando %s") % path.get_file())
+	await job.finished
+	if FileAccess.file_exists(path.path_join(ProjectEntry.PROJECT_FILE)):
+		add_project(path)
+	return job
+
+
 func add_project(dir: String) -> bool:
 	var e := ProjectEntry.read(dir)
 	if e.missing:

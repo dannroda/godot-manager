@@ -126,6 +126,108 @@ static func parse_plugins(text: String) -> GmResult:
 		p.enabled = _bool(item, "enabled", problems, false)
 		p.missing = _bool(item, "missing", problems, false)
 		p.problems = _str_list(item, "problems", problems)
+		var managed: Variant = item.get("managed")
+		if managed is Dictionary:
+			_fill_managed(p, managed, problems)
+		out.append(p)
+	# Los de plugins.json sin instalar (2.4+), al final.
+	for item: Variant in _arr(root.value, "pending", problems, false):
+		if not item is Dictionary:
+			problems.append("pending tiene algo que no es un objeto")
+			continue
+		var p := ProjectPlugin.new()
+		p.pending = true
+		_fill_managed(p, item, problems)
+		p.name = p.managed_name
+		out.append(p)
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(out)
+
+
+static func _fill_managed(p: ProjectPlugin, d: Dictionary, problems: Array[String]) -> void:
+	p.managed_name = _str(d, "name", problems, null)
+	p.source = _str(d, "source", problems, "")
+	p.locked_version = _str(d, "version", problems, "")
+	p.pinned = _bool(d, "pinned", problems, false)
+
+
+## `plugins outdated` → Array[PluginUpdate].
+static func parse_plugin_outdated(text: String) -> GmResult:
+	var root := parse_ok(text)
+	if not root.ok:
+		return root
+	var problems: Array[String] = []
+	var out: Array[PluginUpdate] = []
+	for item: Variant in _arr(root.value, "plugins", problems, true):
+		if not item is Dictionary:
+			problems.append("plugins tiene algo que no es un objeto")
+			continue
+		var u := PluginUpdate.new()
+		u.name = _str(item, "name", problems, null)
+		u.source = _str(item, "source", problems, "")
+		u.version = _str(item, "version", problems, "")
+		u.latest = _str(item, "latest", problems, "")
+		u.newer = _bool(item, "newer", problems, false)
+		u.pinned = _bool(item, "pinned", problems, false)
+		u.incompatible = _bool(item, "incompatible", problems, false)
+		var blocked: Variant = item.get("blocked")
+		if blocked is Dictionary:
+			u.blocked_version = _str(blocked, "version", problems, "")
+			u.blocked_min = _str(blocked, "godot_min", problems, "")
+			u.blocked_max = _str(blocked, "godot_max", problems, "")
+		out.append(u)
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(out)
+
+
+## `plugins search` → {assets: Array[StoreAsset], pages: int}.
+static func parse_plugin_search(text: String) -> GmResult:
+	var root := parse_ok(text)
+	if not root.ok:
+		return root
+	var problems: Array[String] = []
+	var assets: Array[StoreAsset] = []
+	for item: Variant in _arr(root.value, "assets", problems, true):
+		if not item is Dictionary:
+			problems.append("assets tiene algo que no es un objeto")
+			continue
+		var a := StoreAsset.new()
+		a.source = _str(item, "source", problems, null)
+		a.name = _str(item, "name", problems, a.source)
+		a.publisher = _str(item, "publisher", problems, "")
+		a.description = _str(item, "description", problems, "")
+		a.license = _str(item, "license", problems, "")
+		a.score = _int(item, "score", problems)
+		a.store_url = _str(item, "store_url", problems, "")
+		assets.append(a)
+	var pages := _int(root.value, "pages", problems)
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success({"assets": assets, "pages": pages})
+
+
+## `presets` → Array[PluginPreset].
+static func parse_presets(text: String) -> GmResult:
+	var root := _parse_json(text)
+	if not root.ok:
+		return root
+	if not root.value is Dictionary:
+		return _bad("se esperaba un objeto con 'presets'", text)
+	var problems: Array[String] = []
+	var out: Array[PluginPreset] = []
+	for item: Variant in _arr(root.value, "presets", problems, true):
+		if not item is Dictionary:
+			problems.append("presets tiene algo que no es un objeto")
+			continue
+		var p := PluginPreset.new()
+		p.name = _str(item, "name", problems, null)
+		p.path = _str(item, "path", problems, "")
+		for pl: Variant in _arr(item, "plugins", problems, false):
+			if pl is Dictionary:
+				p.plugins.append({"name": _str(pl, "name", problems, ""), "source": _str(pl, "source", problems, ""),
+					"version": _str(pl, "version", problems, "")})
 		out.append(p)
 	if not problems.is_empty():
 		return _bad("; ".join(problems), text)

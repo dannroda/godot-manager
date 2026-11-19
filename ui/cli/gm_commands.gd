@@ -132,6 +132,81 @@ static func plugin_remove(dir: String, id: String) -> PackedStringArray:
 	return _with_dir(dir, ["plugins", "remove", id, "--yes"])
 
 
+## Busca en el Asset Store plugins que anden con el Godot del proyecto (2.4+).
+static func plugin_search(dir: String, query: String, page := 1) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "search", query, "--page", str(page)])
+
+
+## Instala un plugin y lo anota en plugins.json/plugins.lock (eventos).
+## `source`: "store:pub/slug", "github:owner/repo", una URL, con @versión opcional.
+static func plugin_add(dir: String, source: String, pin := false) -> PackedStringArray:
+	var args := _with_dir(dir, ["plugins", "add", source])
+	if pin:
+		args.append("--pin")
+	return args
+
+
+## Instala lo que pide plugins.json en las versiones de plugins.lock (eventos).
+static func plugin_install(dir: String) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "install"])
+
+
+## Versiones nuevas de los plugins de plugins.lock. Consulta las fuentes.
+static func plugin_outdated(dir: String) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "outdated"])
+
+
+## Actualiza los no fijados (o los de `names`) a la más nueva que anda (eventos).
+static func plugin_update(dir: String, names: PackedStringArray = []) -> PackedStringArray:
+	var args := _with_dir(dir, ["plugins", "update"])
+	args.append_array(names)
+	return args
+
+
+## Fija un plugin en la versión instalada (eventos).
+static func plugin_pin(dir: String, name: String) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "pin", name])
+
+
+static func plugin_unpin(dir: String, name: String) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "unpin", name])
+
+
+## Suma al proyecto los plugins de un preset y los instala (eventos).
+static func plugin_apply(dir: String, preset: String) -> PackedStringArray:
+	return _with_dir(dir, ["plugins", "apply", preset])
+
+
+## Los presets de plugins (2.4+).
+static func presets() -> PackedStringArray:
+	return ["--json", "presets"]
+
+
+## Guarda los plugins.json de `dir` como preset (reemplaza uno con ese nombre).
+## `pin`: cada plugin fijado en la versión que tiene instalada.
+static func preset_save(dir: String, name: String, pin := false) -> PackedStringArray:
+	var args := _with_dir(dir, ["presets", "save", name, "--force"])
+	if pin:
+		args.append("--pin")
+	return args
+
+
+static func preset_remove(name: String) -> PackedStringArray:
+	return ["--json", "presets", "remove", name]
+
+
+## Crea un proyecto de Godot 4 vacío en `dir` (eventos). `version` "" = sin
+## .godot-version (sigue a la default); `renderer`: forward_plus, mobile o
+## gl_compatibility; `preset` "" = sin plugins.
+static func new_project(dir: String, name: String, version := "", renderer := "forward_plus", preset := "") -> PackedStringArray:
+	var args: PackedStringArray = ["--json", "new", dir, "--name", name, "--renderer", renderer]
+	if not version.is_empty():
+		args.append_array(["--version", version])
+	if not preset.is_empty():
+		args.append_array(["--preset", preset])
+	return args
+
+
 ## Las versiones instaladas que tienen una más nueva de su serie (2.4+).
 ## Consulta GitHub.
 static func outdated() -> PackedStringArray:

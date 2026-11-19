@@ -93,3 +93,7 @@ jobs:
           test -f "$p/addons/scope_compass/plugin.cfg"
           godot-manager -C "$p" plugins remove scope-compass --yes
           test ! -e "$p/addons/scope_compass"
+          godot-manager presets add base github:dannroda/scope-compass
+          godot-manager new "$RUNNER_TEMP/nuevo" --version "$GODOT_VERSION" --preset base
+          test -f "$RUNNER_TEMP/nuevo/addons/scope_compass/plugin.cfg"
+          grep -q "$GODOT_VERSION" "$RUNNER_TEMP/nuevo/.godot-version"

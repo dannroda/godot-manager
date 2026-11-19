@@ -1,0 +1,93 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://dialogs/new_project_dialog.gd" id="1_npd"]
+
+[node name="NewProjectDialog" type="ConfirmationDialog"]
+title = "Proyecto nuevo"
+size = Vector2i(560, 360)
+ok_button_text = "Crear"
+cancel_button_text = "Cancelar"
+script = ExtResource("1_npd")
+
+[node name="Content" type="VBoxContainer" parent="."]
+theme_override_constants/separation = 8
+
+[node name="Grid" type="GridContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+columns = 2
+
+[node name="NameLabel" type="Label" parent="Content/Grid"]
+layout_mode = 2
+text = "Nombre:"
+
+[node name="ProjectName" type="LineEdit" parent="Content/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Mi juego"
+
+[node name="ParentLabel" type="Label" parent="Content/Grid"]
+layout_mode = 2
+text = "En la carpeta:"
+
+[node name="ParentRow" type="HBoxContainer" parent="Content/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ParentDir" type="LineEdit" parent="Content/Grid/ParentRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Browse" type="Button" parent="Content/Grid/ParentRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Elegir…"
+
+[node name="VersionLabel" type="Label" parent="Content/Grid"]
+layout_mode = 2
+text = "Versión de Godot:"
+
+[node name="Version" type="OptionButton" parent="Content/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Con una versión puntual, el proyecto la fija en su .godot-version; con la default, sigue a la default"
+
+[node name="RendererLabel" type="Label" parent="Content/Grid"]
+layout_mode = 2
+text = "Renderer:"
+
+[node name="Renderer" type="OptionButton" parent="Content/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PresetLabel" type="Label" parent="Content/Grid"]
+layout_mode = 2
+text = "Plugins:"
+
+[node name="Preset" type="OptionButton" parent="Content/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Un preset de plugins: se instalan las versiones que andan con la versión de Godot elegida"
+
+[node name="PresetInfo" type="Label" parent="Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+autowrap_mode = 3
+
+[node name="Target" type="Label" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 1
+text_overrun_behavior = 3
+
+[node name="BrowseDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Carpeta donde crear el proyecto"
+size = Vector2i(760, 480)
+ok_button_text = "Elegir"
+file_mode = 2
+access = 2
