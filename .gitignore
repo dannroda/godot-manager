@@ -3,3 +3,4 @@
 *.pkg.tar.*
 /bin/
 /dist/
+/pluginkit/.godot/

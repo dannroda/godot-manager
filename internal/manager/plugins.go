@@ -35,11 +35,15 @@ type plugin struct {
 	Enabled     bool     `json:"enabled"`
 	Missing     bool     `json:"missing"`  // activo en project.godot pero sin carpeta o sin plugin.cfg
 	Problems    []string `json:"problems"` // vacio si esta bien
+	// el plugin de plugins.lock que instalo la carpeta (nil si se instalo a mano)
+	Managed *managedPlugin `json:"managed"`
 }
 
 type pluginList struct {
 	Project string   `json:"project"` // carpeta del proyecto
 	Plugins []plugin `json:"plugins"`
+	// los de plugins.json que todavia no estan instalados
+	Pending []managedPlugin `json:"pending"`
 }
 
 func cmdPlugins(args []string) (map[string]any, error) {
@@ -52,6 +56,18 @@ func cmdPlugins(args []string) (map[string]any, error) {
 		return nil, err
 	}
 	switch sub {
+	case "search":
+		return cmdPluginsSearch(proj, args)
+	case "add":
+		return cmdPluginsAdd(proj, args)
+	case "install":
+		return cmdPluginsInstall(proj, args)
+	case "outdated":
+		return cmdPluginsOutdated(proj, args)
+	case "update":
+		return cmdPluginsUpdate(proj, args)
+	case "pin", "unpin":
+		return cmdPluginsPin(proj, args, sub == "pin")
 	case "list":
 		if len(args) > 0 {
 			return nil, errf(codeInvalidArgs, "sobra '%s'", args[0])
@@ -62,11 +78,14 @@ func cmdPlugins(args []string) (map[string]any, error) {
 			return nil, errf(codeInvalidArgs, "uso: godot-manager plugins %s <plugin>", sub)
 		}
 		if sub == "remove" {
+			if res, managed, err := removeManaged(proj, args[0]); managed || err != nil {
+				return res, err
+			}
 			return removePlugin(proj, args[0])
 		}
 		return enablePlugin(proj, args[0], sub == "enable")
 	}
-	return nil, errf(codeInvalidArgs, "subcomando desconocido '%s' (list, enable, disable, remove)", sub)
+	return nil, errf(codeInvalidArgs, "subcomando desconocido '%s' (list, enable, disable, remove, search, add, install, outdated, update, pin, unpin)", sub)
 }
 
 // Carpeta con project.godot: la actual o una de mas arriba.
@@ -92,10 +111,11 @@ func listPlugins(proj string) error {
 	if err != nil {
 		return err
 	}
+	pending := pendingPlugins(proj, ps)
 	if out.isJSON() {
-		return printJSON(pluginList{Project: proj, Plugins: ps})
+		return printJSON(pluginList{Project: proj, Plugins: ps, Pending: pending})
 	}
-	if len(ps) == 0 {
+	if len(ps) == 0 && len(pending) == 0 {
 		fmt.Println("No hay plugins en", filepath.Join(proj, "addons"))
 		return nil
 	}
@@ -111,13 +131,44 @@ func listPlugins(proj string) error {
 		if p.Version != "" {
 			line += " " + p.Version
 		}
+		if m := p.Managed; m != nil {
+			line += fmt.Sprintf(" [%s %s", m.Source, m.Version)
+			if m.Pinned {
+				line += ", fijado"
+			}
+			line += "]"
+		}
 		fmt.Println(line)
 		for _, pr := range p.Problems {
 			fmt.Println("    ! " + pr)
 		}
 	}
+	for _, m := range pending {
+		fmt.Printf("  %s [%s, sin instalar: godot-manager plugins install]\n", m.Name, m.Source)
+	}
 	fmt.Println("(* = activo)")
 	return nil
+}
+
+// Los de plugins.json que no estan en plugins.lock o cuyas carpetas no estan.
+func pendingPlugins(proj string, ps []plugin) []managedPlugin {
+	installed := map[string]bool{}
+	for _, p := range ps {
+		if p.Managed != nil && !p.Missing {
+			installed[p.Managed.Name] = true
+		}
+	}
+	lock := readLock(proj)
+	pending := []managedPlugin{}
+	for name, want := range readManifest(proj) {
+		if installed[name] {
+			continue
+		}
+		_, pinned := want["version"]
+		pending = append(pending, managedPlugin{Name: name, Source: str(want["source"]), Version: lock[name].Version, Pinned: pinned})
+	}
+	sort.Slice(pending, func(i, j int) bool { return pending[i].Name < pending[j].Name })
+	return pending
 }
 
 func projectPlugins(proj string) ([]plugin, error) {
@@ -129,10 +180,14 @@ func projectPlugins(proj string) ([]plugin, error) {
 	for _, e := range pf.enabled {
 		enabled[pluginID(e)] = true
 	}
+	managed := managedFolders(proj)
 	var ps []plugin
 	for _, id := range findPluginDirs(filepath.Join(proj, "addons")) {
 		p := readPlugin(proj, id)
 		p.Enabled = enabled[id]
+		if m, ok := managed[strings.SplitN(id, "/", 2)[0]]; ok {
+			p.Managed = &m
+		}
 		delete(enabled, id)
 		ps = append(ps, p)
 	}

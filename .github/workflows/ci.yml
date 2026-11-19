@@ -76,3 +76,20 @@ jobs:
         env:
           GM_BIN: ${{ github.workspace }}/bin/godot-manager
         run: godot --headless --path ui -s res://tests/run_tests.gd
+      - name: Tests de la librería de plugins
+        run: godot --headless --path pluginkit -s res://tests/run_tests.gd
+      - name: Plugins de punta a punta
+        # Con un GitHub de verdad: add, borrar addons/ e install desde el lock.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          p="$RUNNER_TEMP/proyecto"
+          mkdir -p "$p" && printf 'config_version=5\n' > "$p/project.godot"
+          godot-manager -C "$p" plugins add github:dannroda/scope-compass --godot 4.5
+          test -f "$p/addons/scope_compass/plugin.cfg"
+          grep -q scope_compass "$p/project.godot"
+          rm -rf "$p/addons"
+          godot-manager -C "$p" plugins install --godot 4.5
+          test -f "$p/addons/scope_compass/plugin.cfg"
+          godot-manager -C "$p" plugins remove scope-compass --yes
+          test ! -e "$p/addons/scope_compass"

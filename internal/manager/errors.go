@@ -26,6 +26,8 @@ const (
 	codeNoPlugin          = "no_plugin"          // el plugin pedido no esta en el proyecto
 	codeCannotSelfUpdate  = "cannot_self_update" // self-update en una instalacion que no puede tocar
 	codePackageManaged    = "package_managed"    // path add/remove en una instalacion de un gestor de paquetes
+	codePluginConflicts   = "plugin_conflicts"   // instalar un plugin pisaria archivos que no son suyos o se cambiaron a mano
+	codeIncompatible      = "incompatible"       // la version del plugin no anda con el Godot del proyecto
 	codeInternal          = "internal"
 )
 

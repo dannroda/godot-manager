@@ -122,6 +122,12 @@ godot-manager remove 4.5.1-stable
 
 godot-manager plugins                   # plugins del proyecto actual
 godot-manager plugins disable roto      # desactiva uno sin abrir el editor
+godot-manager plugins search dialogue   # busca en el Asset Store de Godot
+godot-manager plugins add nathanhoad/dialogue-manager
+godot-manager plugins add github:dannroda/godot-agent@v0.1.32   # fijado en esa versión
+godot-manager plugins outdated          # versiones nuevas que andan con el Godot del proyecto
+godot-manager plugins update            # actualiza todo lo que no está fijado
+godot-manager plugins install           # lo que pide plugins.json, en las versiones de plugins.lock
 
 godot-manager outdated                  # versiones instaladas con una más nueva de su serie
 godot-manager upgrade 4.7.1-stable      # instala 4.7.2-stable con lo mismo que tenía
@@ -130,6 +136,17 @@ godot-manager prune --dry-run           # qué borraría prune y cuánto espacio
 godot-manager path add                  # pone godot-manager y godot en el PATH
 godot-manager self-update               # actualiza el propio godot-manager
 ```
+
+### Plugins
+
+`plugins add` instala un plugin del [Asset Store de Godot](https://store.godotengine.org) (`store:publisher/slug`, o `publisher/slug` solo) o de los releases de un repo de GitHub (`github:owner/repo`), y lo activa. Elige la versión más nueva que anda con el Godot del proyecto (su `.godot-version`, o `config/features` de `project.godot`), así que un proyecto que se queda en un Godot viejo sigue recibiendo versiones de plugins que andan con él. `plugins outdated` además dice qué versiones nuevas piden un Godot más nuevo.
+
+Lo anotan dos archivos JSON en la raíz del proyecto, para subirlos al repo y que cualquiera corra `plugins install`:
+
+- `plugins.json`: lo que pide el proyecto. Un plugin con `version` queda fijado (`plugins pin`/`unpin`, o `add fuente@versión`).
+- `plugins.lock`: lo que quedó instalado: la versión exacta, el sha256 del zip y un hash de cada archivo. `install` verifica el zip, y `update` no pisa archivos que cambiaste a mano salvo con `--force`.
+
+El trabajo lo hace [`pluginkit/`](pluginkit/README.md), una librería en GDScript que godot-manager corre con un Godot 4.2+ instalado (sin ventana) y que también pueden usar addons del editor.
 
 `prune` deja la versión default y todas las que fija algún proyecto que conoce: las carpetas que le pases, los proyectos del Project Manager de Godot y la carpeta actual. Nunca toca los builds agregados con `add`.
 

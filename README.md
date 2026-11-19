@@ -122,6 +122,12 @@ godot-manager remove 4.5.1-stable
 
 godot-manager plugins                   # plugins of the current project
 godot-manager plugins disable broken    # disable one without opening the editor
+godot-manager plugins search dialogue   # search the Godot Asset Store
+godot-manager plugins add nathanhoad/dialogue-manager
+godot-manager plugins add github:dannroda/godot-agent@v0.1.32   # pinned to that version
+godot-manager plugins outdated          # newer versions that work with the project's Godot
+godot-manager plugins update            # update everything that isn't pinned
+godot-manager plugins install           # what plugins.json asks for, at the plugins.lock versions
 
 godot-manager outdated                  # installed versions with a newer release in their series
 godot-manager upgrade 4.7.1-stable      # install 4.7.2-stable with the same extras
@@ -130,6 +136,17 @@ godot-manager prune --dry-run           # what prune would delete, and how much 
 godot-manager path add                  # put godot-manager and godot on the PATH
 godot-manager self-update               # update godot-manager itself
 ```
+
+### Plugins
+
+`plugins add` installs a plugin from the [Godot Asset Store](https://store.godotengine.org) (`store:publisher/slug`, or just `publisher/slug`) or from a GitHub repo's releases (`github:owner/repo`), and enables it. It picks the newest version that works with the project's Godot (its `.godot-version`, or `config/features` in `project.godot`), so a project that stays on an older Godot keeps getting plugin versions that work with it. `plugins outdated` also tells you which newer versions need a newer Godot.
+
+Two JSON files in the project root keep track of it, so you can commit them and anyone can run `plugins install`:
+
+- `plugins.json`: what the project asks for. A plugin with a `version` is pinned (`plugins pin`/`unpin`, or `add source@version`).
+- `plugins.lock`: what got installed: exact version, the zip's sha256 and a hash of every file. `install` verifies the zip, and `update` won't overwrite files you changed by hand unless you pass `--force`.
+
+The work is done by [`pluginkit/`](pluginkit/README.md), a GDScript library that godot-manager runs with an installed Godot 4.2+ (no window), and that editor addons can use too.
 
 `prune` keeps the default version and every version pinned by a project it knows about: the folders you pass it, the projects in Godot's Project Manager, and the current folder. It never touches builds added with `add`.
 

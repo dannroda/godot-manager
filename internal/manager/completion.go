@@ -28,7 +28,7 @@ var completionOptions = map[string][]string{
 	"set-local":   {"--unset"},
 	"run":         {"--detach"},
 	"launch":      {"--detach"},
-	"plugins":     {"list", "enable", "disable", "remove", "--yes"},
+	"plugins":     {"list", "enable", "disable", "remove", "search", "add", "install", "outdated", "update", "pin", "unpin", "--yes", "--force", "--pin", "--godot"},
 	"prune":       {"--dry-run", "--yes"},
 	"path":        {"add", "remove"},
 	"self-update": {"--check", "--yes"},

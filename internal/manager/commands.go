@@ -47,7 +47,8 @@ func Main(args []string) int {
 	}
 	if asJSON {
 		out.mode = modeJSON
-		if slices.Contains(eventCommands, cmd) || (cmd == "self-update" && !slices.Contains(args, "--check")) {
+		if slices.Contains(eventCommands, cmd) || (cmd == "self-update" && !slices.Contains(args, "--check")) ||
+			(cmd == "plugins" && len(args) > 0 && slices.Contains(kitSubcommands, args[0])) {
 			out.mode = modeEvents
 		}
 	}
@@ -886,7 +887,27 @@ Comandos:
                                     cuales estan activos y si les falta algo
   plugins enable|disable <plugin>   Activa o desactiva un plugin en project.godot, sin abrir el
                                     editor (sirve si un plugin roto no lo deja abrir)
-  plugins remove <plugin> [--yes]   Lo desactiva y borra su carpeta de addons/
+  plugins remove <plugin> [--yes]   Lo desactiva y borra su carpeta de addons/ (si lo instalo
+                                    plugins add, tambien lo saca de plugins.json y plugins.lock)
+  plugins search <texto> [--page n] Busca en el Asset Store de Godot plugins que anden con el
+                                    Godot del proyecto
+  plugins add <fuente>[@version] [--pin] [--name n] [--prerelease] [--no-enable] [--force]
+                                    Instala un plugin y lo anota en plugins.json y plugins.lock.
+                                    Fuente: store:publisher/slug (o publisher/slug), github:owner/repo
+                                    o la URL de una de esas paginas. Elige la version mas nueva que
+                                    anda con el Godot del proyecto; con @version o --pin queda fijada
+  plugins install [--force]         Instala lo que dice plugins.json, en las versiones de
+                                    plugins.lock (verifica el sha256 de cada zip)
+  plugins outdated                  Lista versiones nuevas de los plugins que andan con el Godot del
+                                    proyecto, y las que no andan
+  plugins update [<nombre>...] [--force]
+                                    Actualiza a la mas nueva que anda con el Godot del proyecto
+                                    (no los fijados). No pisa archivos cambiados a mano sin --force
+  plugins pin <nombre> [version]    Fija un plugin en la version instalada (o en otra, que instala)
+  plugins unpin <nombre>            Lo suelta: update lo lleva a la mas nueva
+                                    (search, add, install, outdated, update y pin usan un Godot
+                                    4.2+ instalado para correr; --godot <ver> cambia la version
+                                    del proyecto con la que se eligen plugins)
   outdated                          Lista las versiones instaladas que tienen una mas nueva de la
                                     misma serie (4.7.1-stable -> 4.7.2-stable, 4.8-beta3 -> 4.8-rc1)
   upgrade <ver>                     Instala la mas nueva de su serie con lo mismo que tenia (mono,
@@ -919,14 +940,15 @@ Salida con --json:
   plugins, outdated, path,
   self-update --check
   install, templates, symbols,      Un objeto por linea: {"event":"step","message"},
-  upgrade, self-update              {"event":"download","file","done","total"},
+  upgrade, self-update, plugins     {"event":"download","file","done","total"},
+  add|install|update|pin
                                     {"event":"warn","message"}; la ultima linea es
                                     {"event":"done",...} o {"event":"error","code","message"}
   los demas                         {"ok":true,...} o {"error":{"code","message"}}
   Codigos de error: not_installed, no_default, no_release, no_build_for_platform,
   not_available, rate_limited, network, checksum, invalid_args, unknown_command,
   needs_confirmation, bad_token, already_installed, launch_failed, not_a_project,
-  no_plugin, cannot_self_update, package_managed, internal
+  no_plugin, cannot_self_update, package_managed, plugin_conflicts, incompatible, internal
 
 Variables:
   GODOT_DIR                         Raiz de las versiones (ahora: %s)
