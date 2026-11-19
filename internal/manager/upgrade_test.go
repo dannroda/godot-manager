@@ -149,8 +149,10 @@ func TestCompletionScripts(t *testing.T) {
 	for _, sh := range []string{"bash", "zsh", "fish", "powershell"} {
 		var b strings.Builder
 		switch sh {
-		case "bash", "zsh":
+		case "bash":
 			b.WriteString(bashCompletion())
+		case "zsh":
+			b.WriteString(zshCompletion())
 		case "fish":
 			b.WriteString(fishCompletion())
 		case "powershell":

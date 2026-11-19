@@ -1,0 +1,71 @@
+name: Paquetes
+
+# Al publicar una release estable, actualiza el paquete de AUR
+# (packaging/aur) y el manifest de Scoop (bucket/) con sus checksums, y los
+# sube a main. Si esta el secreto AUR_SSH_KEY, tambien publica en AUR.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag de la release (vX.Y.Z)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Solo estables
+        id: stable
+        run: |
+          case "$TAG" in *-*) echo "skip=true" >> "$GITHUB_OUTPUT" ;; esac
+      - uses: actions/checkout@v7
+        if: steps.stable.outputs.skip != 'true'
+        with:
+          ref: main
+      - uses: actions/setup-go@v7
+        if: steps.stable.outputs.skip != 'true'
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Actualizar
+        if: steps.stable.outputs.skip != 'true'
+        run: go run tools/packaging.go "$TAG"
+      - name: Subir a main
+        if: steps.stable.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packaging/aur bucket
+          git diff --cached --quiet && exit 0
+          git commit -m "Paquetes: ${TAG#v}"
+          git push origin HEAD:main
+      - name: Publicar en AUR
+        if: steps.stable.outputs.skip != 'true'
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          if [ -z "$AUR_SSH_KEY" ]; then
+            echo "Sin AUR_SSH_KEY: copiá packaging/aur/ al repo godot-manager-bin de AUR a mano."
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur"
+          git clone ssh://aur@aur.archlinux.org/godot-manager-bin.git "$RUNNER_TEMP/aur"
+          cp packaging/aur/PKGBUILD packaging/aur/.SRCINFO packaging/aur/godot-manager.desktop packaging/aur/godot-manager.svg "$RUNNER_TEMP/aur/"
+          cd "$RUNNER_TEMP/aur"
+          git config user.name "Dann Roda"
+          git config user.email "contact@dann.com.ar"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "${TAG#v}"
+          git push origin HEAD:master

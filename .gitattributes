@@ -1,0 +1,3 @@
+# Los checksums del paquete de AUR son de estos archivos tal cual: siempre LF.
+packaging/aur/** text eol=lf
+bucket/*.json text eol=lf

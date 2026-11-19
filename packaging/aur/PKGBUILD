@@ -1,0 +1,45 @@
+# Maintainer: Dann Roda <contact@dann.com.ar>
+#
+# Generado por tools/packaging.go en github.com/dannroda/godot-manager: no editar a mano.
+pkgname=godot-manager-bin
+pkgver=2.3.1
+pkgrel=1
+pkgdesc="Godot version manager: installs official builds, export templates and debug symbols, and picks the version per project"
+arch=('x86_64' 'aarch64')
+url="https://github.com/dannroda/godot-manager"
+license=('MIT')
+provides=('godot-manager' 'godot')
+conflicts=('godot-manager' 'godot' 'godot-mono')
+optdepends=('gdb: debug symbols (godot-manager symbols)')
+options=('!strip' '!debug')
+source=('godot-manager.desktop' 'godot-manager.svg')
+source_x86_64=("godot-manager-$pkgver-x86_64.tar.gz::$url/releases/download/v$pkgver/godot-manager-linux-amd64.tar.gz")
+source_aarch64=("godot-manager-$pkgver-aarch64.tar.gz::$url/releases/download/v$pkgver/godot-manager-linux-arm64.tar.gz")
+sha256sums=('35da3822f70c1b3118ad9cb690b46af4a6c570d7cc83598001730076283feff5'
+            '94f55c7206bcd5218dbd0276a170e7d26d606198f052c65d1a80ebed205c1770')
+sha256sums_x86_64=('3b925471214b9daa64eef5ee01407284de172c0540bf6c5a746b30173b1e85fd')
+sha256sums_aarch64=('cad2a0ede2ec606dffd08b4182693ded8eae49070bd0273869eae42e8f5ad5b3')
+
+package() {
+    local d=godot-manager-linux-amd64
+    [[ $CARCH == aarch64 ]] && d=godot-manager-linux-arm64
+
+    install -Dm755 "$d/godot-manager" "$pkgdir/usr/bin/godot-manager"
+    install -Dm755 "$d/godot" "$pkgdir/usr/bin/godot"
+    install -Dm644 "$d/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+    # la interfaz solo viene para x86_64
+    if [[ -f $d/godot-manager-ui.x86_64 ]]; then
+        install -Dm755 "$d/godot-manager-ui.x86_64" "$pkgdir/usr/bin/godot-manager-ui"
+        install -Dm644 godot-manager.desktop "$pkgdir/usr/share/applications/godot-manager.desktop"
+        install -Dm644 godot-manager.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/godot-manager.svg"
+    fi
+
+    # 'completion' existe desde 2.4.0
+    local gm="$pkgdir/usr/bin/godot-manager"
+    if "$gm" completion bash >/dev/null 2>&1; then
+        "$gm" completion bash | install -Dm644 /dev/stdin "$pkgdir/usr/share/bash-completion/completions/godot-manager"
+        "$gm" completion zsh | install -Dm644 /dev/stdin "$pkgdir/usr/share/zsh/site-functions/_godot-manager"
+        "$gm" completion fish | install -Dm644 /dev/stdin "$pkgdir/usr/share/fish/vendor_completions.d/godot-manager.fish"
+    fi
+}

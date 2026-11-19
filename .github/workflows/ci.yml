@@ -52,6 +52,10 @@ jobs:
           $gm list --json
           $gm set 4.5.1-stable
           bin/godot --headless --version
+      - name: Autocompletado
+        run: |
+          bin/godot-manager completion zsh | zsh -n
+          bin/godot-manager completion bash | bash -n
 
   gui:
     name: GUI

@@ -49,7 +49,7 @@ func cmdCompletion(shell string) error {
 	case "bash":
 		script = bashCompletion()
 	case "zsh":
-		script = "#compdef godot-manager\nautoload -U bashcompinit && bashcompinit\n" + bashCompletion()
+		script = zshCompletion()
 	case "fish":
 		script = fishCompletion()
 	case "powershell", "pwsh":
@@ -106,6 +106,58 @@ _godot_manager() {
     COMPREPLY=($(compgen -W "$opts" -- "$cur"))
 }
 complete -F _godot_manager godot-manager
+`, strings.Join(completionCommands, " "), cases.String(), strings.Join(versionArgCommands, "|"))
+}
+
+// Sirve en el fpath (como _godot-manager, lo carga compinit) y con source.
+func zshCompletion() string {
+	var cases strings.Builder
+	for _, c := range completionCommands {
+		if opts := completionOptions[c]; len(opts) > 0 {
+			fmt.Fprintf(&cases, "        %s) opts=(%s) ;;\n", c, strings.Join(opts, " "))
+		}
+	}
+	return fmt.Sprintf(`#compdef godot-manager
+# godot-manager: autocompletado para zsh
+_godot_manager() {
+    local cmd="" i
+    local -i pos=0
+    for ((i = 2; i < CURRENT; i++)); do
+        case ${words[i]} in
+            --json) ;;
+            --dir|-C) ((i++)) ;;
+            -*) ;;
+            *) if [[ -z $cmd ]]; then cmd=${words[i]}; else ((pos++)); fi ;;
+        esac
+    done
+    if [[ ${words[CURRENT-1]} == (--dir|-C) ]]; then
+        _directories
+        return
+    fi
+    if [[ -z $cmd ]]; then
+        compadd -- %s --json --dir
+        return
+    fi
+    local -a opts
+    case $cmd in
+%s    esac
+    case $cmd in
+        %s)
+            if ((pos == 0)) && [[ $PREFIX != -* ]]; then
+                opts+=(${(f)"$(godot-manager __versions 2>/dev/null)"})
+            fi ;;
+        add)
+            if ((pos == 1)); then _files; return; fi ;;
+        prune)
+            _directories ;;
+    esac
+    compadd -- $opts
+}
+if [[ $zsh_eval_context[-1] == loadautofunc ]]; then
+    _godot_manager "$@"
+else
+    compdef _godot_manager godot-manager
+fi
 `, strings.Join(completionCommands, " "), cases.String(), strings.Join(versionArgCommands, "|"))
 }
 

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Godot Manager
+GenericName=Godot version manager
+GenericName[es]=Gestor de versiones de Godot
+Comment=Install Godot versions and pick the right one for each project
+Comment[es]=Instala versiones de Godot y elige la que corresponde a cada proyecto
+Exec=godot-manager-ui
+Icon=godot-manager
+Terminal=false
+Categories=Development;IDE;
+Keywords=godot;engine;gamedev;version;
