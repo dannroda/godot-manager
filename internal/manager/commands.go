@@ -16,7 +16,7 @@ var Version = "dev"
 
 // Comandos que con --json emiten eventos (uno por linea) en vez de un solo
 // objeto.
-var eventCommands = []string{"install", "templates", "symbols"}
+var eventCommands = []string{"install", "templates", "symbols", "upgrade"}
 
 func Main(args []string) int {
 	// opciones globales, antes del comando
@@ -42,7 +42,7 @@ func Main(args []string) int {
 		cmd, args = args[0], args[1:]
 	}
 	// --json tambien vale despues del comando en los que solo leen
-	if cmd == "list" || cmd == "list-remote" || cmd == "which" || cmd == "plugins" {
+	if cmd == "list" || cmd == "list-remote" || cmd == "which" || cmd == "plugins" || cmd == "outdated" || cmd == "path" || cmd == "prune" {
 		args, asJSON = jsonFlag(args, asJSON)
 	}
 	if asJSON {
@@ -90,7 +90,7 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 			return nil, err
 		}
 	}
-	if cmd == "remove" || cmd == "install" || cmd == "templates" || cmd == "plugins" || cmd == "self-update" {
+	if cmd == "remove" || cmd == "install" || cmd == "templates" || cmd == "plugins" || cmd == "self-update" || cmd == "prune" || cmd == "upgrade" {
 		args = yesFlag(args)
 	}
 	if err := initPaths(); err != nil {
@@ -135,6 +135,19 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 		return cmdPlugins(args)
 	case "self-update":
 		return cmdSelfUpdate(args)
+	case "outdated":
+		return nil, cmdOutdated()
+	case "upgrade":
+		return cmdUpgrade(args)
+	case "prune":
+		return cmdPrune(args)
+	case "path":
+		return cmdPath(args)
+	case "completion":
+		return nil, cmdCompletion(arg(0))
+	case "__versions":
+		cmdVersionsForCompletion()
+		return nil, nil
 	case "version", "--version":
 		fmt.Println(Version)
 		return nil, nil
@@ -171,6 +184,7 @@ func cmdList() error {
 		}
 		dir := filepath.Join(versionsDir, name)
 		syms, _ := filepath.Glob(filepath.Join(dir, "*.debugsymbols"))
+		dsyms, _ := filepath.Glob(filepath.Join(dir, "*.dSYM"))
 		tdir := officialTemplatesDir(name)
 		platforms := []string{}
 		if tdir != "" {
@@ -181,8 +195,8 @@ func cmdList() error {
 			Name:              name,
 			Path:              bin,
 			Default:           name == def,
-			Mono:              exists(filepath.Join(filepath.Dir(bin), "GodotSharp")),
-			DebugSymbols:      len(syms) > 0,
+			Mono:              isMonoBuild(bin),
+			DebugSymbols:      len(syms)+len(dsyms) > 0,
 			Tag:               tag,
 			Custom:            tag == "",
 			TemplatesDir:      tdir,
@@ -244,8 +258,8 @@ func describeRelease(r *release) remoteVersion {
 			v.Mono, v.MonoSize = true, a.Size
 		}
 	}
-	if f, err := editorSymbolsFile(r.TagName, false); err == nil {
-		v.DebugSymbols = r.asset(f+".zip") != nil
+	if s, err := editorSymbolsFor(r.TagName, false); err == nil {
+		v.DebugSymbols = r.asset(s.Asset) != nil
 	}
 	if a := r.asset(assetPrefix(r.TagName, false) + "export_templates.tpz"); a != nil {
 		v.Templates, v.TemplatesSize = true, a.Size
@@ -454,6 +468,16 @@ func cmdAdd(args []string) (map[string]any, error) {
 	if !validName(name) {
 		return nil, errf(codeInvalidArgs, "nombre invalido '%s'", name)
 	}
+	// un .app de macOS no se copia: se usa donde esta, con su binario adentro
+	if runtime.GOOS == "darwin" && strings.HasSuffix(strings.TrimRight(src, "/"), ".app") {
+		bins, _ := filepath.Glob(filepath.Join(src, "Contents", "MacOS", "*"))
+		for _, b := range bins {
+			if isExecutable(b) {
+				src, symlink = b, true
+				break
+			}
+		}
+	}
 	if !isExecutable(src) {
 		return nil, errf(codeInvalidArgs, "%s no existe o no es ejecutable", src)
 	}
@@ -495,7 +519,8 @@ func cmdAdd(args []string) (map[string]any, error) {
 		if abs, err = filepath.EvalSymlinks(abs); err != nil {
 			return nil, err
 		}
-		if runtime.GOOS == "windows" {
+		if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+			// en macOS el binario de un .app no anda desde un symlink
 			err = os.WriteFile(filepath.Join(dir, binMarker), []byte(abs+"\n"), 0o644)
 		} else {
 			link := filepath.Join(dir, "godot")
@@ -520,11 +545,12 @@ func cmdAdd(args []string) (map[string]any, error) {
 	return map[string]any{"version": name, "path": bin}, nil
 }
 
-// Desde 4.8-beta1 cada release trae simbolos de debug aparte para el editor
-// (linux y windows). El binario oficial los referencia por nombre via
+// Desde 4.8-beta1 cada release trae simbolos de debug aparte para el editor.
+// En linux y windows el binario oficial los referencia por nombre via
 // .gnu_debuglink, asi que alcanza con dejarlos al lado del binario: gdb y
-// addr2line los encuentran solos. No estan en el manifest, se verifican
-// contra el digest sha256 que expone la API de GitHub para cada asset.
+// addr2line los encuentran solos. En macOS es un .dSYM al lado del .app, donde
+// lo busca lldb. No estan en el manifest, se verifican contra el digest
+// sha256 que expone la API de GitHub para cada asset.
 func cmdSymbols(name string) (map[string]any, error) {
 	if name == "" {
 		return nil, errf(codeInvalidArgs, "uso: godot-manager symbols <version>[-mono]")
@@ -534,22 +560,22 @@ func cmdSymbols(name string) (map[string]any, error) {
 		return nil, err
 	}
 	ver, mono := strings.CutSuffix(name, "-mono")
-	symfile, err := editorSymbolsFile(ver, mono)
+	syms, err := editorSymbolsFor(ver, mono)
 	if err != nil {
 		return nil, errf(codeNotAvailable, "%v", err)
 	}
 	dir := filepath.Dir(bin)
-	if !strings.HasPrefix(dir, versionsDir) {
+	if !strings.HasPrefix(dir, versionsDir) || runtime.GOOS == "darwin" {
 		dir = filepath.Join(versionsDir, name)
 	}
-	file := filepath.Join(dir, symfile)
+	file := filepath.Join(dir, syms.File)
 	res := map[string]any{"version": name, "file": file}
 	if exists(file) {
 		out.step("'%s' ya tiene los simbolos de debug.", name)
 		return res, nil
 	}
 
-	missing := errf(codeNotAvailable, "la release '%s' no tiene %s.zip (existen desde 4.8-beta1, y solo para builds oficiales)", ver, symfile)
+	missing := errf(codeNotAvailable, "la release '%s' no tiene %s (existen desde 4.8-beta1, y solo para builds oficiales)", ver, syms.Asset)
 	rel, err := getRelease(ver)
 	if err != nil {
 		if code, _ := errorInfo(err); code == codeNoRelease {
@@ -557,7 +583,7 @@ func cmdSymbols(name string) (map[string]any, error) {
 		}
 		return nil, err
 	}
-	a := rel.asset(symfile + ".zip")
+	a := rel.asset(syms.Asset)
 	if a == nil {
 		return nil, missing
 	}
@@ -572,11 +598,11 @@ func cmdSymbols(name string) (map[string]any, error) {
 	if err := downloadVerified(githubDL+"/"+ver+"/"+a.Name, zipPath, "sha256", a.sha256()); err != nil {
 		return nil, err
 	}
-	if err := extractZip(zipPath, dir, func(n string) bool { return n == symfile }); err != nil {
+	if err := extractZip(zipPath, dir, syms.contains); err != nil {
 		return nil, err
 	}
 	if !exists(file) {
-		return nil, errf(codeNotAvailable, "el zip no trae %s", symfile)
+		return nil, errf(codeNotAvailable, "el zip no trae %s", syms.File)
 	}
 	out.step("Simbolos de debug instalados en %s", file)
 	return res, nil
@@ -676,8 +702,9 @@ func installEditor(ver string, mono bool, dest string) error {
 	if err := extractZip(zipPath, root, nil); err != nil {
 		return err
 	}
-	// los zip mono traen todo dentro de una carpeta (binario + GodotSharp/)
-	if ents, _ := os.ReadDir(root); len(ents) == 1 && ents[0].IsDir() {
+	// los zip mono traen todo dentro de una carpeta (binario + GodotSharp/);
+	// los de macOS, el .app, que queda tal cual
+	if ents, _ := os.ReadDir(root); len(ents) == 1 && ents[0].IsDir() && !strings.HasSuffix(ents[0].Name(), ".app") {
 		root = filepath.Join(root, ents[0].Name())
 	}
 	if err := moveContents(root, dest); err != nil {
@@ -694,6 +721,20 @@ func installEditor(ver string, mono bool, dest string) error {
 
 // Deja el binario de una version recien extraida donde versionBinary lo busca.
 func setupBinary(dest string, mono bool) error {
+	if runtime.GOOS == "darwin" {
+		// el binario tiene que quedar dentro del .app (firma, recursos)
+		apps, _ := filepath.Glob(filepath.Join(dest, "*.app"))
+		for _, app := range apps {
+			bins, _ := filepath.Glob(filepath.Join(app, "Contents", "MacOS", "*"))
+			for _, b := range bins {
+				if isExecutable(b) {
+					rel, _ := filepath.Rel(dest, b)
+					return os.WriteFile(filepath.Join(dest, binMarker), []byte(rel+"\n"), 0o644)
+				}
+			}
+		}
+		return errf(codeNoBuild, "el zip no trae Godot.app")
+	}
 	if runtime.GOOS == "windows" {
 		exes, _ := filepath.Glob(filepath.Join(dest, "Godot_v*.exe"))
 		for _, e := range exes {
@@ -846,6 +887,19 @@ Comandos:
   plugins enable|disable <plugin>   Activa o desactiva un plugin en project.godot, sin abrir el
                                     editor (sirve si un plugin roto no lo deja abrir)
   plugins remove <plugin> [--yes]   Lo desactiva y borra su carpeta de addons/
+  outdated                          Lista las versiones instaladas que tienen una mas nueva de la
+                                    misma serie (4.7.1-stable -> 4.7.2-stable, 4.8-beta3 -> 4.8-rc1)
+  upgrade <ver>                     Instala la mas nueva de su serie con lo mismo que tenia (mono,
+                                    export templates, simbolos); si era la default, la nueva pasa
+                                    a serlo. La vieja queda instalada
+  prune [--dry-run] [--yes] [<proyecto>...]
+                                    Borra las versiones oficiales (y sus export templates) que no
+                                    usa la default ni ningun proyecto: los que se pasan, los del
+                                    Project Manager de Godot y la carpeta actual
+  path [add|remove]                 Dice si godot-manager esta en el PATH; add lo agrega (Windows:
+                                    PATH del usuario; Linux y macOS: symlinks en ~/.local/bin)
+  completion bash|zsh|fish|powershell
+                                    Script de autocompletado para esa shell
   self-update [--check] [--yes]     Actualiza godot-manager (y la interfaz, si esta en la misma
                                     carpeta) a la ultima release; --check solo dice si hay una
                                     nueva (con --json, un objeto)
@@ -857,21 +911,22 @@ Opciones:
                                     run, launch, plugins); en which, set-local y plugins va despues
                                     del comando
   --yes, -y                         Confirma sin preguntar (remove, install, templates,
-                                    plugins remove, self-update). Sin terminal y sin --yes, lo
+                                    plugins remove, prune, self-update). Sin terminal y sin --yes, lo
                                     que pide confirmacion falla
 
 Salida con --json:
   list, list-remote, which,         El JSON del listado o de la version que corresponde
-  plugins, self-update --check
+  plugins, outdated, path,
+  self-update --check
   install, templates, symbols,      Un objeto por linea: {"event":"step","message"},
-  self-update                       {"event":"download","file","done","total"},
+  upgrade, self-update              {"event":"download","file","done","total"},
                                     {"event":"warn","message"}; la ultima linea es
                                     {"event":"done",...} o {"event":"error","code","message"}
   los demas                         {"ok":true,...} o {"error":{"code","message"}}
   Codigos de error: not_installed, no_default, no_release, no_build_for_platform,
   not_available, rate_limited, network, checksum, invalid_args, unknown_command,
   needs_confirmation, bad_token, already_installed, launch_failed, not_a_project,
-  no_plugin, cannot_self_update, internal
+  no_plugin, cannot_self_update, package_managed, internal
 
 Variables:
   GODOT_DIR                         Raiz de las versiones (ahora: %s)

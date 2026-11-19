@@ -41,12 +41,21 @@ func TestIsNewerVersion(t *testing.T) {
 	}
 }
 
-func TestPackageManaged(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("solo unix")
+func TestPackageManager(t *testing.T) {
+	cases := []struct{ goos, dir, want string }{
+		{"linux", "/usr/bin", "el gestor de paquetes"},
+		{"linux", "/home/u/godot-manager", ""},
+		{"linux", "/usr/local/bin", ""},
+		{"darwin", "/opt/homebrew/Cellar/godot-manager/2.4.0/bin", "Homebrew"},
+		{"darwin", "/usr/local/Cellar/godot-manager/2.4.0/bin", "Homebrew"},
+		{"darwin", "/Users/u/bin", ""},
+		{"windows", `C:\Users\u\scoop\apps\godot-manager\2.4.0`, "Scoop"},
+		{"windows", `C:\Users\u\godot-manager`, ""},
 	}
-	if !packageManaged("/usr/bin") || packageManaged("/home/u/godot-manager") || packageManaged("/usr/local/bin") {
-		t.Error("packageManaged")
+	for _, c := range cases {
+		if got := packageManager(c.goos, c.dir); got != c.want {
+			t.Errorf("packageManager(%s, %s) = %q, quiero %q", c.goos, c.dir, got, c.want)
+		}
 	}
 }
 

@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -25,6 +25,33 @@ jobs:
           cache: false
       - run: go vet ./...
       - run: go test ./...
+
+  # Instala Godot de verdad en macOS: el zip universal de antes de 4.8 y el
+  # de cada arquitectura de 4.8, con el .app adentro.
+  macos:
+    name: Godot en macOS
+    runs-on: macos-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      GODOT_DIR: ${{ runner.temp }}/godot
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: make build
+      - name: Instalar y correr
+        run: |
+          gm=bin/godot-manager
+          for v in 4.5.1-stable 4.8-beta3; do
+            $gm install "$v" --yes
+            $gm launch "$v" --headless --version
+          done
+          $gm symbols 4.8-beta3
+          $gm list --json
+          $gm set 4.5.1-stable
+          bin/godot --headless --version
 
   gui:
     name: GUI

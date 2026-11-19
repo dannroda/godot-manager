@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // Layout:
@@ -45,6 +46,12 @@ func defaultGodotDir() (string, error) {
 			return filepath.Join(d, "godot-manager"), nil
 		}
 		return "", errors.New("LOCALAPPDATA no esta definida (o defini GODOT_DIR)")
+	case "darwin":
+		d, err := os.UserConfigDir() // ~/Library/Application Support
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(d, "godot-manager"), nil
 	default:
 		data, err := dataHome()
 		if err != nil {
@@ -81,8 +88,8 @@ func dataHome() (string, error) {
 // Donde el editor busca los export templates.
 func defaultTemplatesBase() (string, error) {
 	switch runtime.GOOS {
-	case "windows":
-		// %APPDATA%
+	case "windows", "darwin":
+		// %APPDATA%, ~/Library/Application Support
 		d, err := os.UserConfigDir()
 		if err != nil {
 			return "", err
@@ -162,26 +169,51 @@ func editorAssets(ver string, mono bool) ([]string, error) {
 			return []string{p + w + ".zip"}, nil
 		}
 		return []string{p + w + ".exe.zip"}, nil
+	case "darwin":
+		// desde 4.8 hay un zip por arquitectura; antes, uno universal (osx en
+		// 3.x, y osx.64 solo x86_64 hasta 3.2, que en arm64 corre con Rosetta)
+		return []string{p + "macos." + arch + ".zip", p + "macos.universal.zip",
+			p + "osx.universal.zip", p + "osx.64.zip"}, nil
 	}
 	return nil, fmt.Errorf("sistema operativo no soportado: %s", runtime.GOOS)
 }
 
-// Archivo de simbolos de debug del editor (el asset es este nombre + ".zip").
-// Desde 4.8-beta1. El binario lo referencia por nombre (.gnu_debuglink), asi
-// que alcanza con dejarlo al lado.
-func editorSymbolsFile(ver string, mono bool) (string, error) {
+// Simbolos de debug del editor: el asset de la release y lo que queda en la
+// carpeta de la version al extraerlo.
+type editorSymbols struct {
+	Asset string
+	File  string // archivo, o carpeta .dSYM en macOS
+}
+
+func (s editorSymbols) contains(name string) bool {
+	return name == s.File || strings.HasPrefix(name, s.File+"/")
+}
+
+// Simbolos de debug del editor, desde 4.8-beta1. En linux y windows el
+// binario los referencia por nombre (.gnu_debuglink), asi que alcanza con
+// dejarlos al lado; en macOS es un Godot.app.dSYM al lado del .app.
+func editorSymbolsFor(ver string, mono bool) (editorSymbols, error) {
 	arch, err := godotArch()
 	if err != nil {
-		return "", err
+		return editorSymbols{}, err
 	}
 	p := assetPrefix(ver, mono)
+	var f string
 	switch runtime.GOOS {
 	case "linux":
-		return p + "linux." + arch + ".debugsymbols", nil
+		f = p + "linux." + arch + ".debugsymbols"
 	case "windows":
-		return p + windowsPlatform(arch) + ".exe.debugsymbols", nil
+		f = p + windowsPlatform(arch) + ".exe.debugsymbols"
+	case "darwin":
+		app := "Godot.app.dSYM"
+		if mono {
+			app = "Godot_mono.app.dSYM"
+		}
+		return editorSymbols{Asset: p + "macos." + arch + ".dSYM.zip", File: app}, nil
+	default:
+		return editorSymbols{}, fmt.Errorf("los simbolos de debug del editor no estan soportados en %s", runtime.GOOS)
 	}
-	return "", fmt.Errorf("los simbolos de debug del editor no estan soportados en %s", runtime.GOOS)
+	return editorSymbols{Asset: f + ".zip", File: f}, nil
 }
 
 // Simbolos de templates que baja --debugsymbols sin lista explicita: los de
@@ -194,6 +226,8 @@ func defaultTemplateSymbols() []string {
 	switch runtime.GOOS {
 	case "windows":
 		return []string{"windows_debug_" + arch + ".exe", "windows_release_" + arch + ".exe"}
+	case "darwin":
+		return []string{"macos_debug." + arch, "macos_release." + arch}
 	}
 	return []string{"linux_debug." + arch, "linux_release." + arch}
 }

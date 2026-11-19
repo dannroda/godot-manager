@@ -292,3 +292,24 @@ func TestUnixGodotDir(t *testing.T) {
 		t.Errorf("con %s: %s", legacy, got)
 	}
 }
+
+func TestSetupBinaryMacOS(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("solo macOS")
+	}
+	pv := versionsDir
+	t.Cleanup(func() { versionsDir = pv })
+	versionsDir = t.TempDir()
+	dest := filepath.Join(versionsDir, "4.8-beta3-mono")
+	bin := filepath.Join(dest, "Godot_mono.app", "Contents", "MacOS", "Godot")
+	os.MkdirAll(filepath.Dir(bin), 0o755)
+	os.MkdirAll(filepath.Join(dest, "Godot_mono.app", "Contents", "Resources", "GodotSharp"), 0o755)
+	os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755)
+	if err := setupBinary(dest, true); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := versionBinary("4.8-beta3-mono")
+	if !ok || got != bin || !isMonoBuild(got) {
+		t.Errorf("binario %s (%v), mono %v", got, ok, isMonoBuild(got))
+	}
+}

@@ -25,6 +25,7 @@ const (
 	codeNotAProject       = "not_a_project"      // no hay project.godot en la carpeta ni mas arriba
 	codeNoPlugin          = "no_plugin"          // el plugin pedido no esta en el proyecto
 	codeCannotSelfUpdate  = "cannot_self_update" // self-update en una instalacion que no puede tocar
+	codePackageManaged    = "package_managed"    // path add/remove en una instalacion de un gestor de paquetes
 	codeInternal          = "internal"
 )
 

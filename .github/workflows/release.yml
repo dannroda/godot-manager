@@ -41,7 +41,7 @@ jobs:
       - name: Empaquetar
         run: |
           mkdir -p out
-          for t in linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
+          for t in linux-amd64 linux-arm64 windows-amd64 windows-arm64 darwin-amd64 darwin-arm64; do
             d="$RUNNER_TEMP/pkg/godot-manager-$t"
             mkdir -p "$d"
             cp dist/$t/* README.md README.es.md LICENSE "$d/"
@@ -50,7 +50,7 @@ jobs:
               windows-amd64) cp "$RUNNER_TEMP/gui/windows/"* "$d/" ;;
             esac
             case $t in
-              linux-*)   tar -C "$RUNNER_TEMP/pkg" -czf "out/godot-manager-$t.tar.gz" "godot-manager-$t" ;;
+              linux-*|darwin-*) tar -C "$RUNNER_TEMP/pkg" -czf "out/godot-manager-$t.tar.gz" "godot-manager-$t" ;;
               windows-*) (cd "$RUNNER_TEMP/pkg" && zip -qr "$GITHUB_WORKSPACE/out/godot-manager-$t.zip" "godot-manager-$t") ;;
             esac
           done

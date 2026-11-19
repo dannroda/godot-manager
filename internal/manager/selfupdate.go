@@ -137,8 +137,8 @@ func checkUpdate() (*updateInfo, error) {
 	switch {
 	case !versionCore.MatchString(strings.TrimPrefix(info.Current, "v")):
 		info.Reason = fmt.Sprintf("esta es una version de desarrollo (%s)", info.Current)
-	case packageManaged(info.Dir):
-		info.Reason = fmt.Sprintf("lo instalo el gestor de paquetes en %s: actualizalo por ahi", info.Dir)
+	case packageManager(runtime.GOOS, info.Dir) != "":
+		info.Reason = fmt.Sprintf("lo instalo %s en %s: actualizalo por ahi", packageManager(runtime.GOOS, info.Dir), info.Dir)
 	case rel.asset(info.Asset) == nil:
 		info.Reason = fmt.Sprintf("la release %s no trae %s", rel.TagName, info.Asset)
 	case !dirWritable(info.Dir):
@@ -157,13 +157,23 @@ func selfAssetName(goos, goarch string) string {
 	return "godot-manager-" + goos + "-" + goarch + ".tar.gz"
 }
 
-// Instalado por un gestor de paquetes (el paquete de Arch va a /usr/bin).
-func packageManaged(dir string) bool {
-	if runtime.GOOS == "windows" {
-		return false
+// Gestor de paquetes que instalo la carpeta, o "": el paquete de Arch va a
+// /usr/bin; Scoop, a scoop\apps\<app>\<version>; Homebrew, a su Cellar.
+func packageManager(goos, dir string) string {
+	if goos == "windows" {
+		if strings.Contains(strings.ToLower(strings.ReplaceAll(dir, `\`, "/")), "/scoop/apps/") {
+			return "Scoop"
+		}
+		return ""
 	}
-	return dir == "/usr/bin" || dir == "/bin" || dir == "/usr/sbin" ||
-		strings.HasPrefix(dir, "/usr/lib/") || strings.HasPrefix(dir, "/nix/store/")
+	switch {
+	case strings.Contains(dir, "/Cellar/") || strings.HasPrefix(dir, "/opt/homebrew/"):
+		return "Homebrew"
+	case dir == "/usr/bin" || dir == "/bin" || dir == "/usr/sbin" ||
+		strings.HasPrefix(dir, "/usr/lib/") || strings.HasPrefix(dir, "/nix/store/"):
+		return "el gestor de paquetes"
+	}
+	return ""
 }
 
 func dirWritable(dir string) bool {

@@ -49,6 +49,14 @@ func versionBinary(name string) (string, bool) {
 	return "", false
 }
 
+// Si el binario es de un build mono (.NET): trae GodotSharp/ al lado, o en
+// Contents/Resources del .app en macOS.
+func isMonoBuild(bin string) bool {
+	dir := filepath.Dir(bin)
+	return exists(filepath.Join(dir, "GodotSharp")) ||
+		exists(filepath.Join(filepath.Dir(dir), "Resources", "GodotSharp"))
+}
+
 // Binario de una version instalada, o error si no existe.
 func requireInstalled(name string) (string, error) {
 	if name == "" {
