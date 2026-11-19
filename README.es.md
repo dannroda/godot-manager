@@ -19,6 +19,8 @@ Tiene dos partes:
 - Instala símbolos de debug del editor y de los templates (desde Godot 4.8-beta1).
 - Avisa cuando una versión instalada tiene una release más nueva de su serie (4.7.1 → 4.7.2, 4.8-beta3 → 4.8-rc1) y la actualiza con lo mismo que tenía.
 - Libera espacio: `prune` borra las versiones que no usa la default ni ninguno de tus proyectos.
+- Maneja los plugins de cada proyecto desde el [Asset Store de Godot](https://store.godotengine.org) y GitHub: elige versiones que andan con el Godot del proyecto, las anota en `plugins.json` y `plugins.lock`, y las actualiza o las fija. Los presets suman de una vez los plugins que usás siempre.
+- Crea proyectos nuevos con `godot-manager new`, con una versión de Godot fijada y un preset de plugins.
 - Acepta builds propios con `godot-manager add`.
 - Soporta Godot 3.x. En Linux eso incluye el editor, mono y los templates.
 - Tiene una salida `--json` para scripts y para la interfaz: un objeto con el resultado, o un evento por línea (progreso, avisos, errores) en las operaciones largas.
@@ -29,7 +31,9 @@ Tiene dos partes:
 |---|---|
 | ![Versiones instaladas](docs/screenshots/installed.es.png) | ![Releases disponibles](docs/screenshots/download.es.png) |
 
-![Diálogo de instalación](docs/screenshots/install-dialog.es.png)
+| Diálogo de instalación | Plugins del proyecto |
+|---|---|
+| ![Diálogo de instalación](docs/screenshots/install-dialog.es.png) | ![Plugins del proyecto](docs/screenshots/plugins.es.png) |
 
 La interfaz está en español y en inglés: usa español si el sistema está en español, e inglés en cualquier otro caso.
 
@@ -83,7 +87,7 @@ El CLI necesita Go 1.24 o posterior:
 
 ```sh
 make build  # bin/godot-manager y bin/godot para este sistema
-make dist   # dist/<os>-<arch>/ para linux y windows, en amd64 y arm64
+make dist   # dist/<os>-<arch>/ para linux, windows y macOS, en amd64 y arm64
 ```
 
 Los binarios son estáticos y no tienen dependencias. Poné `godot-manager` y `godot` en una carpeta que esté en el `PATH`.
@@ -183,8 +187,8 @@ El paquete de Arch lo instala para bash, zsh y fish.
 
 Con `--json`, `godot-manager` escribe solo JSON en stdout:
 
-- **`list`, `list-remote`, `which`, `outdated` y `path`** muestran sus datos.
-- **`install`, `templates`, `symbols` y `upgrade`** muestran un evento por línea (`step`, `download`, `warn`). La última línea es siempre `done` o `error`.
+- **`list`, `list-remote`, `which`, `outdated`, `path`, `presets` y `plugins` (`list`, `search`, `outdated`)** muestran sus datos.
+- **`install`, `templates`, `symbols`, `upgrade`, `new` y `plugins` (`add`, `install`, `update`, `pin`, `apply`)** muestran un evento por línea (`step`, `download`, `warn`). La última línea es siempre `done` o `error`.
 - **Los demás comandos** muestran `{"ok": true, ...}` o `{"error": {"code": "...", "message": "..."}}`.
 
 Los códigos de error no cambian entre versiones, así que un script puede decidir según ellos: `not_installed`, `no_default`, `rate_limited`, `bad_token`, etc. `--dir <carpeta>` corre un comando como si se hubiera lanzado en esa carpeta.
@@ -193,7 +197,7 @@ Sin terminal, cualquier comando que pediría confirmación falla con `needs_conf
 
 ### Token de GitHub
 
-`list-remote` y algunos pasos de la instalación usan la API de GitHub. Sin token, GitHub permite 60 pedidos por hora. Para subir ese límite, definí `GITHUB_TOKEN` con un token personal; no necesita ningún permiso.
+`list-remote`, algunos pasos de la instalación y los plugins de GitHub usan la API de GitHub. Sin token, GitHub permite 60 pedidos por hora. Para subir ese límite, definí `GITHUB_TOKEN` con un token personal; no necesita ningún permiso.
 
 ## La interfaz
 
@@ -210,9 +214,10 @@ Tiene tres pestañas:
 ```sh
 go test ./...                    # tests del CLI
 godot --headless --path ui -s res://tests/run_tests.gd   # tests de la interfaz
+godot --headless --path pluginkit -s res://tests/run_tests.gd   # tests de la librería de plugins
 ```
 
-Cada push y pull request corre los dos juegos de tests en GitHub Actions (el CLI en Linux, Windows y macOS, y además una instalación real de Godot en macOS). Un tag `vX.Y.Z` arma todos los archivos y crea una release en borrador; revisá las notas y publicala desde GitHub. Al publicar una estable se actualizan el PKGBUILD de Arch y el manifest de Scoop (`tools/packaging.go`).
+Cada push y pull request corre los tres juegos de tests en GitHub Actions (el CLI en Linux, Windows y macOS, y además una instalación real de Godot en macOS). Un tag `vX.Y.Z` arma todos los archivos y crea una release en borrador; revisá las notas y publicala desde GitHub. Al publicar una estable se actualizan el PKGBUILD de Arch y el manifest de Scoop (`tools/packaging.go`).
 
 ```sh
 git tag v2.4.0 && git push origin v2.4.0
