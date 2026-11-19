@@ -1,7 +1,7 @@
 # Maintainer: Dann Roda <contact@dann.com.ar>
 #
 # Compila el CLI desde este checkout (makepkg -si). El paquete con los
-# binarios de la release y la interfaz es godot-manager-bin (packaging/aur).
+# binarios de la release y la interfaz es godot-manager-bin (packaging/arch).
 pkgname=godot-manager
 pkgver=2.3.1
 pkgrel=1

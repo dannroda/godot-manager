@@ -48,7 +48,7 @@ Each [release](https://github.com/dannroda/godot-manager/releases/latest) has an
 
 `SHA256SUMS` has the checksum of each archive. Extract it anywhere and open `godot-manager-ui`: it uses the `godot-manager` next to it, so nothing else needs installing. To use `godot-manager` and `godot` from a terminal, run `godot-manager path add` (or use the button in the GUI's Settings): on Windows it adds the folder to your user `PATH`; on Linux and macOS it creates symlinks in `~/.local/bin`.
 
-To update, run `godot-manager self-update`, or click Update when the GUI says a new version is out. It replaces the files in that same folder. If you installed it with a package manager (AUR, Scoop), update it there instead.
+To update, run `godot-manager self-update`, or click Update when the GUI says a new version is out. It replaces the files in that same folder. If you installed it with a package manager (pacman, Scoop), update it there instead.
 
 ### Windows: Scoop
 
@@ -61,10 +61,12 @@ It puts `godot-manager` and `godot` on the `PATH` and adds the GUI to the Start 
 
 ### Arch Linux
 
-The [`godot-manager-bin`](https://aur.archlinux.org/packages/godot-manager-bin) AUR package installs the release binaries, the GUI with its menu entry, and shell completion:
+[`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) builds a `godot-manager-bin` package from the release binaries, with the GUI, its menu entry and shell completion:
 
 ```sh
-yay -S godot-manager-bin
+git clone https://github.com/dannroda/godot-manager.git
+cd godot-manager/packaging/arch
+makepkg -si
 ```
 
 To build the CLI from this repository instead (without the GUI):
@@ -173,7 +175,7 @@ godot-manager completion fish > ~/.config/fish/completions/godot-manager.fish
 godot-manager completion powershell | Out-String | Invoke-Expression
 ```
 
-The AUR package installs it for bash, zsh and fish.
+The Arch package installs it for bash, zsh and fish.
 
 `godot-manager help` lists every command and option.
 
@@ -210,7 +212,7 @@ go test ./...                    # CLI tests
 godot --headless --path ui -s res://tests/run_tests.gd   # GUI tests
 ```
 
-Pushes and pull requests run both test suites on GitHub Actions (the CLI on Linux, Windows and macOS, plus a real Godot install on macOS). Pushing a `vX.Y.Z` tag builds every archive and creates a draft release; review the notes and publish it from GitHub. Publishing a stable release updates the AUR package and the Scoop manifest (`tools/packaging.go`).
+Pushes and pull requests run both test suites on GitHub Actions (the CLI on Linux, Windows and macOS, plus a real Godot install on macOS). Pushing a `vX.Y.Z` tag builds every archive and creates a draft release; review the notes and publish it from GitHub. Publishing a stable release updates the Arch PKGBUILD and the Scoop manifest (`tools/packaging.go`).
 
 ```sh
 git tag v2.4.0 && git push origin v2.4.0

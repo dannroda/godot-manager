@@ -4,8 +4,8 @@
 //
 //	go run tools/packaging.go v2.4.0
 //
-//   - packaging/aur/: PKGBUILD y .SRCINFO de godot-manager-bin (AUR), mas el
-//     .desktop y el icono que van en el mismo repo de AUR.
+//   - packaging/arch/: PKGBUILD de godot-manager-bin (los binarios de la release
+//     y la interfaz, para makepkg), con el .desktop y el icono.
 //   - bucket/godot-manager.json: manifest de Scoop.
 //
 // Toma los checksums del SHA256SUMS de la release. Lo corre el workflow
@@ -112,35 +112,6 @@ package() {
 }
 `))
 
-// Lo que escribiria makepkg --printsrcinfo.
-var srcinfo = template.Must(template.New("").Parse(`pkgbase = godot-manager-bin
-	pkgdesc = Godot version manager: installs official builds, export templates and debug symbols, and picks the version per project
-	pkgver = {{.Version}}
-	pkgrel = 1
-	url = https://github.com/` + repo + `
-	arch = x86_64
-	arch = aarch64
-	license = MIT
-	optdepends = gdb: debug symbols (godot-manager symbols)
-	provides = godot-manager
-	provides = godot
-	conflicts = godot-manager
-	conflicts = godot
-	conflicts = godot-mono
-	options = !strip
-	options = !debug
-	source = godot-manager.desktop
-	source = godot-manager.svg
-	sha256sums = {{.Desktop}}
-	sha256sums = {{.Icon}}
-	source_x86_64 = godot-manager-{{.Version}}-x86_64.tar.gz::https://github.com/` + repo + `/releases/download/v{{.Version}}/godot-manager-linux-amd64.tar.gz
-	sha256sums_x86_64 = {{.AMD64}}
-	source_aarch64 = godot-manager-{{.Version}}-aarch64.tar.gz::https://github.com/` + repo + `/releases/download/v{{.Version}}/godot-manager-linux-arm64.tar.gz
-	sha256sums_aarch64 = {{.ARM64}}
-
-pkgname = godot-manager-bin
-`))
-
 func writeTemplate(t *template.Template, path string, d data) {
 	f, err := os.Create(path)
 	if err != nil {
@@ -202,18 +173,18 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	aur := filepath.Join("packaging", "aur")
+	arch := filepath.Join("packaging", "arch")
 	icon, err := os.ReadFile(filepath.Join("ui", "icon.svg"))
 	if err != nil {
 		fail(err)
 	}
-	if err := os.WriteFile(filepath.Join(aur, "godot-manager.svg"), icon, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(arch, "godot-manager.svg"), icon, 0o644); err != nil {
 		fail(err)
 	}
 	d := data{
 		Version: ver,
-		Desktop: fileSum(filepath.Join(aur, "godot-manager.desktop")),
-		Icon:    fileSum(filepath.Join(aur, "godot-manager.svg")),
+		Desktop: fileSum(filepath.Join(arch, "godot-manager.desktop")),
+		Icon:    fileSum(filepath.Join(arch, "godot-manager.svg")),
 		AMD64:   sums["godot-manager-linux-amd64.tar.gz"],
 		ARM64:   sums["godot-manager-linux-arm64.tar.gz"],
 	}
@@ -223,8 +194,7 @@ func main() {
 			fail(fmt.Errorf("SHA256SUMS de %s no tiene %s", tag, k))
 		}
 	}
-	writeTemplate(pkgbuild, filepath.Join(aur, "PKGBUILD"), d)
-	writeTemplate(srcinfo, filepath.Join(aur, ".SRCINFO"), d)
+	writeTemplate(pkgbuild, filepath.Join(arch, "PKGBUILD"), d)
 
 	b, err := json.MarshalIndent(scoopManifest(ver, sums), "", "    ")
 	if err != nil {

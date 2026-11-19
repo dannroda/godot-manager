@@ -1,8 +1,8 @@
 name: Paquetes
 
-# Al publicar una release estable, actualiza el paquete de AUR
-# (packaging/aur) y el manifest de Scoop (bucket/) con sus checksums, y los
-# sube a main. Si esta el secreto AUR_SSH_KEY, tambien publica en AUR.
+# Al publicar una release estable, actualiza el PKGBUILD de Arch
+# (packaging/arch) y el manifest de Scoop (bucket/) con sus checksums, y los
+# sube a main.
 on:
   release:
     types: [published]
@@ -42,30 +42,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packaging/aur bucket
+          git add packaging/arch bucket
           git diff --cached --quiet && exit 0
           git commit -m "Paquetes: ${TAG#v}"
           git push origin HEAD:main
-      - name: Publicar en AUR
-        if: steps.stable.outputs.skip != 'true'
-        env:
-          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
-        run: |
-          if [ -z "$AUR_SSH_KEY" ]; then
-            echo "Sin AUR_SSH_KEY: copiá packaging/aur/ al repo godot-manager-bin de AUR a mano."
-            exit 0
-          fi
-          mkdir -p ~/.ssh
-          printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur"
-          git clone ssh://aur@aur.archlinux.org/godot-manager-bin.git "$RUNNER_TEMP/aur"
-          cp packaging/aur/PKGBUILD packaging/aur/.SRCINFO packaging/aur/godot-manager.desktop packaging/aur/godot-manager.svg "$RUNNER_TEMP/aur/"
-          cd "$RUNNER_TEMP/aur"
-          git config user.name "Dann Roda"
-          git config user.email "contact@dann.com.ar"
-          git add -A
-          git diff --cached --quiet && exit 0
-          git commit -m "${TAG#v}"
-          git push origin HEAD:master
