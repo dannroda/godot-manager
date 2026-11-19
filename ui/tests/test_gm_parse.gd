@@ -245,3 +245,38 @@ func test_parse_plugins_errors() -> void:
 	assert_eq(GmParse.parse_plugins("""{"error": {"code": "not_a_project", "message": "x"}}""").error.code, "not_a_project")
 	assert_eq(GmParse.parse_plugins("""{"project": "/p"}""").error.code, CliError.BAD_OUTPUT)
 	assert_eq(GmParse.parse_plugins("""{"plugins": [{"name": "sin id"}]}""").error.code, CliError.BAD_OUTPUT)
+
+
+func test_parse_outdated() -> void:
+	var r := GmParse.parse_outdated('{"updates":[{"version":"4.5-stable","latest":"4.5.2-stable","installed":false,"url":"https://x"},{"version":"4.8-beta2-mono","latest":"4.8-beta4-mono","installed":true}]}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	var ups: Array = r.value
+	assert_eq(ups.size(), 2)
+	assert_eq((ups[0] as VersionUpdate).latest, "4.5.2-stable")
+	assert_eq((ups[0] as VersionUpdate).url, "https://x")
+	assert_true((ups[1] as VersionUpdate).installed)
+	assert_false(GmParse.parse_outdated('{"updates":[{"version":"x"}]}').ok, "falta latest")
+
+
+func test_parse_prune() -> void:
+	var r := GmParse.parse_prune('{"ok":true,"removed":false,"total":3000,"versions":[{"version":"4.3-stable","size":1000,"templates_dir":"/t/4.3.stable","templates_size":2000}]}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	var rep: PruneReport = r.value
+	assert_eq(rep.total, 3000)
+	assert_false(rep.removed)
+	assert_eq(rep.candidates.size(), 1)
+	assert_eq(rep.candidates[0].templates_size, 2000)
+	var e := GmParse.parse_prune('{"error":{"code":"needs_confirmation","message":"usa --yes"}}')
+	assert_eq(e.error.code, "needs_confirmation")
+
+
+func test_parse_path() -> void:
+	var r := GmParse.parse_path('{"dir":"C:/gm","on_path":true,"target":"PATH del usuario","managed":""}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	var st: PathStatus = r.value
+	assert_true(st.on_path)
+	assert_eq(st.target, "PATH del usuario")
+	assert_eq(st.managed, "")

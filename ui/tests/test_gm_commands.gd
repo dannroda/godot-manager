@@ -68,3 +68,21 @@ func test_plugins() -> void:
 	assert_eq(GmCommands.plugin_enable(d, "a/b", true), PackedStringArray(["--json", "--dir", d, "plugins", "enable", "a/b"]))
 	assert_eq(GmCommands.plugin_enable(d, "x", false), PackedStringArray(["--json", "--dir", d, "plugins", "disable", "x"]))
 	assert_eq(GmCommands.plugin_remove(d, "x"), PackedStringArray(["--json", "--dir", d, "plugins", "remove", "x", "--yes"]))
+
+
+func test_outdated_and_upgrade() -> void:
+	assert_eq(GmCommands.outdated(), PackedStringArray(["--json", "outdated"]))
+	assert_eq(GmCommands.upgrade("4.5-stable-mono"), PackedStringArray(["--json", "upgrade", "4.5-stable-mono"]))
+
+
+func test_prune_passes_projects() -> void:
+	var projects := PackedStringArray(["/home/yo/Mis Juegos/a", "C:/b"])
+	assert_eq(GmCommands.prune(projects, true),
+		PackedStringArray(["--json", "prune", "--dry-run", "/home/yo/Mis Juegos/a", "C:/b"]))
+	assert_eq(GmCommands.prune([], false), PackedStringArray(["--json", "prune", "--yes"]))
+
+
+func test_path() -> void:
+	assert_eq(GmCommands.path_status(), PackedStringArray(["--json", "path"]))
+	assert_eq(GmCommands.path_change(true), PackedStringArray(["--json", "path", "add"]))
+	assert_eq(GmCommands.path_change(false), PackedStringArray(["--json", "path", "remove"]))

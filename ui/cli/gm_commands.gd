@@ -132,6 +132,38 @@ static func plugin_remove(dir: String, id: String) -> PackedStringArray:
 	return _with_dir(dir, ["plugins", "remove", id, "--yes"])
 
 
+## Las versiones instaladas que tienen una más nueva de su serie (2.4+).
+## Consulta GitHub.
+static func outdated() -> PackedStringArray:
+	return ["--json", "outdated"]
+
+
+## Instala la más nueva de la serie de `version` con lo mismo que tenía
+## (eventos, como install); si era la default, la nueva pasa a serlo.
+static func upgrade(version: String) -> PackedStringArray:
+	return ["--json", "upgrade", version]
+
+
+## Versiones oficiales que no usa la default ni ningún proyecto (2.4+). El CLI
+## suma la lista del Project Manager de Godot; `projects` es la de la UI.
+## `dry_run`: solo las lista; si no, las borra (la UI confirma antes).
+static func prune(projects: PackedStringArray, dry_run: bool) -> PackedStringArray:
+	var args: PackedStringArray = ["--json", "prune", "--dry-run" if dry_run else "--yes"]
+	args.append_array(projects)
+	return args
+
+
+## Si godot-manager está en el PATH (2.4+).
+static func path_status() -> PackedStringArray:
+	return ["--json", "path"]
+
+
+## Lo agrega al PATH (o lo quita): en Windows el del usuario, en el resto
+## symlinks en ~/.local/bin.
+static func path_change(add: bool) -> PackedStringArray:
+	return ["--json", "path", "add" if add else "remove"]
+
+
 ## Si hay una versión nueva de godot-manager (2.3+); un objeto, sin eventos.
 static func self_update_check() -> PackedStringArray:
 	return ["--json", "self-update", "--check"]

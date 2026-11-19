@@ -995,3 +995,103 @@ msgstr "A new version of godot-manager is available: %s (you have %s). It can't 
 
 msgid "godot-manager se actualizó a %s. Reiniciá la interfaz para usar la versión nueva."
 msgstr "godot-manager was updated to %s. Restart the app to use the new version."
+
+#: rows/version_row.gd
+msgid "Nueva: %s"
+msgstr "New: %s"
+
+#: rows/version_row.gd
+msgid "Ya está instalada"
+msgstr "Already installed"
+
+#: rows/version_row.gd
+msgid "Hay una versión más nueva de esta serie: Actualizar la instala"
+msgstr "There is a newer version in this series: Update installs it"
+
+#: screens/installed_screen.gd
+msgid "Actualizando %s a %s"
+msgstr "Updating %s to %s"
+
+#: screens/installed_screen.gd
+msgid "%s ya está instalada."
+msgstr "%s is already installed."
+
+#: screens/installed_screen.gd
+msgid "Instala %s con lo mismo que tiene esta (mono, export templates, símbolos). Esta queda instalada."
+msgstr "Installs %s with the same extras as this one (mono, export templates, symbols). This one stays installed."
+
+#: screens/installed_screen.tscn
+msgid "Liberar espacio…"
+msgstr "Free up space…"
+
+#: screens/installed_screen.tscn
+msgid "Borra las versiones que no usa la default ni ningún proyecto"
+msgstr "Deletes the versions that are not the default and that no project uses"
+
+#: dialogs/prune_dialog.gd
+msgid "Buscando versiones sin usar…"
+msgstr "Looking for unused versions…"
+
+#: dialogs/prune_dialog.gd
+msgid "No se pudo calcular:\n%s"
+msgstr "Could not work it out:\n%s"
+
+#: dialogs/prune_dialog.gd
+msgid "%s — %s + export templates (%s)"
+msgstr "%s — %s + export templates (%s)"
+
+#: dialogs/prune_dialog.gd
+msgid "No hay versiones sin usar: todas son la default o las usa algún proyecto."
+msgstr "No unused versions: each one is the default or a project uses it."
+
+#: dialogs/prune_dialog.gd
+msgid "Estas versiones no las usa la default ni ningún proyecto de la lista o del Project Manager de Godot. Se liberan %s."
+msgstr "These versions are not the default, and no project in the list or in Godot's Project Manager uses them. This frees %s."
+
+#: dialogs/prune_dialog.gd
+msgid "Borrar (%d)"
+msgstr "Delete (%d)"
+
+#: dialogs/prune_dialog.tscn
+msgid "Liberar espacio"
+msgstr "Free up space"
+
+#: dialogs/prune_dialog.tscn
+msgid "Los builds propios no se tocan. Un proyecto que no esté en ninguna lista y use una de estas versiones va a tener que volver a instalarla."
+msgstr "Custom builds are left alone. A project that is in neither list and uses one of these versions will need it installed again."
+
+#: dialogs/settings_dialog.gd
+msgid "godot-manager no está disponible."
+msgstr "godot-manager is not available."
+
+#: dialogs/settings_dialog.gd
+msgid "No se pudo saber si está en el PATH (hace falta godot-manager 2.4 o posterior)."
+msgstr "Could not check whether it is on the PATH (needs godot-manager 2.4 or later)."
+
+#: dialogs/settings_dialog.gd
+msgid "Revisando el PATH…"
+msgstr "Checking the PATH…"
+
+#: dialogs/settings_dialog.gd
+msgid "Lo instaló %s, que maneja el PATH."
+msgstr "Installed by %s, which manages the PATH."
+
+#: dialogs/settings_dialog.gd
+msgid "godot-manager y godot están en el PATH: se pueden usar desde una terminal."
+msgstr "godot-manager and godot are on the PATH: you can use them from a terminal."
+
+#: dialogs/settings_dialog.gd
+msgid "Quitar del PATH"
+msgstr "Remove from PATH"
+
+#: dialogs/settings_dialog.gd
+msgid "godot-manager no está en el PATH. Agregarlo permite usar godot-manager y godot desde cualquier terminal (%s)."
+msgstr "godot-manager is not on the PATH. Adding it lets you use godot-manager and godot from any terminal (%s)."
+
+#: dialogs/settings_dialog.gd
+msgid "Agregar al PATH"
+msgstr "Add to PATH"
+
+#: dialogs/settings_dialog.tscn
+msgid "Terminal"
+msgstr "Terminal"

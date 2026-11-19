@@ -154,6 +154,78 @@ static func parse_update_check(text: String) -> GmResult:
 	return GmResult.success(u)
 
 
+## `outdated` → Array[VersionUpdate].
+static func parse_outdated(text: String) -> GmResult:
+	var root := _parse_json(text)
+	if not root.ok:
+		return root
+	if not root.value is Dictionary:
+		return _bad("se esperaba un objeto con 'updates'", text)
+	var problems: Array[String] = []
+	var out: Array[VersionUpdate] = []
+	var items := _arr(root.value, "updates", problems, true)
+	for i in items.size():
+		if not items[i] is Dictionary:
+			problems.append("updates[%d] no es un objeto" % i)
+			continue
+		var item: Dictionary = items[i]
+		var u := VersionUpdate.new()
+		u.version = _str(item, "version", problems, null)
+		u.latest = _str(item, "latest", problems, null)
+		u.installed = _bool(item, "installed", problems, false)
+		u.url = _str(item, "url", problems, "")
+		out.append(u)
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(out)
+
+
+## `prune` → PruneReport (con --dry-run o sin).
+static func parse_prune(text: String) -> GmResult:
+	var root := parse_ok(text)
+	if not root.ok:
+		return root
+	var d: Dictionary = root.value
+	var problems: Array[String] = []
+	var report := PruneReport.new()
+	report.total = _int(d, "total", problems)
+	report.removed = _bool(d, "removed", problems, false)
+	var items := _arr(d, "versions", problems, true)
+	for i in items.size():
+		if not items[i] is Dictionary:
+			problems.append("versions[%d] no es un objeto" % i)
+			continue
+		var item: Dictionary = items[i]
+		var c := PruneReport.Candidate.new()
+		c.version = _str(item, "version", problems, null)
+		c.size = _int(item, "size", problems)
+		c.templates_dir = _str(item, "templates_dir", problems, "")
+		c.templates_size = _int(item, "templates_size", problems)
+		report.candidates.append(c)
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(report)
+
+
+## `path` → PathStatus.
+static func parse_path(text: String) -> GmResult:
+	var root := _parse_json(text)
+	if not root.ok:
+		return root
+	if not root.value is Dictionary:
+		return _bad("se esperaba un objeto", text)
+	var d: Dictionary = root.value
+	var problems: Array[String] = []
+	var st := PathStatus.new()
+	st.dir = _str(d, "dir", problems, null)
+	st.on_path = _bool(d, "on_path", problems, false)
+	st.target = _str(d, "target", problems, "")
+	st.managed = _str(d, "managed", problems, "")
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(st)
+
+
 ## Respuesta {"ok":true,…} de set, set-local, add, remove, launch/run --detach
 ## → el Dictionary entero.
 static func parse_ok(text: String) -> GmResult:

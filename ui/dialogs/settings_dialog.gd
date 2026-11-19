@@ -1,5 +1,6 @@
 extends ConfirmationDialog
-## Ajustes: binario de godot-manager, GITHUB_TOKEN y GODOT_DIR.
+## Ajustes: binario de godot-manager, GITHUB_TOKEN y GODOT_DIR; y si
+## godot-manager está en el PATH (eso se aplica enseguida, no al Guardar).
 ## `open_with(settings)` lo llena; al Guardar escribe settings.cfg, aplica a
 ## GmCli y emite `saved`.
 
@@ -15,6 +16,10 @@ signal saved(settings: AppSettings)
 @onready var _show_token: Button = %ShowToken
 @onready var _godot_dir: LineEdit = %GodotDir
 @onready var _check_updates: CheckBox = %CheckUpdates
+@onready var _path_status: Label = %PathStatus
+@onready var _path_button: Button = %PathButton
+## Lo último que dijo `path` (null mientras carga o si falló).
+var path_status: PathStatus
 ## Los ajustes con que se abrió (para lo que el formulario no muestra).
 var _opened_with: AppSettings
 @onready var _binary_dialog: FileDialog = %BinaryFileDialog
@@ -47,6 +52,7 @@ func _ready() -> void:
 			_dir_dialog.current_dir = _godot_dir.text
 		_dir_dialog.popup_centered())
 	_dir_dialog.dir_selected.connect(func(dir: String) -> void: _godot_dir.text = dir)
+	_path_button.pressed.connect(_toggle_path)
 	confirmed.connect(_save)
 
 
@@ -62,6 +68,7 @@ func open_with(settings: AppSettings) -> void:
 	_clear_test()
 	_update_enabled()
 	popup_centered()
+	refresh_path()
 
 
 ## Los ajustes como están en el formulario.
@@ -102,6 +109,50 @@ func _run_test() -> void:
 	else:
 		_test_result.text = r.error.message
 		_test_result.add_theme_color_override("font_color", Color("#ff8a80"))
+
+
+## Pregunta `path` y muestra si godot-manager está en el PATH.
+func refresh_path() -> void:
+	path_status = null
+	show_path_status(null)
+	if not GmCli.available:
+		_path_status.text = tr("godot-manager no está disponible.")
+		return
+	var job := GmCli.read(GmCommands.path_status())
+	job.notify_on_error = false
+	await job.finished
+	var r := GmParse.parse_path(job.stdout) if job.succeeded() else null
+	if r != null and r.ok:
+		path_status = r.value
+		show_path_status(path_status)
+	else:
+		_path_status.text = tr("No se pudo saber si está en el PATH (hace falta godot-manager 2.4 o posterior).")
+
+
+## Texto y botón para un resultado de `path` (null: cargando).
+func show_path_status(st: PathStatus) -> void:
+	_path_button.visible = st != null and st.managed.is_empty()
+	_path_button.disabled = false
+	if st == null:
+		_path_status.text = tr("Revisando el PATH…")
+		return
+	if not st.managed.is_empty():
+		_path_status.text = tr("Lo instaló %s, que maneja el PATH.") % st.managed
+	elif st.on_path:
+		_path_status.text = tr("godot-manager y godot están en el PATH: se pueden usar desde una terminal.")
+		_path_button.text = tr("Quitar del PATH")
+	else:
+		_path_status.text = tr("godot-manager no está en el PATH. Agregarlo permite usar godot-manager y godot desde cualquier terminal (%s).") % st.target
+		_path_button.text = tr("Agregar al PATH")
+
+
+func _toggle_path() -> void:
+	if path_status == null:
+		return
+	_path_button.disabled = true
+	var job := GmCli.write(GmCommands.path_change(not path_status.on_path))
+	await job.finished
+	refresh_path()
 
 
 func _save() -> void:

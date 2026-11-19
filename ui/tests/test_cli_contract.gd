@@ -107,3 +107,19 @@ func test_set_not_installed() -> void:
 	var r := GmParse.parse_ok(fx.run(GmCommands.set_default("9.9"))["stdout"])
 	assert_false(r.ok)
 	assert_eq(r.error.code, "not_installed")
+
+
+func test_prune_dry_run_skips_custom_builds() -> void:
+	var out := fx.run(GmCommands.prune(PackedStringArray([fx.root]), true))
+	var r := GmParse.parse_prune(out["stdout"])
+	if not assert_true(r.ok, str(r.error)):
+		return
+	assert_eq((r.value as PruneReport).candidates.size(), 0, "los builds propios no se tocan")
+	assert_false((r.value as PruneReport).removed)
+
+
+func test_path_status_parses() -> void:
+	var r := GmParse.parse_path(fx.run(GmCommands.path_status())["stdout"])
+	if not assert_true(r.ok, str(r.error)):
+		return
+	assert_eq((r.value as PathStatus).dir.replace("\\", "/"), fx.gm_bin.replace("\\", "/").get_base_dir())

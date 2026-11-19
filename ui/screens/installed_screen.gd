@@ -17,6 +17,12 @@ var selected: InstalledVersion
 
 var _loading: CliJob
 var _load_error := ""
+## Nombre de versión → VersionUpdate, de `outdated`.
+var _updates := {}
+## Las versiones para las que se pidió `outdated` (consulta GitHub: se repite
+## solo si cambia lo instalado).
+var _updates_for := ""
+var _checking_updates: CliJob
 ## Escrituras de esta pantalla en curso.
 var _busy := 0
 
@@ -54,6 +60,10 @@ func _ready() -> void:
 		if selected != null and not selected.custom:
 			%TemplatesDialog.open_templates(selected))
 	%TemplatesDialog.install_requested.connect(install_requested.emit)
+	%Upgrade.pressed.connect(_upgrade)
+	%Prune.pressed.connect(func() -> void:
+		%PruneDialog.open_with(ProjectList.load_from().paths))
+	%PruneDialog.prune_requested.connect(_write_and_refresh)
 	%Symbols.pressed.connect(func() -> void:
 		if selected != null and not selected.custom and not selected.debug_symbols:
 			install_requested.emit(GmCommands.symbols(selected.name), tr("Instalando símbolos de %s") % selected.name))
@@ -104,10 +114,39 @@ func refresh() -> void:
 	if r != null and r.ok:
 		versions.assign(r.value)
 		_load_error = ""
+		check_updates()
 	else:
 		var err := GmParse.job_error(job) if r == null else r.error
 		_load_error = err.message if err != null else tr("No se pudo leer la lista.")
 	_rebuild()
+
+
+## Pide `outdated` en segundo plano si cambió lo instalado desde la última
+## vez. Sin red o con el límite de GitHub no pasa nada: no se marca ninguna.
+func check_updates() -> void:
+	var names := PackedStringArray()
+	for v in versions:
+		names.append(v.name)
+	var key := ",".join(names)
+	if key == _updates_for or (_checking_updates != null and not _checking_updates.is_done()):
+		return
+	_updates_for = key
+	_checking_updates = GmCli.read_background(GmCommands.outdated())
+	var job := _checking_updates
+	await job.finished
+	var r := GmParse.parse_outdated(job.stdout) if job.succeeded() else null
+	if r == null or not r.ok:
+		_updates_for = ""  # que lo vuelva a intentar en el próximo refresh
+		return
+	_updates.clear()
+	for u: VersionUpdate in r.value:
+		_updates[u.version] = u
+	_rebuild()
+
+
+## La actualización disponible para `v` (null si no hay).
+func update_for(v: InstalledVersion) -> VersionUpdate:
+	return _updates.get(v.name) if v != null else null
 
 
 ## Las versiones que se ven ahora, en orden.
@@ -133,7 +172,7 @@ func _rebuild() -> void:
 	var keep: InstalledVersion = null
 	for v in shown:
 		var row := ROW_SCENE.instantiate()
-		row.setup(v)
+		row.setup(v, update_for(v))
 		row.selected.connect(_on_row_selected)
 		row.activated.connect(_on_row_activated)
 		row.context_requested.connect(_on_row_context)
@@ -171,7 +210,7 @@ func _clear_filters() -> void:
 ## Clic derecho en una fila: la selecciona y muestra sus acciones.
 func _on_row_context(row: Control, at: Vector2) -> PopupMenu:
 	_on_row_selected(row)
-	return RowMenu.popup(self, [%Launch, %SetDefault, null, %Templates, %Symbols, %ShowFolder, null, %Delete], at)
+	return RowMenu.popup(self, [%Launch, %SetDefault, %Upgrade, null, %Templates, %Symbols, %ShowFolder, null, %Delete], at)
 
 
 func _on_row_selected(row: Control) -> void:
@@ -213,6 +252,16 @@ func _set_default() -> void:
 	await _write_and_refresh(GmCommands.set_default(selected.name))
 
 
+## Instala la más nueva de la serie de la seleccionada en el panel de
+## progreso (si era la default, la nueva pasa a serlo).
+func _upgrade() -> void:
+	var u := update_for(selected)
+	if u == null or u.installed:
+		return
+	install_requested.emit(GmCommands.upgrade(selected.name),
+		tr("Actualizando %s a %s") % [selected.name, u.latest])
+
+
 ## Abre el Project Manager de la versión seleccionada con `launch --detach`:
 ## el CLI responde apenas arranca el proceso, así que la UI no queda esperando
 ## a que se cierre el editor. Si no arranca, main muestra el error del CLI.
@@ -240,8 +289,17 @@ func _update_actions() -> void:
 		%Symbols.disabled = true
 	%Symbols.tooltip_text = tr("Esta versión ya tiene los símbolos de debug.") \
 		if not none and selected.debug_symbols else tr("Agrega los símbolos de debug del editor de esta versión")
+	var u := update_for(selected)
+	var upgrade: Button = %Upgrade
+	upgrade.visible = u != null
+	upgrade.disabled = u == null or u.installed
+	if u != null:
+		upgrade.text = tr("Actualizar")
+		upgrade.tooltip_text = tr("%s ya está instalada.") % u.latest if u.installed \
+			else tr("Instala %s con lo mismo que tiene esta (mono, export templates, símbolos). Esta queda instalada.") % u.latest
 	if _busy > 0:
-		for button: Button in [%SetDefault, %Delete, %AddBuild]:
+		for button: Button in [%SetDefault, %Delete, %AddBuild, %Prune]:
 			button.disabled = true
 	else:
 		%AddBuild.disabled = false
+		%Prune.disabled = false
