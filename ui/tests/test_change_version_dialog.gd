@@ -84,8 +84,10 @@ func test_default_project() -> void:
 	assert_eq(dialog.command(), PackedStringArray(), "ya usa la default: --unset no cambia nada")
 	_pick(1)
 	assert_eq(dialog.command(), PackedStringArray(["--json", "--dir", "/home/u/mi juego", "set-local", "4.8-beta3"]))
+	# En Windows con comillas dobles, para pegarlo en cmd o PowerShell.
+	var quoted := "\"/home/u/mi juego\"" if OS.get_name() == "Windows" else "'/home/u/mi juego'"
 	assert_eq((dialog.get_node("%Command") as Label).text,
-		"godot-manager --json --dir '/home/u/mi juego' set-local 4.8-beta3")
+		"godot-manager --json --dir %s set-local 4.8-beta3" % quoted)
 
 
 func test_older_than_project_warns() -> void:

@@ -94,8 +94,8 @@ func _start(path: String) -> void:
 	started_msec = Time.get_ticks_msec()
 	var info := OS.execute_with_pipe(path, args, false)
 	if info.is_empty():
+		# GmCli lo termina en el frame siguiente (ver GmCli._fail_later).
 		start_error = CliError.make(CliError.START_FAILED, tr("No se pudo ejecutar %s") % path)
-		_finish()
 		return
 	pid = info["pid"]
 	_stdio = info["stdio"]

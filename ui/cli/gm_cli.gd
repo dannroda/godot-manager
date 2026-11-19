@@ -161,17 +161,26 @@ func _launch(job: CliJob) -> void:
 			tr("No se encontró godot-manager %s. Revisá el binario en Ajustes.") % where)
 		job.state = CliJob.State.RUNNING
 		job_started.emit(job)
-		job._finish()
-		_on_done(job)
+		_fail_later(job)
 		return
 	_apply_env()
 	job._start(path)
 	job_started.emit(job)
-	if job.is_done():
-		_on_done(job)
+	if job.start_error != null:
+		_fail_later(job)
 		return
 	_running.append(job)
 	set_process(true)
+
+
+## Un job que no llegó a arrancar termina en el frame siguiente, no adentro de
+## read()/write(): así el `await job.finished` de quien lo pidió lo alcanza.
+func _fail_later(job: CliJob) -> void:
+	(func() -> void:
+		if job.is_done():
+			return
+		job._finish()
+		_on_done(job)).call_deferred()
 
 
 func _process(_delta: float) -> void:
