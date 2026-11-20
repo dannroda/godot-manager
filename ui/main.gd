@@ -96,10 +96,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 
-## Hay un diálogo abierto: los atajos no tocan la pantalla de atrás.
+## Hay un diálogo abierto: los atajos no tocan la pantalla de atrás. Los
+## diálogos son ventanas nativas (embed_subwindows=false), salvo en headless.
 func _dialog_open() -> bool:
-	for w in get_window().get_embedded_subwindows():
-		if w.visible:
+	for w: Node in find_children("*", "Window", true, false):
+		if (w as Window).visible:
 			return true
 	return false
 
@@ -166,6 +167,12 @@ func _setup_window() -> void:
 	var window := get_window()
 	var factor := ui_scale_for(DisplayServer.screen_get_scale(), DisplayServer.screen_get_dpi())
 	window.content_scale_factor = factor
+	# Los diálogos son ventanas nativas y no heredan la escala: se la pone cada una.
+	for w: Node in find_children("*", "Window", true, false):
+		(w as Window).content_scale_factor = factor
+	get_tree().node_added.connect(func(n: Node) -> void:
+		if n is Window and n != window:
+			(n as Window).content_scale_factor = factor)
 	window.min_size = Vector2i(Vector2(MIN_WINDOW_SIZE) * factor)
 	if factor > 1.0 and not window.mode in [Window.MODE_MAXIMIZED, Window.MODE_FULLSCREEN]:
 		var screen := DisplayServer.window_get_current_screen()

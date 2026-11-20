@@ -25,6 +25,7 @@ GmCli="*res://cli/gm_cli.gd"
 window/size/viewport_width=1152
 window/size/viewport_height=720
 window/stretch/aspect="expand"
+window/subwindows/embed_subwindows=false
 
 [editor_plugins]
 
