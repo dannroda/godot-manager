@@ -4,6 +4,8 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-11-20
+
 ### Added
 
 - **`godot-manager dirs`** prints the folders godot-manager uses: `GODOT_DIR`, the one it uses when `GODOT_DIR` is not set, and where versions and export templates go.
