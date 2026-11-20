@@ -57,7 +57,7 @@ horizontal_scroll_mode = 0
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 2
+theme_override_constants/separation = 4
 
 [node name="Placeholder" parent="Layout/Body/ListPanel" unique_id=838009154 instance=ExtResource("2_uv1t5")]
 unique_name_in_owner = true
@@ -66,8 +66,9 @@ layout_mode = 2
 
 [node name="Actions" type="VBoxContainer" parent="Layout/Body" unique_id=91225017]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(170, 0)
+custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
+theme_override_constants/separation = 6
 
 [node name="Launch" type="Button" parent="Layout/Body/Actions" unique_id=1867319693]
 unique_name_in_owner = true

@@ -25,19 +25,21 @@ func _init() -> void:
 
 	_variant(t, "TopBar", "PanelContainer")
 	var top := StyleBoxEmpty.new()
-	top.content_margin_left = 8
-	top.content_margin_right = 8
+	top.content_margin_left = 12
+	top.content_margin_right = 12
+	top.content_margin_top = 6
+	top.content_margin_bottom = 6
 	t.set_stylebox("panel", "TopBar", top)
 	_variant(t, "ScreenPanel", "PanelContainer")
-	t.set_stylebox("panel", "ScreenPanel", _box(Color(0.1, 0.1, 0.1, 0.6), RADIUS, 10, 10))
+	t.set_stylebox("panel", "ScreenPanel", _box(Color(0.1, 0.1, 0.1, 0.6), RADIUS, 12, 12))
 	_variant(t, "ListPanel", "PanelContainer")
-	t.set_stylebox("panel", "ListPanel", _box(Color(0, 0, 0, 0.25), RADIUS, 4, 4))
+	t.set_stylebox("panel", "ListPanel", _box(Color(0, 0, 0, 0.25), RADIUS, 6, 6))
 	_variant(t, "RowPanel", "PanelContainer")
-	t.set_stylebox("panel", "RowPanel", _box(Color.TRANSPARENT, RADIUS, 10, 6))
+	t.set_stylebox("panel", "RowPanel", _box(Color.TRANSPARENT, RADIUS, 12, 8))
 	_variant(t, "RowPanelHover", "PanelContainer")
-	t.set_stylebox("panel", "RowPanelHover", _box(Color(1, 1, 1, 0.05), RADIUS, 10, 6))
+	t.set_stylebox("panel", "RowPanelHover", _box(Color(1, 1, 1, 0.05), RADIUS, 12, 8))
 	_variant(t, "RowPanelSelected", "PanelContainer")
-	var sel := _box(Color(1, 1, 1, 0.12), RADIUS, 10, 6)
+	var sel := _box(Color(1, 1, 1, 0.12), RADIUS, 12, 8)
 	sel.border_width_left = 2
 	sel.border_color = Color(1, 1, 1, 0.6)
 	t.set_stylebox("panel", "RowPanelSelected", sel)
