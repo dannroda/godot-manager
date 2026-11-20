@@ -2,7 +2,7 @@
 #
 # Generado por tools/packaging.go en github.com/dannroda/godot-manager: no editar a mano.
 pkgname=godot-manager-bin
-pkgver=2.4.1
+pkgver=2.4.2
 pkgrel=1
 pkgdesc="Godot version manager: installs official builds, export templates and debug symbols, and picks the version per project"
 arch=('x86_64' 'aarch64')
@@ -17,8 +17,8 @@ source_x86_64=("godot-manager-$pkgver-x86_64.tar.gz::$url/releases/download/v$pk
 source_aarch64=("godot-manager-$pkgver-aarch64.tar.gz::$url/releases/download/v$pkgver/godot-manager-linux-arm64.tar.gz")
 sha256sums=('35da3822f70c1b3118ad9cb690b46af4a6c570d7cc83598001730076283feff5'
             '94f55c7206bcd5218dbd0276a170e7d26d606198f052c65d1a80ebed205c1770')
-sha256sums_x86_64=('4fd873336cf33751aefcc1e9704ae8e45b01181cce1e5cba7c89679ad366ed9a')
-sha256sums_aarch64=('61846f33c2ad893dad944bc5d8b58e45c5855d0e63315e474d7bb6cd730bbc57')
+sha256sums_x86_64=('c56fabe6171354a099327d84ece370295192280bac1726bba2fd45ce1d8d84a8')
+sha256sums_aarch64=('19a244dcc208e2557f4d2da0d6f4444744271391b362a778041751310df9bcd1')
 
 package() {
     local d=godot-manager-linux-amd64
