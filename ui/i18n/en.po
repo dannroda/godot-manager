@@ -291,10 +291,6 @@ msgid "Probar"
 msgstr "Test"
 
 #: dialogs/settings_dialog.tscn
-msgid "GITHUB_TOKEN (opcional)"
-msgstr "GITHUB_TOKEN (optional)"
-
-#: dialogs/settings_dialog.tscn
 msgid "ghp_…"
 msgstr "ghp_…"
 
@@ -303,24 +299,8 @@ msgid "Sin token, GitHub permite 60 pedidos por hora (cada «Refrescar» de Desc
 msgstr "Without a token, GitHub allows 60 requests per hour (each Refresh in Download uses about 4). It is stored unencrypted in the app settings."
 
 #: dialogs/settings_dialog.tscn
-msgid "GODOT_DIR (opcional)"
-msgstr "GODOT_DIR (optional)"
-
-#: dialogs/settings_dialog.tscn
-msgid "Vacío: la carpeta por defecto del CLI"
-msgstr "Empty: the CLI's default folder"
-
-#: dialogs/settings_dialog.tscn
-msgid "Carpeta donde godot-manager instala las versiones."
-msgstr "Folder where godot-manager installs versions."
-
-#: dialogs/settings_dialog.tscn
 msgid "Elegir godot-manager"
 msgstr "Choose godot-manager"
-
-#: dialogs/settings_dialog.tscn
-msgid "Elegir GODOT_DIR"
-msgstr "Choose GODOT_DIR"
 
 #: screens/installed_screen.gd
 msgid "Instalando símbolos de %s"
@@ -1350,3 +1330,36 @@ msgstr "Godot %s or older"
 
 msgid "otra versión de Godot"
 msgstr "another Godot version"
+
+msgid "Carpeta de versiones"
+msgstr "Versions folder"
+
+msgid "La carpeta por defecto del CLI"
+msgstr "The CLI's default folder"
+
+msgid "Vuelve a la carpeta por defecto"
+msgstr "Go back to the default folder"
+
+msgid "Restaurar"
+msgstr "Restore"
+
+msgid "Donde godot-manager instala las versiones (GODOT_DIR)."
+msgstr "Where godot-manager installs versions (GODOT_DIR)."
+
+msgid "Donde godot-manager instala las versiones. Es la carpeta por defecto."
+msgstr "Where godot-manager installs versions. This is the default folder."
+
+msgid "Donde godot-manager instala las versiones (GODOT_DIR). «Restaurar» vuelve a la carpeta por defecto."
+msgstr "Where godot-manager installs versions (GODOT_DIR). «Restore» goes back to the default folder."
+
+msgid "Donde godot-manager instala las versiones (GODOT_DIR). La carpeta por defecto es %s."
+msgstr "Where godot-manager installs versions (GODOT_DIR). The default folder is %s."
+
+msgid "Elegir la carpeta de versiones"
+msgstr "Choose the versions folder"
+
+msgid "Token de GitHub (opcional)"
+msgstr "GitHub token (optional)"
+
+msgid "Actualizaciones"
+msgstr "Updates"

@@ -282,6 +282,17 @@ func test_parse_path() -> void:
 	assert_eq(st.managed, "")
 
 
+func test_parse_dirs() -> void:
+	var r := GmParse.parse_dirs('{"godot_dir":"D:/gm","default_godot_dir":"C:/x/godot-manager","custom":true,"versions":"D:/gm/versions","templates":"C:/t"}')
+	if not assert_true(r.ok, str(r.error)):
+		return
+	var d: Dictionary = r.value
+	assert_eq(d.godot_dir, "D:/gm")
+	assert_eq(d.default_godot_dir, "C:/x/godot-manager")
+	assert_true(d.custom)
+	assert_false(GmParse.parse_dirs('{"default_godot_dir":"x"}').ok, "falta godot_dir")
+
+
 func test_parse_managed_plugins() -> void:
 	var r := GmParse.parse_plugins('{"project":"/p","plugins":[{"id":"x","name":"X","path":"/p/addons/x","enabled":true,"managed":{"name":"x-plugin","source":"store:a/x","version":"v1.2","pinned":true}},{"id":"y","managed":null}],"pending":[{"name":"z","source":"github:a/z","version":"","pinned":false}]}')
 	if not assert_true(r.ok, str(r.error)):

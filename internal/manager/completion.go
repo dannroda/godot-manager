@@ -12,7 +12,7 @@ import (
 var completionCommands = []string{
 	"list", "list-remote", "install", "symbols", "templates", "add", "remove",
 	"set", "set-local", "which", "run", "launch", "plugins", "outdated",
-	"upgrade", "prune", "path", "presets", "new", "self-update", "completion", "version", "help",
+	"upgrade", "prune", "path", "dirs", "presets", "new", "self-update", "completion", "version", "help",
 }
 
 // Comandos cuyo primer argumento es una version instalada.

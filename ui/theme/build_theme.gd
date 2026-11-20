@@ -18,6 +18,10 @@ func _init() -> void:
 	_variant(t, "TitleLabel", "Label")
 	t.set_font_size("font_size", "TitleLabel", 18)
 
+	_variant(t, "SectionTitle", "Label")
+	t.set_font_size("font_size", "SectionTitle", 17)
+	t.set_color("font_color", "SectionTitle", Color(1, 1, 1, 1))
+
 	_variant(t, "AccentButton", "Button")
 	t.set_stylebox("normal", "AccentButton", _box(Color(1, 1, 1, 0.2), RADIUS, 10, 5))
 	t.set_stylebox("hover", "AccentButton", _box(Color(1, 1, 1, 0.3), RADIUS, 10, 5))
@@ -43,6 +47,8 @@ func _init() -> void:
 	sel.border_width_left = 2
 	sel.border_color = Color(1, 1, 1, 0.6)
 	t.set_stylebox("panel", "RowPanelSelected", sel)
+	_variant(t, "SettingsSection", "PanelContainer")
+	t.set_stylebox("panel", "SettingsSection", _box(Color(1, 1, 1, 0.04), RADIUS + 1, 14, 12))
 	_variant(t, "ErrorBanner", "PanelContainer")
 	var banner := _box(Color("#4a2328"), 0, 12, 8)
 	banner.border_width_bottom = 1

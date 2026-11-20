@@ -65,3 +65,4 @@ title = "Elegir el ejecutable de Godot"
 size = Vector2i(700, 450)
 file_mode = 0
 access = 2
+use_native_dialog = true

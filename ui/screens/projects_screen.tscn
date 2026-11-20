@@ -156,6 +156,7 @@ size = Vector2i(760, 480)
 ok_button_text = "Agregar"
 file_mode = 2
 access = 2
+use_native_dialog = true
 
 [node name="ScanDialog" type="FileDialog" parent="." unique_id=186309915]
 unique_name_in_owner = true
@@ -164,6 +165,7 @@ size = Vector2i(760, 480)
 ok_button_text = "Escanear"
 file_mode = 2
 access = 2
+use_native_dialog = true
 
 [node name="RemoveDialog" type="ConfirmationDialog" parent="." unique_id=961851560]
 unique_name_in_owner = true

@@ -233,6 +233,11 @@ static func path_status() -> PackedStringArray:
 	return ["--json", "path"]
 
 
+## Las carpetas que usa godot-manager, con la que usaría sin GODOT_DIR (2.5+).
+static func dirs() -> PackedStringArray:
+	return ["--json", "dirs"]
+
+
 ## Lo agrega al PATH (o lo quita): en Windows el del usuario, en el resto
 ## symlinks en ~/.local/bin.
 static func path_change(add: bool) -> PackedStringArray:

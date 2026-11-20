@@ -328,6 +328,26 @@ static func parse_path(text: String) -> GmResult:
 	return GmResult.success(st)
 
 
+## Salida de `dirs` → Dictionary con godot_dir, default_godot_dir (puede venir
+## vacía si el CLI no la sabe) y custom.
+static func parse_dirs(text: String) -> GmResult:
+	var root := _parse_json(text)
+	if not root.ok:
+		return root
+	if not root.value is Dictionary:
+		return _bad("se esperaba un objeto", text)
+	var d: Dictionary = root.value
+	var problems: Array[String] = []
+	var dirs := {
+		"godot_dir": _str(d, "godot_dir", problems, null),
+		"default_godot_dir": _str(d, "default_godot_dir", problems, ""),
+		"custom": _bool(d, "custom", problems, false),
+	}
+	if not problems.is_empty():
+		return _bad("; ".join(problems), text)
+	return GmResult.success(dirs)
+
+
 ## Respuesta {"ok":true,…} de set, set-local, add, remove, launch/run --detach
 ## → el Dictionary entero.
 static func parse_ok(text: String) -> GmResult:

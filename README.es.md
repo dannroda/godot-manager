@@ -143,6 +143,7 @@ godot-manager upgrade 4.7.1-stable      # instala 4.7.2-stable con lo mismo que 
 godot-manager prune --dry-run           # qué borraría prune y cuánto espacio libera
 
 godot-manager path add                  # pone godot-manager y godot en el PATH
+godot-manager dirs                      # carpetas que usa (GODOT_DIR y la por defecto)
 godot-manager self-update               # actualiza el propio godot-manager
 ```
 
@@ -187,7 +188,7 @@ El paquete de Arch lo instala para bash, zsh y fish.
 
 Con `--json`, `godot-manager` escribe solo JSON en stdout:
 
-- **`list`, `list-remote`, `which`, `outdated`, `path`, `presets` y `plugins` (`list`, `search`, `outdated`)** muestran sus datos.
+- **`list`, `list-remote`, `which`, `outdated`, `path`, `dirs`, `presets` y `plugins` (`list`, `search`, `outdated`)** muestran sus datos.
 - **`install`, `templates`, `symbols`, `upgrade`, `new` y `plugins` (`add`, `install`, `update`, `pin`, `apply`)** muestran un evento por línea (`step`, `download`, `warn`). La última línea es siempre `done` o `error`.
 - **Los demás comandos** muestran `{"ok": true, ...}` o `{"error": {"code": "...", "message": "..."}}`.
 

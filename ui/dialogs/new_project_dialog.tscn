@@ -91,3 +91,4 @@ size = Vector2i(760, 480)
 ok_button_text = "Elegir"
 file_mode = 2
 access = 2
+use_native_dialog = true

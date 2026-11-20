@@ -100,6 +100,17 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ykw30"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+bg_color = Color(1, 1, 1, 0.04)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fuuxw"]
 content_margin_left = 6.0
 content_margin_top = 1.0
 content_margin_right = 6.0
@@ -110,7 +121,7 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_fuuxw"]
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6psam"]
 content_margin_left = 12.0
 content_margin_top = 6.0
 content_margin_right = 12.0
@@ -135,9 +146,14 @@ RowPanelSelected/base_type = &"PanelContainer"
 RowPanelSelected/styles/panel = SubResource("StyleBoxFlat_c5suf")
 ScreenPanel/base_type = &"PanelContainer"
 ScreenPanel/styles/panel = SubResource("StyleBoxFlat_vu46x")
+SectionTitle/base_type = &"Label"
+SectionTitle/colors/font_color = Color(1, 1, 1, 1)
+SectionTitle/font_sizes/font_size = 17
+SettingsSection/base_type = &"PanelContainer"
+SettingsSection/styles/panel = SubResource("StyleBoxFlat_ykw30")
 Tag/base_type = &"PanelContainer"
-Tag/styles/panel = SubResource("StyleBoxFlat_ykw30")
+Tag/styles/panel = SubResource("StyleBoxFlat_fuuxw")
 TitleLabel/base_type = &"Label"
 TitleLabel/font_sizes/font_size = 18
 TopBar/base_type = &"PanelContainer"
-TopBar/styles/panel = SubResource("StyleBoxEmpty_fuuxw")
+TopBar/styles/panel = SubResource("StyleBoxEmpty_6psam")

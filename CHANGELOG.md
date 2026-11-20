@@ -4,6 +4,16 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+### Added
+
+- **`godot-manager dirs`** prints the folders godot-manager uses: `GODOT_DIR`, the one it uses when `GODOT_DIR` is not set, and where versions and export templates go.
+
+### Changed
+
+- **GUI dialogs open in their own windows** instead of inside the main window, and choosing a file or folder uses the system's file picker.
+- **A roomier GUI.** The top bar, the screens, the action buttons and the list rows have more padding, and the window opens at 1152×720.
+- **Settings are grouped in sections.** The versions folder shows the actual default folder instead of an empty field, and **Restore** goes back to it after you pick another one.
+
 ## [2.4.0] - 2026-11-19
 
 ### Plugins

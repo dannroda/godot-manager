@@ -102,3 +102,29 @@ func test_settings_path_status() -> void:
 	settings.show_path_status(st)
 	assert_false(button.visible, "lo maneja el gestor de paquetes")
 	assert_has(label.text, "Scoop")
+
+
+func test_settings_default_dir() -> void:
+	settings = SETTINGS.instantiate()
+	tree.root.add_child(settings)
+	var field: LineEdit = settings.get_node("%GodotDir")
+	var reset: Button = settings.get_node("%ResetDir")
+	var help: Label = settings.get_node("%DirHelp")
+	# Guardada vacía: muestra la por defecto y no hay nada que restaurar.
+	settings.set_default_dir("C:/Users/x/AppData/Local/godot-manager")
+	assert_eq(field.text, "C:/Users/x/AppData/Local/godot-manager")
+	assert_true(reset.disabled)
+	assert_eq(settings.current_settings().godot_dir, "", "la por defecto se guarda vacía")
+	assert_has(help.text, "por defecto")
+	# Una propia: se guarda tal cual y Restaurar vuelve a la por defecto.
+	field.text = "D:/godot"
+	field.text_changed.emit(field.text)
+	assert_false(reset.disabled)
+	assert_eq(settings.current_settings().godot_dir, "D:/godot")
+	assert_has(help.text, "C:/Users/x/AppData/Local/godot-manager")
+	reset.pressed.emit()
+	assert_eq(field.text, "C:/Users/x/AppData/Local/godot-manager")
+	assert_true(reset.disabled)
+	# La misma con otra barra final (y en Windows otras mayúsculas) sigue siendo la por defecto.
+	assert_true(settings.is_default_dir("C:/Users/x/AppData/Local/godot-manager/"))
+	assert_true(settings.is_default_dir(""))

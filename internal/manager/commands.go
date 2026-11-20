@@ -42,7 +42,7 @@ func Main(args []string) int {
 		cmd, args = args[0], args[1:]
 	}
 	// --json tambien vale despues del comando en los que solo leen
-	if cmd == "list" || cmd == "list-remote" || cmd == "which" || cmd == "plugins" || cmd == "outdated" || cmd == "path" || cmd == "prune" || cmd == "presets" {
+	if cmd == "list" || cmd == "list-remote" || cmd == "which" || cmd == "plugins" || cmd == "outdated" || cmd == "path" || cmd == "dirs" || cmd == "prune" || cmd == "presets" {
 		args, asJSON = jsonFlag(args, asJSON)
 	}
 	if asJSON {
@@ -148,6 +148,8 @@ func dispatch(cmd string, args []string, dir string) (map[string]any, error) {
 		return cmdPrune(args)
 	case "path":
 		return cmdPath(args)
+	case "dirs":
+		return cmdDirs(args)
 	case "completion":
 		return nil, cmdCompletion(arg(0))
 	case "__versions":
@@ -937,6 +939,8 @@ Comandos:
                                     Project Manager de Godot y la carpeta actual
   path [add|remove]                 Dice si godot-manager esta en el PATH; add lo agrega (Windows:
                                     PATH del usuario; Linux y macOS: symlinks en ~/.local/bin)
+  dirs                              Carpetas que usa: GODOT_DIR, la que usaria sin GODOT_DIR,
+                                    versiones y export templates
   completion bash|zsh|fish|powershell
                                     Script de autocompletado para esa shell
   self-update [--check] [--yes]     Actualiza godot-manager (y la interfaz, si esta en la misma
