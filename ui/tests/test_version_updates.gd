@@ -128,3 +128,21 @@ func test_settings_default_dir() -> void:
 	# La misma con otra barra final (y en Windows otras mayúsculas) sigue siendo la por defecto.
 	assert_true(settings.is_default_dir("C:/Users/x/AppData/Local/godot-manager/"))
 	assert_true(settings.is_default_dir(""))
+
+
+func test_settings_update_result() -> void:
+	settings = SETTINGS.instantiate()
+	tree.root.add_child(settings)
+	var label: Label = settings.get_node("%UpdateResult")
+	var u := UpdateInfo.new()
+	u.current = "2.4.1"
+	u.latest = "2.4.1"
+	settings.show_update_result(GmResult.success(u))
+	assert_eq(label.text, "Tenés la última versión (2.4.1).")
+	u.latest = "2.4.2"
+	u.update_available = true
+	settings.show_update_result(GmResult.success(u))
+	assert_has(label.text, "2.4.2")
+	assert_has(label.text, "tenés 2.4.1")
+	settings.show_update_result(GmResult.failure(CliError.make("network", "sin conexión")))
+	assert_eq(label.text, "No se pudo consultar: sin conexión")

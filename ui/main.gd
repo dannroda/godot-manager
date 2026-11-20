@@ -40,6 +40,7 @@ func _ready() -> void:
 	%Settings.pressed.connect(_open_settings)
 	%BannerSettings.pressed.connect(_open_settings)
 	_banner_retry.pressed.connect(_check_cli)
+	_settings_dialog.update_banner = %UpdateBanner
 	_settings_dialog.saved.connect(func(s: AppSettings) -> void:
 		settings = s
 		_check_cli())

@@ -1363,3 +1363,21 @@ msgstr "GitHub token (optional)"
 
 msgid "Actualizaciones"
 msgstr "Updates"
+
+msgid "Buscar ahora"
+msgstr "Check now"
+
+msgid "Pregunta a GitHub ahora si hay una release nueva de godot-manager"
+msgstr "Ask GitHub now whether there is a new godot-manager release"
+
+msgid "Buscando…"
+msgstr "Checking…"
+
+msgid "No se pudo consultar: %s"
+msgstr "Couldn't check: %s"
+
+msgid "Hay una versión nueva: %s (tenés %s). Aparece arriba, en la ventana principal."
+msgstr "There is a new version: %s (you have %s). It shows at the top of the main window."
+
+msgid "Tenés la última versión (%s)."
+msgstr "You have the latest version (%s)."

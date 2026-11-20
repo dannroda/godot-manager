@@ -30,27 +30,38 @@ func _ready() -> void:
 	%UpdateClose.pressed.connect(func() -> void: visible = false)
 
 
-## Pregunta si toca (activado en Ajustes y pasó un día desde la última vez).
-## Guarda la hora en `settings` si preguntó. Devuelve si preguntó.
+## Pregunta si toca (activado en Ajustes y pasó un día desde la última vez
+## que salió bien). Devuelve si preguntó; la hora se guarda en `settings` solo
+## si la respuesta llegó, así un chequeo sin red se reintenta al abrir otra vez.
 func check_if_due(settings: AppSettings, now := int(Time.get_unix_time_from_system())) -> bool:
 	if not settings.check_updates or not GmCli.available:
 		return false
 	if settings.last_update_check > 0 and now - settings.last_update_check < CHECK_EVERY:
 		return false
-	settings.last_update_check = now
-	settings.save()
-	check()
+	_check_and_stamp(settings, now)
 	return true
 
 
-## Pregunta ya. Los errores (sin red, un CLI viejo sin self-update) no se
-## muestran: no es algo que el usuario haya pedido.
-func check() -> void:
+func _check_and_stamp(settings: AppSettings, now: int) -> void:
+	var r := await check()
+	if r.ok:
+		settings.last_update_check = now
+		settings.save()
+
+
+## Pregunta ya y, si hay una nueva, muestra la franja. Devuelve el resultado
+## (un UpdateInfo, o el error): la franja no muestra errores, porque al abrir
+## nadie lo pidió; quien pregunta a mano (Ajustes) los muestra él.
+func check() -> GmResult:
 	var job := GmCli.read_background(GmCommands.self_update_check())
+	job.notify_on_error = false
 	await job.finished
-	var r := GmParse.parse_update_check(job.stdout) if job.succeeded() else null
-	if r != null and r.ok:
+	if not job.succeeded():
+		return GmResult.failure(GmParse.job_error(job))
+	var r := GmParse.parse_update_check(job.stdout)
+	if r.ok:
 		show_info(r.value)
+	return r
 
 
 func show_info(u: UpdateInfo) -> void:

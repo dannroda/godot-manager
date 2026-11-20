@@ -4,6 +4,10 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Checking for updates.** Settings has a **Check now** button that says whether you have the latest version, shows the new one, or says why it couldn't check. Before, there was no way to check by hand, and nothing showed when you were up to date. A check that fails on startup, for example with no network, now runs again the next time you open the GUI instead of waiting a day.
+
 ## [2.4.1] - 2026-11-20
 
 ### Added

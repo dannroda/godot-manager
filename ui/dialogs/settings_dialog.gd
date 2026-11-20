@@ -30,6 +30,9 @@ var default_dir := ""
 @onready var _binary_dialog: FileDialog = %BinaryFileDialog
 @onready var _dir_dialog: FileDialog = %DirFileDialog
 
+## La franja de actualizaciones (la pone main): «Buscar ahora» pregunta con ella.
+var update_banner: Node
+
 ## Dónde se guarda (los tests lo cambian).
 var settings_path := AppSettings.PATH
 
@@ -64,6 +67,7 @@ func _ready() -> void:
 		_godot_dir.text = default_dir
 		_update_dir())
 	_path_button.pressed.connect(_toggle_path)
+	%CheckNow.pressed.connect(check_updates_now)
 	confirmed.connect(_save)
 
 
@@ -81,6 +85,8 @@ func open_with(settings: AppSettings) -> void:
 	_opened_with = settings
 	_clear_test()
 	_update_enabled()
+	%UpdateResult.text = ""
+	%CheckNow.disabled = not GmCli.available or update_banner == null
 	popup_centered()
 	refresh_path()
 	refresh_dirs()
@@ -148,6 +154,28 @@ func _update_dir() -> void:
 		_dir_help.text = tr("Donde godot-manager instala las versiones (GODOT_DIR). «Restaurar» vuelve a la carpeta por defecto.")
 	else:
 		_dir_help.text = tr("Donde godot-manager instala las versiones (GODOT_DIR). La carpeta por defecto es %s.") % default_dir
+
+
+## «Buscar ahora»: pregunta sin esperar el día y dice qué pasó.
+func check_updates_now() -> void:
+	var button: Button = %CheckNow
+	var label: Label = %UpdateResult
+	button.disabled = true
+	label.text = tr("Buscando…")
+	var r: GmResult = await update_banner.check()
+	button.disabled = false
+	show_update_result(r)
+
+
+func show_update_result(r: GmResult) -> void:
+	var label: Label = %UpdateResult
+	if not r.ok:
+		label.text = tr("No se pudo consultar: %s") % r.error.message
+	elif (r.value as UpdateInfo).update_available:
+		var u: UpdateInfo = r.value
+		label.text = tr("Hay una versión nueva: %s (tenés %s). Aparece arriba, en la ventana principal.") % [u.latest, u.current]
+	else:
+		label.text = tr("Tenés la última versión (%s).") % (r.value as UpdateInfo).current
 
 
 func _update_enabled() -> void:
