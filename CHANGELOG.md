@@ -4,6 +4,8 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+## [2.4.4] - 2026-11-23
+
 ### Fixed
 
 - **Restart after updating, on Linux.** After the GUI updated itself, **Restart** closed it without opening the new version, so you had to open it yourself. It now opens the new version. If it still can't, the GUI stays open and says so.
