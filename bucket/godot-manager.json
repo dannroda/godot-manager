@@ -2,19 +2,19 @@
     "architecture": {
         "64bit": {
             "extract_dir": "godot-manager-windows-amd64",
-            "hash": "92c14f928368bd1337e7ce555ccba8c3cf42c49bfbeed6bc356bde7980f2cc14",
+            "hash": "9c83ba77d29eda4599aa39c7f615f068a568dce6c5141ccd27318b989ad5066c",
             "shortcuts": [
                 [
                     "godot-manager-ui.exe",
                     "Godot Manager"
                 ]
             ],
-            "url": "https://github.com/dannroda/godot-manager/releases/download/v2.4.2/godot-manager-windows-amd64.zip"
+            "url": "https://github.com/dannroda/godot-manager/releases/download/v2.4.3/godot-manager-windows-amd64.zip"
         },
         "arm64": {
             "extract_dir": "godot-manager-windows-arm64",
-            "hash": "06f633527f4d5e5918a31fccaa9ec81f48d0beeb14c25b12cd61f13189c01573",
-            "url": "https://github.com/dannroda/godot-manager/releases/download/v2.4.2/godot-manager-windows-arm64.zip"
+            "hash": "3aaca7d177e6c1903cb2678ac3ba6ea93fe80e5b753ac1580918e650e9792e93",
+            "url": "https://github.com/dannroda/godot-manager/releases/download/v2.4.3/godot-manager-windows-arm64.zip"
         }
     },
     "autoupdate": {
@@ -42,5 +42,5 @@
     "description": "Godot version manager: installs official builds, export templates and debug symbols, and picks the version per project.",
     "homepage": "https://github.com/dannroda/godot-manager",
     "license": "MIT",
-    "version": "2.4.2"
+    "version": "2.4.3"
 }
