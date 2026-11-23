@@ -102,6 +102,22 @@ func test_update_requested_and_finished() -> void:
 	assert_false(_button("UpdateRestart").visible, "en el editor no reinicia: no es la UI exportada")
 
 
+func test_restart_uses_path_from_startup() -> void:
+	assert_eq(banner.executable_path, OS.get_executable_path(), "se lee al crear la franja, antes de actualizar")
+	var original: Callable = banner.launch
+	assert_eq(original.call("/no/existe/godot-manager-ui.x86_64", PackedStringArray()), -1, "un ejecutable que no está no se lanza")
+	var calls: Array = []
+	banner.executable_path = "/opt/gm/godot-manager-ui.x86_64"
+	banner.launch = func(path: String, args: PackedStringArray) -> int:
+		calls.append([path, args])
+		return -1
+	banner.restart()
+	assert_eq(calls.size(), 1)
+	assert_eq(calls[0][0], "/opt/gm/godot-manager-ui.x86_64", "no OS.get_executable_path(), que después de actualizar apunta al .old borrado")
+	assert_eq(calls[0][1], OS.get_cmdline_args())
+	assert_true((banner.get_node("%UpdateText") as Label).text.begins_with("No se pudo abrir la interfaz nueva"), "si no abre, avisa y no se cierra")
+
+
 func test_check_if_due() -> void:
 	GmCli.available = false
 	var s := AppSettings.new()

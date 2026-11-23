@@ -973,6 +973,9 @@ msgstr "A new version of godot-manager is available: %s (you have %s). It can't 
 msgid "godot-manager se actualizó a %s. Reiniciá la interfaz para usar la versión nueva."
 msgstr "godot-manager was updated to %s. Restart the app to use the new version."
 
+msgid "No se pudo abrir la interfaz nueva (%s). Cerrala y abrila a mano."
+msgstr "Couldn't open the new GUI (%s). Close it and open it again yourself."
+
 #: rows/version_row.gd
 msgid "Nueva: %s"
 msgstr "New: %s"

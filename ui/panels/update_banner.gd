@@ -12,6 +12,10 @@ const CHECK_EVERY := 24 * 60 * 60
 var info: UpdateInfo
 ## Ya se actualizó: lo que queda es reiniciar.
 var updated := false
+## El ejecutable de la interfaz, leído al arrancar. Después de actualizar,
+## OS.get_executable_path() ya no sirve en Linux: /proc/self/exe apunta al
+## binario viejo, que self-update borró ("….old (deleted)").
+var executable_path := OS.get_executable_path()
 
 @onready var _text: Label = %UpdateText
 @onready var _update: Button = %UpdateNow
@@ -95,7 +99,16 @@ func on_update_finished(job: CliJob) -> void:
 
 
 ## Abre la interfaz otra vez (el ejecutable ya es el nuevo) y cierra esta.
+## Si no se pudo abrir, no cierra: avisa que hay que abrirla a mano.
 func restart() -> void:
-	var args := OS.get_cmdline_args()
-	OS.create_process(OS.get_executable_path(), args)
+	if launch(executable_path, OS.get_cmdline_args()) == -1:
+		_text.text = tr("No se pudo abrir la interfaz nueva (%s). Cerrala y abrila a mano.") % executable_path
+		return
 	get_tree().quit()
+
+
+## Lanza el ejecutable; devuelve el PID o -1. Los tests lo reemplazan.
+var launch := func(path: String, args: PackedStringArray) -> int:
+	if not FileAccess.file_exists(path):
+		return -1
+	return OS.create_process(path, args)
