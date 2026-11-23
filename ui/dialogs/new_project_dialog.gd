@@ -14,6 +14,9 @@ const RENDERERS: Array[Dictionary] = [
 ]
 
 var versions: Array[InstalledVersion] = []
+## Cómo se arma el nombre de la carpeta (DirNaming.Convention): la del editor
+## de Godot, leída al abrir el diálogo.
+var naming: int = DirNaming.DEFAULT
 var presets: Array[PluginPreset] = []
 
 @onready var _name: LineEdit = %ProjectName
@@ -45,6 +48,7 @@ func _ready() -> void:
 
 
 func open_with(parent_dir: String) -> void:
+	naming = DirNaming.read_convention()
 	_name.text = ""
 	_parent.text = parent_dir
 	show_versions([])
@@ -101,7 +105,10 @@ func target_path() -> String:
 	var name := _name.text.strip_edges()
 	if parent.is_empty() or name.is_empty():
 		return ""
-	return parent.path_join(name.validate_filename())
+	var dir := DirNaming.dir_name(name, naming)
+	if dir.is_empty():
+		return ""
+	return parent.path_join(dir)
 
 
 ## Los argumentos de `new` con lo elegido.
@@ -119,6 +126,8 @@ func _validate() -> bool:
 		problem = tr("Poné un nombre.")
 	elif _parent.text.strip_edges().is_empty() or not DirAccess.dir_exists_absolute(_parent.text.strip_edges()):
 		problem = tr("Elegí una carpeta que exista.")
+	elif path.is_empty():
+		problem = tr("El nombre no sirve para una carpeta.")
 	elif DirAccess.dir_exists_absolute(path) and not _is_empty_dir(path):
 		problem = tr("Ya hay una carpeta con archivos en %s.") % path
 	_target.text = problem if not problem.is_empty() else tr("Se crea en %s") % path

@@ -1136,6 +1136,9 @@ msgstr "Enter a name."
 msgid "Elegí una carpeta que exista."
 msgstr "Choose a folder that exists."
 
+msgid "El nombre no sirve para una carpeta."
+msgstr "That name can't be used as a folder name."
+
 msgid "Ya hay una carpeta con archivos en %s."
 msgstr "There is already a folder with files at %s."
 

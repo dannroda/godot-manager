@@ -61,19 +61,23 @@ func test_validation_and_command() -> void:
 	assert_eq(version.item_count, 3, "sin la 3.6")
 	assert_false(dialog._validate(), "sin nombre")
 	assert_eq(_target(), "Poné un nombre.")
+	dialog.naming = DirNaming.Convention.KEBAB
 	dialog.get_node("%ProjectName").text = "Mi juego"
 	assert_true(dialog._validate())
-	assert_eq(_target(), "Se crea en %s" % root.path_join("Mi juego"))
-	assert_eq(dialog.command(), GmCommands.new_project(root.path_join("Mi juego"), "Mi juego"))
+	assert_eq(_target(), "Se crea en %s" % root.path_join("mi-juego"), "la carpeta en kebab-case, como Godot")
+	assert_eq(dialog.command(), GmCommands.new_project(root.path_join("mi-juego"), "Mi juego"))
+	dialog.naming = DirNaming.Convention.NONE
+	assert_eq(dialog.target_path(), root.path_join("Mi juego"))
+	dialog.naming = DirNaming.Convention.KEBAB
 	version.select(1)
 	(dialog.get_node("%Renderer") as OptionButton).select(2)
 	var preset := PluginPreset.new()
 	preset.name = "mios"
 	dialog.show_presets([preset])
 	(dialog.get_node("%Preset") as OptionButton).select(1)
-	assert_eq(dialog.command(), GmCommands.new_project(root.path_join("Mi juego"), "Mi juego", "4.5.1-stable", "gl_compatibility", "mios"))
-	DirAccess.make_dir_recursive_absolute(root.path_join("Mi juego"))
-	FileAccess.open(root.path_join("Mi juego/x.txt"), FileAccess.WRITE).store_string("x")
+	assert_eq(dialog.command(), GmCommands.new_project(root.path_join("mi-juego"), "Mi juego", "4.5.1-stable", "gl_compatibility", "mios"))
+	DirAccess.make_dir_recursive_absolute(root.path_join("mi-juego"))
+	FileAccess.open(root.path_join("mi-juego/x.txt"), FileAccess.WRITE).store_string("x")
 	assert_false(dialog._validate(), "carpeta con archivos")
 
 
@@ -95,7 +99,32 @@ func test_create_with_cli() -> void:
 	var job: CliJob = await screen.create_project(GmCommands.new_project(path, "Nuevo", "", "mobile"), path)
 	assert_true(job.succeeded(), job.stdout + job.stderr)
 	assert_true(FileAccess.get_file_as_string(path.path_join("project.godot")).contains("config/name=\"Nuevo\""))
+	assert_true(FileAccess.file_exists(path.path_join("icon.svg")), "con el ícono de Godot, como el Project Manager")
 	var names: PackedStringArray = []
 	for e: ProjectEntry in screen.visible_projects():
 		names.append(e.name)
 	assert_has(names, "Nuevo")
+
+
+func test_dir_naming() -> void:
+	assert_eq(DirNaming.dir_name("ChronoWar"), "chrono-war", "kebab-case por defecto, como Godot")
+	assert_eq(DirNaming.dir_name("Mi Juego 2"), DirNaming.dir_name("Mi Juego 2", DirNaming.Convention.KEBAB))
+	assert_eq(DirNaming.dir_name("Mi Juego", DirNaming.Convention.SNAKE), "mi_juego")
+	assert_eq(DirNaming.dir_name("Mi Juego", DirNaming.Convention.PASCAL), "MiJuego")
+	assert_eq(DirNaming.dir_name("Mi Juego", DirNaming.Convention.CAMEL), "miJuego")
+	assert_eq(DirNaming.dir_name("¿Qué? <x>", DirNaming.Convention.NONE), "¿Qué- -x-")
+	assert_eq(DirNaming.dir_name("Fin...", DirNaming.Convention.NONE), "Fin")
+	assert_eq(DirNaming.dir_name("..", DirNaming.Convention.NONE), "twodots")
+
+
+func test_read_convention() -> void:
+	var dir := root.path_join("config")
+	DirAccess.make_dir_recursive_absolute(dir)
+	assert_eq(DirNaming.read_convention(dir), DirNaming.Convention.KEBAB, "sin ajustes: la default de Godot")
+	var write := func(file: String, text: String) -> void:
+		FileAccess.open(dir.path_join(file), FileAccess.WRITE).store_string(text)
+	write.call("editor_settings-4.7.tres", "[resource]\nproject_manager/directory_naming_convention = 4\n")
+	write.call("editor_settings-4.10.tres", "[gd_resource type=\"EditorSettings\" format=3]\n\n[resource]\nproject_manager/directory_naming_convention = 2\n")
+	assert_eq(DirNaming.read_convention(dir), DirNaming.Convention.SNAKE, "el de la versión más nueva (4.10 > 4.7)")
+	write.call("editor_settings-4.10.tres", "[resource]\ninterface/editor/x = 1\n")
+	assert_eq(DirNaming.read_convention(dir), DirNaming.Convention.KEBAB, "sin el ajuste: la default")

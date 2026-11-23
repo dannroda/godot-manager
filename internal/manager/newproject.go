@@ -1,6 +1,7 @@
 package manager
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,8 +9,14 @@ import (
 )
 
 // new <carpeta> [--name n] [--version v] [--renderer r] [--preset p]: un proyecto de Godot 4
-// vacío, como lo crea el Project Manager (project.godot, .gitignore, .gitattributes), con su
-// .godot-version si se pide una versión y con los plugins de un preset.
+// vacío, como lo crea el Project Manager (project.godot, icon.svg, .editorconfig, .gitignore,
+// .gitattributes), con su .godot-version si se pide una versión y con los plugins de un preset.
+
+// El ícono que el Project Manager pone en cada proyecto nuevo (el de Godot 4.8, igual al de
+// las versiones anteriores de Godot 4).
+//
+//go:embed assets/godot_icon.svg
+var godotIcon string
 
 var renderers = map[string]struct{ feature, method string }{
 	"forward_plus":     {"Forward Plus", ""},
@@ -97,6 +104,8 @@ func cmdNew(args []string) (map[string]any, error) {
 	}
 	files := map[string]string{
 		"project.godot":  projectGodotText(name, feature, r.feature, r.method),
+		"icon.svg":       godotIcon,
+		".editorconfig":  "root = true\n\n[*]\ncharset = utf-8\n",
 		".gitignore":     "# Godot 4+ specific ignores\n.godot/\n/android/\n",
 		".gitattributes": "# Normalize EOL for all files that Git considers text files.\n* text=auto eol=lf\n",
 	}
@@ -150,6 +159,7 @@ func projectGodotText(name, version, feature, method string) string {
 	}
 	features = append(features, quoteCfg(feature))
 	fmt.Fprintf(&b, "config/features=PackedStringArray(%s)\n", strings.Join(features, ", "))
+	b.WriteString("config/icon=\"res://icon.svg\"\n")
 	if method != "" {
 		fmt.Fprintf(&b, "\n[rendering]\n\nrenderer/rendering_method=%s\n", quoteCfg(method))
 		if method == "gl_compatibility" {

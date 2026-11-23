@@ -37,13 +37,20 @@ func TestNewProject(t *testing.T) {
 	}
 	pg := readFile(t, filepath.Join(dir, "project.godot"))
 	for _, want := range []string{"config_version=5", `config/name="Mi \"juego\""`,
-		`config/features=PackedStringArray("4.5", "Mobile")`, `renderer/rendering_method="mobile"`} {
+		`config/features=PackedStringArray("4.5", "Mobile")`, `config/icon="res://icon.svg"`,
+		`renderer/rendering_method="mobile"`} {
 		if !strings.Contains(pg, want) {
 			t.Errorf("project.godot no tiene %s:\n%s", want, pg)
 		}
 	}
 	if got := strings.TrimSpace(readFile(t, filepath.Join(dir, ".godot-version"))); got != "4.5.1-stable" {
 		t.Errorf(".godot-version: %q", got)
+	}
+	if icon := readFile(t, filepath.Join(dir, "icon.svg")); !strings.HasPrefix(icon, "<svg") || !strings.Contains(icon, "#478cbf") {
+		t.Errorf("icon.svg: %.60q", icon)
+	}
+	if got := readFile(t, filepath.Join(dir, ".editorconfig")); got != "root = true\n\n[*]\ncharset = utf-8\n" {
+		t.Errorf(".editorconfig: %q", got)
 	}
 	if !strings.Contains(readFile(t, filepath.Join(dir, ".gitignore")), ".godot/") {
 		t.Error(".gitignore sin .godot/")
