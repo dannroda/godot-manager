@@ -4,6 +4,8 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+## [2.4.5] - 2026-11-23
+
 ### Changed
 
 - **A new Add plugin window.**
