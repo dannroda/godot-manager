@@ -4,6 +4,12 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+### Changed
+
+- **New projects match Godot's Project Manager.**
+  - The GUI's **New…** names the project folder the way Godot does: in kebab-case by default (`My Game` → `my-game`), or with the directory naming convention set in Godot's editor settings. Before, the folder kept the project name as typed.
+  - `godot-manager new` now adds the Godot icon (`icon.svg`, set as the project icon) and `.editorconfig`, like a project created from Godot.
+
 ## [2.4.2] - 2026-11-20
 
 ### Fixed
