@@ -4,6 +4,8 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-11-23
+
 ### Changed
 
 - **New projects match Godot's Project Manager.**
