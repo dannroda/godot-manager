@@ -22,8 +22,19 @@ static func popup(owner: Control, buttons: Array, at: Vector2) -> PopupMenu:
 				(b as BaseButton).pressed.emit())
 	fill(menu, buttons)
 	menu.reset_size()
-	menu.popup(Rect2i(Vector2i(at), Vector2i.ZERO))
+	menu.popup(Rect2i(popup_position(owner, menu, at), Vector2i.ZERO))
 	return menu
+
+
+## Dónde abrir el menú. Embebido, en coordenadas de la ventana (`at`); como
+## ventana propia (los diálogos y menús de la app lo son), en coordenadas de la
+## pantalla, como Control.get_screen_position(): con la posición de la ventana
+## y su escala (Viewport.get_screen_transform() no suma la posición).
+static func popup_position(owner: Control, menu: Window, at: Vector2) -> Vector2i:
+	if menu.is_embedded():
+		return Vector2i(at)
+	var to_screen := owner.get_screen_transform() * owner.get_global_transform_with_canvas().affine_inverse()
+	return Vector2i(to_screen * at)
 
 
 ## Llena `menu` con `buttons` (sin mostrarlo).

@@ -81,7 +81,7 @@ else:
     EditorInterface.get_resource_filesystem().scan()
 ```
 
-Operations: `search(query, page)`, `add(spec, name, pin, prerelease)`, `install()`, `outdated()`, `update(names)`, `pin(name, version)`, `unpin(name)`, `remove(name)` and `status()`. For presets there are `apply(preset_path)`, which merges a preset into `plugins.json` and installs, and `preset_add(preset_path, specs)`. A preset is a file with the same shape as `plugins.json`.
+Operations: `search(query, page)` (an empty query returns the top-rated assets; each result has `tags`, `thumbnail` and `kind`: `plugin`, `content` or empty, guessed from its Store tags), `add(spec, name, pin, prerelease)`, `install()`, `outdated()`, `update(names)`, `pin(name, version)`, `unpin(name)`, `remove(name)` and `status()`. For presets there are `apply(preset_path)`, which merges a preset into `plugins.json` and installs, and `preset_add(preset_path, specs)`. A preset is a file with the same shape as `plugins.json`.
 
 - Each operation returns a `Dictionary`. On failure it has `error`, a stable code listed at the top of `kit.gd`, and `details`.
 - The `progress` signal reports `check`, `download`, `install` and `remove` while the operation runs.

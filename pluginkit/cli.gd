@@ -2,7 +2,7 @@ extends SceneTree
 ## Entrada para correr la librería sin editor:
 ##   godot --headless --path <carpeta de pluginkit> --script res://cli.gd -- <operación> \
 ##     --project <dir> --out <archivo.json> [--godot 4.5.1] [--temp <dir>] [--force] [args...]
-## Operaciones: search <texto> [página], add <fuente[@versión]> [--name n] [--pin] [--prerelease],
+## Operaciones: search [texto] [página], add <fuente[@versión]> [--name n] [--pin] [--prerelease],
 ## install, outdated, update [nombres...], pin <nombre> [versión], unpin <nombre>,
 ## remove <nombre>, status, apply <preset.json>, preset-add <preset.json> <fuente[@versión]>...
 ## El progreso sale por stdout, una línea por aviso: `@pk {"progress": ..., ...}`. El resultado
@@ -58,9 +58,8 @@ func _call(kit: RefCounted, rest: Array, options: Dictionary, flags: Dictionary)
 	var op: String = rest.pop_front()
 	match op:
 		"search":
-			if rest.is_empty():
-				return _usage()
-			return await kit.search(rest[0], int(rest[1]) if rest.size() > 1 else 1)
+			# Sin texto (o con ""): los más populares.
+			return await kit.search(rest[0] if not rest.is_empty() else "", int(rest[1]) if rest.size() > 1 else 1)
 		"add":
 			if rest.size() != 1:
 				return _usage()

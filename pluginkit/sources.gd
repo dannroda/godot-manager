@@ -43,8 +43,12 @@ static func split_version(spec: String) -> PackedStringArray:
 	return PackedStringArray([spec.left(at), spec.substr(at + 1)])
 
 
+## Sin texto, los mejor puntuados (el Store no da descargas: es lo más
+## parecido a "los más populares").
 static func store_search_url(query: String, page: int, godot: String) -> String:
-	var url := STORE_API + "/search/query/?query=%s&require_release=true&type=0&sort=relevance" % query.strip_edges().to_lower().uri_encode()
+	query = query.strip_edges()
+	var sort := "relevance" if not query.is_empty() else "reviews_desc"
+	var url := STORE_API + "/search/query/?query=%s&require_release=true&type=0&sort=%s" % [query.to_lower().uri_encode(), sort]
 	if not godot.is_empty():
 		url += "&compatibility=" + Versions.godot_number(godot)
 	if page > 1:
@@ -146,7 +150,52 @@ static func by_id(list: Array, id: String) -> Dictionary:
 	return {}
 
 
-## `[{source, name, publisher, description, license, score, store_url}]` de una búsqueda del Store.
+## Etiquetas del Store que dicen que un asset trae código (un plugin, una librería, una
+## herramienta del editor) o que es contenido (arte, sonido). El Store no lo distingue: es una
+## estimación, que se confirma al instalarlo (con plugin.cfg es un plugin de editor).
+const CODE_TAGS: PackedStringArray = ["tool", "tools", "tooling", "editortool", "editor", "plugin",
+	"editorplugin", "addon", "importer", "import", "inspector", "dock", "leveleditor", "developertools",
+	"devtool", "debug", "debugging", "productivity", "workflow", "qol", "utility", "visualeditor",
+	"scripteditor", "texteditor", "gdscript", "csharp", "gdextension", "cplusplus", "rust", "script",
+	"scripts", "scripting", "framework", "api", "sdk", "customnode", "node", "components",
+	"statemachine", "fsm", "mcp", "aiagent", "serialization", "savesystem", "networking", "multiplayer",
+	"testing", "automation", "logging", "console", "controller", "inputmanager", "localization"]
+const CONTENT_TAGS: PackedStringArray = ["pixelart", "sprite", "sprites", "spritesheet", "music", "sfx",
+	"soundeffects", "soundfx", "gameaudio", "ambient", "icons", "models", "props", "texture", "textures",
+	"lowpoly", "16x16", "32x32", "tileset", "font", "fonts", "background", "backgrounds", "art", "graphics",
+	"pbr", "characters", "character", "nature", "assetpack", "3dmodels", "2dart", "loops", "voice"]
+
+
+## Si las etiquetas no alcanzan: palabras del nombre y la descripción (en inglés, como el Store).
+const CODE_WORDS: PackedStringArray = ["plugin", "addon", "add-on", "editor", "tool", "library",
+	"framework", "node", "script", "gdextension", "importer", "system"]
+const CONTENT_WORDS: PackedStringArray = ["sprite", "spritesheet", "tileset", "texture", "music",
+	"sound effect", "sfx", "3d model", "models", "icons", "font", "pixel art pack", "asset pack", "art pack"]
+
+
+## "plugin" (trae código), "content" (arte, sonido…) o "" (no se sabe): por las etiquetas y, si
+## no alcanzan, por las palabras de `text` (nombre y descripción).
+static func guess_kind(tags: PackedStringArray, text := "") -> String:
+	var content := false
+	for t in tags:
+		if CODE_TAGS.has(t):
+			return "plugin"
+		if CONTENT_TAGS.has(t):
+			content = true
+	if content:
+		return "content"
+	var words := " %s " % text.to_lower()
+	for w in CODE_WORDS:
+		if RegEx.create_from_string("\\b%s" % w).search(words) != null:
+			return "plugin"
+	for w in CONTENT_WORDS:
+		if words.contains(w):
+			return "content"
+	return ""
+
+
+## `[{source, name, publisher, description, license, score, store_url, tags, thumbnail, kind}]`
+## de una búsqueda del Store. `tags`: los nombres que muestra el Store; `kind`: guess_kind.
 static func store_hits(data: Variant) -> Array:
 	var result := []
 	var hits: Variant = data.get("hits", []) if data is Dictionary else []
@@ -160,6 +209,12 @@ static func store_hits(data: Variant) -> Array:
 		var id := "%s/%s" % [publisher.get("slug", ""), a.get("slug", "")]
 		if not _valid_id(id):
 			continue
+		var tags: PackedStringArray = []
+		var slugs: PackedStringArray = []
+		for t: Variant in a.get("tags", []) if a.get("tags") is Array else []:
+			if t is Dictionary:
+				tags.append(str(t.get("display_name", t.get("slug", ""))))
+				slugs.append(str(t.get("slug", "")).to_lower())
 		result.append({
 			"source": "store:" + id,
 			"name": str(a.get("name", id)),
@@ -169,6 +224,9 @@ static func store_hits(data: Variant) -> Array:
 			"score": int(str(a.get("reviews_score", 0))),
 			"price_cent": int(str(a.get("price_cent", 0))),
 			"store_url": str(a.get("store_url", "")),
+			"tags": Array(tags),
+			"thumbnail": _absolute(_text(a.get("thumbnail"))),
+			"kind": guess_kind(slugs, "%s %s" % [a.get("name", ""), a.get("description", "")]),
 		})
 	return result
 
@@ -184,5 +242,12 @@ static func _valid_id(id: String) -> bool:
 
 
 ## str() de lo que puede venir null.
+## Las URLs del Store pueden venir sin el dominio ("/static/…").
+static func _absolute(url: String) -> String:
+	if url.begins_with("/"):
+		return STORE_API.get_slice("/api/", 0) + url
+	return url
+
+
 static func _text(value: Variant) -> String:
 	return "" if value == null else str(value)

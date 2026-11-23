@@ -128,7 +128,7 @@ godot-manager remove 4.5.1-stable
 
 godot-manager plugins                   # plugins of the current project
 godot-manager plugins disable broken    # disable one without opening the editor
-godot-manager plugins search dialogue   # search the Godot Asset Store
+godot-manager plugins search dialogue   # search the Godot Asset Store (no text: the top-rated ones)
 godot-manager plugins add nathanhoad/dialogue-manager
 godot-manager plugins add github:dannroda/godot-agent@v0.1.32   # pinned to that version
 godot-manager plugins outdated          # newer versions that work with the project's Godot

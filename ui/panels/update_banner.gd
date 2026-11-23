@@ -101,7 +101,7 @@ func on_update_finished(job: CliJob) -> void:
 ## Abre la interfaz otra vez (el ejecutable ya es el nuevo) y cierra esta.
 ## Si no se pudo abrir, no cierra: avisa que hay que abrirla a mano.
 func restart() -> void:
-	if launch(executable_path, OS.get_cmdline_args()) == -1:
+	if launch.call(executable_path, OS.get_cmdline_args()) == -1:
 		_text.text = tr("No se pudo abrir la interfaz nueva (%s). Cerrala y abrila a mano.") % executable_path
 		return
 	get_tree().quit()

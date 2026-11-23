@@ -44,6 +44,15 @@ type pluginList struct {
 	Plugins []plugin `json:"plugins"`
 	// los de plugins.json que todavia no estan instalados
 	Pending []managedPlugin `json:"pending"`
+	// lo instalado con plugins add que no es un plugin de editor (no trae plugin.cfg)
+	Assets []managedAsset `json:"assets"`
+}
+
+// Algo que instalo plugins add sin plugin.cfg: arte, sonido, scripts sueltos. No se activa en
+// project.godot; se actualiza y se desinstala como un plugin.
+type managedAsset struct {
+	managedPlugin
+	Folders []string `json:"folders"` // relativas al proyecto, como en plugins.lock
 }
 
 func cmdPlugins(args []string) (map[string]any, error) {
@@ -114,10 +123,11 @@ func listPlugins(proj string) error {
 		return err
 	}
 	pending := pendingPlugins(proj, ps)
+	assets := installedAssets(proj, ps)
 	if out.isJSON() {
-		return printJSON(pluginList{Project: proj, Plugins: ps, Pending: pending})
+		return printJSON(pluginList{Project: proj, Plugins: ps, Pending: pending, Assets: assets})
 	}
-	if len(ps) == 0 && len(pending) == 0 {
+	if len(ps) == 0 && len(pending) == 0 && len(assets) == 0 {
 		fmt.Println("No hay plugins en", filepath.Join(proj, "addons"))
 		return nil
 	}
@@ -145,6 +155,9 @@ func listPlugins(proj string) error {
 			fmt.Println("    ! " + pr)
 		}
 	}
+	for _, a := range assets {
+		fmt.Printf("  %s %s [%s, recursos sin plugin.cfg: %s]\n", a.Name, a.Version, a.Source, strings.Join(a.Folders, ", "))
+	}
 	for _, m := range pending {
 		fmt.Printf("  %s [%s, sin instalar: godot-manager plugins install]\n", m.Name, m.Source)
 	}
@@ -160,6 +173,9 @@ func pendingPlugins(proj string, ps []plugin) []managedPlugin {
 			installed[p.Managed.Name] = true
 		}
 	}
+	for _, a := range installedAssets(proj, ps) {
+		installed[a.Name] = true
+	}
 	lock := readLock(proj)
 	pending := []managedPlugin{}
 	for name, want := range readManifest(proj) {
@@ -171,6 +187,69 @@ func pendingPlugins(proj string, ps []plugin) []managedPlugin {
 	}
 	sort.Slice(pending, func(i, j int) bool { return pending[i].Name < pending[j].Name })
 	return pending
+}
+
+// Los de plugins.lock que estan instalados (tienen alguna de sus carpetas) pero no trajeron
+// ningun plugin de editor: no aparecen en ps porque no tienen plugin.cfg.
+func installedAssets(proj string, ps []plugin) []managedAsset {
+	withPlugin := map[string]bool{}
+	for _, p := range ps {
+		if p.Managed != nil {
+			withPlugin[p.Managed.Name] = true
+		}
+	}
+	manifest := readManifest(proj)
+	assets := []managedAsset{}
+	for name, e := range readLock(proj) {
+		if withPlugin[name] {
+			continue
+		}
+		if !assetPresent(proj, e) {
+			continue
+		}
+		_, pinned := manifest[name]["version"]
+		assets = append(assets, managedAsset{
+			managedPlugin: managedPlugin{Name: name, Source: e.Source, Version: e.Version, Pinned: pinned},
+			Folders:       assetFolders(e),
+		})
+	}
+	sort.Slice(assets, func(i, j int) bool { return assets[i].Name < assets[j].Name })
+	return assets
+}
+
+// Instalado: queda alguna de sus carpetas o de sus archivos (los de antes de 2.4.5 que no traían
+// addons/ se anotaban sin carpetas).
+func assetPresent(proj string, e lockEntry) bool {
+	for _, f := range e.Folders {
+		if isDir(filepath.Join(proj, filepath.FromSlash(f))) {
+			return true
+		}
+	}
+	for f := range e.Files {
+		if exists(filepath.Join(proj, filepath.FromSlash(f))) {
+			return true
+		}
+	}
+	return false
+}
+
+// Dónde está, para mostrarlo: sus carpetas, o el primer nivel de sus archivos si el lock no
+// las tiene (un archivo suelto en la raíz se muestra como está).
+func assetFolders(e lockEntry) []string {
+	if len(e.Folders) > 0 {
+		return append([]string{}, e.Folders...)
+	}
+	seen := map[string]bool{}
+	out := []string{}
+	for f := range e.Files {
+		top, _, _ := strings.Cut(f, "/")
+		if !seen[top] {
+			seen[top] = true
+			out = append(out, top)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func projectPlugins(proj string) ([]plugin, error) {

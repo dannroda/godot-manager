@@ -76,8 +76,13 @@ func TestProjectGodot(t *testing.T) {
 func TestManagedPlugins(t *testing.T) {
 	proj := pluginProject(t)
 	writeFiles(t, proj, map[string]string{
-		"plugins.json": `{"plugins": {"good": {"source": "store:ana/good", "version": "v1.2"}, "later": {"source": "github:a/later"}}}`,
-		"plugins.lock": `{"schema": 1, "plugins": {"good": {"source": "store:ana/good", "version": "v1.2", "folders": ["addons/good"], "files": {}}}}`,
+		"plugins.json": `{"plugins": {"good": {"source": "store:ana/good", "version": "v1.2"}, "later": {"source": "github:a/later"}, "sprites": {"source": "store:ana/sprites"}, "gone": {"source": "store:ana/gone"}}}`,
+		"plugins.lock": `{"schema": 1, "plugins": {"good": {"source": "store:ana/good", "version": "v1.2", "folders": ["addons/good"], "files": {}},
+			"sprites": {"source": "store:ana/sprites", "version": "1.0", "folders": ["addons/sprites", "assets/sprites"], "files": {}},
+			"gone": {"source": "store:ana/gone", "version": "1.0", "folders": ["addons/gone"], "files": {}},
+			"loops": {"source": "store:ana/loops", "version": "2.0", "folders": [], "files": {"Loops/a.wav": "h", "LICENCE.pdf": "h"}}}}`,
+		"addons/sprites/hero.png.txt": "x",
+		"Loops/a.wav":                 "x",
 	})
 	ps, err := projectPlugins(proj)
 	if err != nil {
@@ -91,8 +96,20 @@ func TestManagedPlugins(t *testing.T) {
 		t.Error("broken se instaló a mano")
 	}
 	pending := pendingPlugins(proj, ps)
-	if len(pending) != 1 || pending[0].Name != "later" || pending[0].Source != "github:a/later" {
-		t.Errorf("pendientes: %+v", pending)
+	names := []string{}
+	for _, m := range pending {
+		names = append(names, m.Name)
+	}
+	if !slices.Equal(names, []string{"gone", "later"}) {
+		t.Errorf("pendientes: sin instalar (later) y sin carpeta (gone), no el de recursos: %+v", pending)
+	}
+	assets := installedAssets(proj, ps)
+	if len(assets) != 2 || assets[1].Name != "sprites" || assets[1].Version != "1.0" ||
+		!slices.Equal(assets[1].Folders, []string{"addons/sprites", "assets/sprites"}) || assets[1].Pinned {
+		t.Errorf("recursos: instalado sin plugin.cfg: %+v", assets)
+	}
+	if len(assets) > 0 && (assets[0].Name != "loops" || !slices.Equal(assets[0].Folders, []string{"LICENCE.pdf", "Loops"})) {
+		t.Errorf("uno de antes sin carpetas en el lock: por sus archivos: %+v", assets[0])
 	}
 }
 
@@ -165,8 +182,8 @@ func TestPluginsJSONEmptyLists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, _ := json.Marshal(pluginList{Project: proj, Plugins: ps, Pending: pendingPlugins(proj, ps)})
-	if s := string(data); !strings.Contains(s, `"plugins":[]`) || !strings.Contains(s, `"pending":[]`) {
+	data, _ := json.Marshal(pluginList{Project: proj, Plugins: ps, Pending: pendingPlugins(proj, ps), Assets: installedAssets(proj, ps)})
+	if s := string(data); !strings.Contains(s, `"plugins":[]`) || !strings.Contains(s, `"pending":[]`) || !strings.Contains(s, `"assets":[]`) {
 		t.Errorf("JSON: %s", s)
 	}
 }

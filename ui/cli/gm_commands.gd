@@ -134,7 +134,12 @@ static func plugin_remove(dir: String, id: String) -> PackedStringArray:
 
 ## Busca en el Asset Store plugins que anden con el Godot del proyecto (2.4+).
 static func plugin_search(dir: String, query: String, page := 1) -> PackedStringArray:
-	return _with_dir(dir, ["plugins", "search", query, "--page", str(page)])
+	# Sin texto, el CLI devuelve los mejor puntuados del Store.
+	var args: PackedStringArray = ["plugins", "search"]
+	if not query.strip_edges().is_empty():
+		args.append(query.strip_edges())
+	args.append_array(["--page", str(page)])
+	return _with_dir(dir, args)
 
 
 ## Instala un plugin y lo anota en plugins.json/plugins.lock (eventos).

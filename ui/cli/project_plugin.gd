@@ -27,6 +27,11 @@ var locked_version := ""
 var pinned := false
 ## Está en plugins.json pero no instalado (no tiene carpeta ni datos de plugin.cfg).
 var pending := false
+## Lo instaló `plugins add` pero no trae plugin.cfg: recursos (arte, sonido,
+## scripts). No se activa; se actualiza y se desinstala como un plugin.
+var asset := false
+## Las carpetas que instaló (relativas al proyecto); solo las de `asset`.
+var folders: PackedStringArray = []
 
 
 ## El nombre que se muestra: el de plugin.cfg, o la carpeta.

@@ -12,12 +12,37 @@ const TESTS_DIR := "res://tests"
 var _passed := 0
 var _failed := 0
 var _skipped := 0
+var _script_errors := ScriptErrors.new()
+
+
+## Junta los errores de script (los "SCRIPT ERROR" de la consola: un script que
+## no compila, una llamada inválida…). Un test que los produce falla aunque sus
+## asserts pasen: si no, un script roto quedaba en verde.
+class ScriptErrors extends Logger:
+	var _mutex := Mutex.new()
+	var _errors: PackedStringArray = []
+
+	func _log_error(function: String, file: String, line: int, code: String, rationale: String,
+			_editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type != ERROR_TYPE_SCRIPT:
+			return
+		_mutex.lock()
+		_errors.append("%s (%s:%d, %s)" % [rationale if not rationale.is_empty() else code, file, line, function])
+		_mutex.unlock()
+
+	func take() -> PackedStringArray:
+		_mutex.lock()
+		var out := _errors
+		_errors = PackedStringArray()
+		_mutex.unlock()
+		return out
 
 
 func _initialize() -> void:
 	# Los tests comparan los textos fuente (en español), sea cual sea el idioma
 	# del sistema.
 	TranslationServer.set_locale("es")
+	OS.add_logger(_script_errors)
 	_run.call_deferred()
 
 
@@ -34,13 +59,18 @@ func _run() -> void:
 	var line := "%d bien, %d mal, %d salteados (%.1f s)" % [
 		_passed, _failed, _skipped, (Time.get_ticks_msec() - started) / 1000.0]
 	print("\n" + ("FALLÓ: " if _failed > 0 else "OK: ") + line)
+	OS.remove_logger(_script_errors)
 	quit(1 if _failed > 0 else 0)
 
 
 func _run_file(path: String, filter: String) -> void:
+	_script_errors.take()
 	var script := load(path) as GDScript
-	if script == null or not script.can_instantiate():
+	var load_errors := _script_errors.take()
+	if script == null or not script.can_instantiate() or not load_errors.is_empty():
 		print("✗ %s: no compila" % path)
+		for e in load_errors:
+			print("      error de script: " + e)
 		_failed += 1
 		return
 	var tests: PackedStringArray = []
@@ -62,6 +92,7 @@ func _run_file(path: String, filter: String) -> void:
 	await case.before_all()
 	for test_name in tests:
 		case._reset()
+		_script_errors.take()
 		await case.before_each()
 		if case._get_skip_reason().is_empty():
 			await case.call(test_name)
@@ -72,6 +103,8 @@ func _run_file(path: String, filter: String) -> void:
 
 func _report(test_name: String, case: TestCase) -> void:
 	var failures := case._get_failures()
+	for e in _script_errors.take():
+		failures.append("error de script: " + e)
 	var skip := case._get_skip_reason()
 	if not failures.is_empty():
 		_failed += 1

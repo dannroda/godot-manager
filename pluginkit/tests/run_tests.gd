@@ -167,6 +167,32 @@ func test_parse_sources() -> void:
 	eq(Sources.split_version("github:a/b@v1.2"), PackedStringArray(["github:a/b", "v1.2"]), "fuente@versión")
 
 
+func test_store_search() -> void:
+	check(Sources.store_search_url("Dialogue ", 1, "").contains("query=dialogue&"), "texto en minúsculas")
+	check(Sources.store_search_url("x", 1, "").contains("sort=relevance"), "con texto, por relevancia")
+	check(Sources.store_search_url("", 2, "4.6.1").contains("sort=reviews_desc"), "sin texto, los mejor puntuados")
+	check(Sources.store_search_url("", 2, "4.6.1").ends_with("&compatibility=4.6.1&page=2"), "Godot y página")
+	var hits := Sources.store_hits({"hits": [
+		{"asset": {"name": "Cam", "slug": "cam", "publisher": {"slug": "pub"}, "thumbnail": "https://x/t.webp",
+			"tags": [{"slug": "3d", "display_name": "3D"}, {"slug": "tool", "display_name": "Tool"}]}},
+		{"asset": {"name": "Sprites", "slug": "spr", "publisher": {"slug": "pub"}, "thumbnail": "/static/a.png",
+			"tags": [{"slug": "2d", "display_name": "2D"}, {"slug": "pixelart", "display_name": "Pixel Art"}]}},
+		{"asset": {"name": "Agua", "slug": "agua", "publisher": {"slug": "pub"}, "tags": []}},
+	]})
+	eq(hits.size(), 3, "los tres")
+	eq(hits[0].tags, ["3D", "Tool"], "etiquetas con el nombre del Store")
+	eq(hits[0].kind, "plugin", "con tool: trae código")
+	eq(hits[1].kind, "content", "pixel art sin código: contenido")
+	eq(hits[2].kind, "", "sin etiquetas: no se sabe")
+	eq(hits[1].thumbnail, "https://store.godotengine.org/static/a.png", "miniatura con el dominio")
+	eq(hits[2].thumbnail, "", "sin miniatura")
+	eq(Sources.guess_kind(PackedStringArray(["pixelart", "importer"])), "plugin", "código gana")
+	eq(Sources.guess_kind(PackedStringArray(["2d"]), "Open Duelyst Animated Sprites Spritesheets from the repo"), "content", "sin etiquetas claras: por las palabras")
+	eq(Sources.guess_kind(PackedStringArray(["3d", "camera"]), "Phantom Camera A Camera addon for Godot 4"), "plugin", "addon en la descripción")
+	eq(Sources.guess_kind(PackedStringArray(["2d"]), "Notebook of nodes"), "plugin", "palabra al principio: node(s)")
+	eq(Sources.guess_kind(PackedStringArray(), "Agua"), "", "nada")
+
+
 func test_pick_release() -> void:
 	var list := Sources.store_releases([
 		store_release(3, "v3.0.0-beta", "u3", "4.6", null, false),
@@ -205,6 +231,15 @@ func test_plan_strips_root_and_keeps_addons() -> void:
 	eq(p.skipped, ["demo/scene.tscn"], "lo de afuera queda")
 	eq(p.folders, ["addons/x"], "carpetas")
 	eq(p.plugins, ["addons/x/plugin.cfg"], "plugin.cfg")
+
+
+func test_plan_without_addons_keeps_paths() -> void:
+	var project := make_project("pack")
+	var zip := make_zip("pack.zip", {"Loops/a.wav": "a", "Loops/Retro/b.wav": "b", "Sprites/hero.tres": "res://Sprites/hero.png", "LICENCE.pdf": "l"})
+	var p := Installer.plan(zip, project)
+	eq(p.files.size(), 4, "todo, con las rutas del zip (como Godot: no se rompen sus res://)")
+	eq(p.folders, ["Loops", "Sprites"], "carpetas de primer nivel, para la lista y para desinstalar")
+	eq(p.skipped, [], "nada afuera")
 
 
 func test_plan_skips_unsafe_paths() -> void:

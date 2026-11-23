@@ -140,6 +140,17 @@ static func parse_plugins(text: String) -> GmResult:
 		_fill_managed(p, item, problems)
 		p.name = p.managed_name
 		out.append(p)
+	# Lo instalado con plugins add sin plugin.cfg (2.4.5+): recursos, al final.
+	for item: Variant in _arr(root.value, "assets", problems, false):
+		if not item is Dictionary:
+			problems.append("assets tiene algo que no es un objeto")
+			continue
+		var p := ProjectPlugin.new()
+		p.asset = true
+		_fill_managed(p, item, problems)
+		p.name = p.managed_name
+		p.folders = _str_list(item, "folders", problems)
+		out.append(p)
 	if not problems.is_empty():
 		return _bad("; ".join(problems), text)
 	return GmResult.success(out)
@@ -201,6 +212,11 @@ static func parse_plugin_search(text: String) -> GmResult:
 		a.license = _str(item, "license", problems, "")
 		a.score = _int(item, "score", problems)
 		a.store_url = _str(item, "store_url", problems, "")
+		a.page_url = a.store_url
+		# tags, thumbnail y kind: desde 2.4.5; antes no estaban.
+		a.tags = _str_list(item, "tags", problems) if item.has("tags") else PackedStringArray()
+		a.thumbnail = _str(item, "thumbnail", problems, "")
+		a.kind = StoreAsset.kind_from(_str(item, "kind", problems, ""))
 		assets.append(a)
 	var pages := _int(root.value, "pages", problems)
 	if not problems.is_empty():

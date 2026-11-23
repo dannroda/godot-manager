@@ -184,6 +184,28 @@ func test_managed_and_pending_rows() -> void:
 	assert_true((dialog.get_node("%InstallPending") as Button).visible)
 
 
+func test_asset_rows() -> void:
+	var sprites := ProjectPlugin.new()
+	sprites.asset = true
+	sprites.managed_name = "sprites"
+	sprites.name = "sprites"
+	sprites.source = "store:pub/sprites"
+	sprites.locked_version = "1.0"
+	sprites.folders = PackedStringArray(["addons/sprites", "assets/sprites"])
+	dialog.show_plugins([_plugin("a"), sprites] as Array[ProjectPlugin])
+	assert_eq(_status(), "Plugins: 1 · activos: 1 · recursos: 1", "los recursos no cuentan como plugins")
+	var row := _rows()[1]
+	assert_true(row.find_child("Enabled", true, false) == null, "recursos: no hay nada que activar")
+	assert_has((row.find_child("Meta", true, false) as Label).text, "Recursos (sin plugin de editor) · addons/sprites, assets/sprites")
+	assert_eq((row.find_child("Title", true, false) as Label).text, "sprites  1.0")
+	assert_true(row.find_child("Pin", true, false) != null, "se fija como un plugin")
+	assert_eq(dialog.folders_summary(PackedStringArray(["A", "B", "C", "D", "E"])), "A, B y 3 más", "muchas carpetas: no ensancha la ventana")
+	assert_eq(dialog.folders_summary(PackedStringArray(["A", "B", "C"])), "A, B, C")
+	dialog.ask_remove(sprites)
+	assert_has((dialog.get_node("%RemoveDialog") as ConfirmationDialog).dialog_text, "assets/sprites")
+	(dialog.get_node("%RemoveDialog") as ConfirmationDialog).hide()
+
+
 func test_updates_show_on_rows() -> void:
 	dialog.show_plugins([_managed("a"), _managed("b", true), _managed("c")] as Array[ProjectPlugin])
 	assert_false((dialog.get_node("%UpdateAll") as Button).visible)

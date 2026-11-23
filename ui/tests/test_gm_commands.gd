@@ -92,6 +92,7 @@ func test_plugin_store_commands() -> void:
 	var d := "/home/yo/Mis Juegos/p"
 	var base := PackedStringArray(["--json", "--dir", d, "plugins"])
 	assert_eq(GmCommands.plugin_search(d, "dialogue manager", 2), base + PackedStringArray(["search", "dialogue manager", "--page", "2"]))
+	assert_eq(GmCommands.plugin_search(d, " ", 1), base + PackedStringArray(["search", "--page", "1"]), "sin texto: los populares")
 	assert_eq(GmCommands.plugin_add(d, "github:a/b@v1"), base + PackedStringArray(["add", "github:a/b@v1"]))
 	assert_eq(GmCommands.plugin_add(d, "a/b", true), base + PackedStringArray(["add", "a/b", "--pin"]))
 	assert_eq(GmCommands.plugin_install(d), base + PackedStringArray(["install"]))

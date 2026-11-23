@@ -895,8 +895,8 @@ Comandos:
                                     editor (sirve si un plugin roto no lo deja abrir)
   plugins remove <plugin> [--yes]   Lo desactiva y borra su carpeta de addons/ (si lo instalo
                                     plugins add, tambien lo saca de plugins.json y plugins.lock)
-  plugins search <texto> [--page n] Busca en el Asset Store de Godot plugins que anden con el
-                                    Godot del proyecto
+  plugins search [texto] [--page n] Busca en el Asset Store de Godot plugins que anden con el
+                                    Godot del proyecto; sin texto, los mejor puntuados
   plugins add <fuente>[@version] [--pin] [--name n] [--prerelease] [--no-enable] [--force]
                                     Instala un plugin y lo anota en plugins.json y plugins.lock.
                                     Fuente: store:publisher/slug (o publisher/slug), github:owner/repo

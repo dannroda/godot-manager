@@ -90,12 +90,11 @@ func cmdPluginsSearch(proj string, args []string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(rest) == 0 {
-		return nil, errf(codeInvalidArgs, "uso: godot-manager plugins search <texto> [--page n]")
-	}
+	// Sin texto: los mejor puntuados del Store (lo más parecido a "los más populares").
+	query := strings.TrimSpace(strings.Join(rest, " "))
 	k := newKitRun(proj, f)
 	page := max(f.page, 1)
-	res, err := k.call("search", strings.Join(rest, " "), strconv.Itoa(page))
+	res, err := k.call("search", query, strconv.Itoa(page))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +108,14 @@ func cmdPluginsSearch(proj string, args []string) (map[string]any, error) {
 	}
 	for _, it := range assets {
 		a := anyMap(it)
-		fmt.Printf("%s  %s (%s)\n", str(a["source"]), str(a["name"]), str(a["publisher"]))
+		kind := ""
+		switch str(a["kind"]) {
+		case "plugin":
+			kind = " [plugin]"
+		case "content":
+			kind = " [recursos]"
+		}
+		fmt.Printf("%s  %s (%s)%s\n", str(a["source"]), str(a["name"]), str(a["publisher"]), kind)
 		if d := str(a["description"]); d != "" {
 			fmt.Println("    " + d)
 		}
@@ -294,6 +300,9 @@ func cmdPluginsPin(proj string, args []string, pin bool) (map[string]any, error)
 func reportInstalled(r map[string]any) {
 	name, version, from := str(r["name"]), str(r["version"]), str(r["from"])
 	where := joinAny(anySlice(r["folders"]))
+	if where == "" {
+		where = "la raíz del proyecto"
+	}
 	switch {
 	case from == "":
 		out.step("Instalado %s %s en %s", name, version, where)
@@ -339,9 +348,10 @@ func joinAny(items []any) string {
 
 // Lo que plugins.lock dice de cada plugin (solo lectura; lo escribe la librería).
 type lockEntry struct {
-	Source  string   `json:"source"`
-	Version string   `json:"version"`
-	Folders []string `json:"folders"`
+	Source  string            `json:"source"`
+	Version string            `json:"version"`
+	Folders []string          `json:"folders"`
+	Files   map[string]string `json:"files"` // ruta relativa al proyecto -> sha256
 }
 
 type managedPlugin struct {

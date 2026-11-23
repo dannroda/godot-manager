@@ -1387,3 +1387,85 @@ msgstr "There is a new version: %s (you have %s). It shows at the top of the mai
 
 msgid "Tenés la última versión (%s)."
 msgstr "You have the latest version (%s)."
+
+#: dialogs/add_plugin_dialog.gd, dialogs/project_details_dialog.gd
+msgid "Arte, sonido u otros archivos para el proyecto, según sus etiquetas del Store. Al instalarlo se ve si trae algo para activar."
+msgstr "Art, sound or other files for the project, judging by its Store tags. Once installed, you'll see whether it has anything to enable."
+
+msgid "Asset Store"
+msgstr "Asset Store"
+
+msgid "Buscando los más populares del Asset Store…"
+msgstr "Loading the most popular Asset Store items…"
+
+msgid "GitHub"
+msgstr "GitHub"
+
+msgid "De los autores de godot-manager"
+msgstr "By the authors of godot-manager"
+
+msgid "Lo instala en el proyecto (%s)"
+msgstr "Installs it in the project (%s)"
+
+msgid "No se encontró godot-manager: solo se muestran los nuestros."
+msgstr "godot-manager wasn't found: only ours are shown."
+
+msgid "Plugin"
+msgstr "Plugin"
+
+msgid "Plugin de editor: se activa en el proyecto."
+msgstr "Editor plugin: you enable it in the project."
+
+msgid "Recursos"
+msgstr "Assets"
+
+msgid "Sugerido"
+msgstr "Suggested"
+
+msgid "Sugeridos: los nuestros y los mejor puntuados del Asset Store que andan con el Godot del proyecto."
+msgstr "Suggested: ours and the top-rated Asset Store items that work with the project's Godot."
+
+msgid "Trae código (un plugin, una librería o una herramienta del editor), según sus etiquetas del Store. Al instalarlo se ve si tiene un plugin de editor para activar."
+msgstr "Has code (a plugin, a library or an editor tool), judging by its Store tags. Once installed, you'll see whether it has an editor plugin to enable."
+
+msgid "Ver en el Store"
+msgstr "View in the Store"
+
+msgid "reseñas: %d%%"
+msgstr "reviews: %d%%"
+
+msgid "Borra sus carpetas"
+msgstr "Deletes its folders"
+
+msgid "No trae plugin.cfg: son archivos para el proyecto (arte, sonido, scripts…), no hay nada que activar."
+msgstr "It has no plugin.cfg: these are files for the project (art, sound, scripts…), with nothing to enable."
+
+msgid "Recursos (sin plugin de editor)"
+msgstr "Assets (no editor plugin)"
+
+msgid "recursos: %d"
+msgstr "assets: %d"
+
+msgid "¿Desinstalar «%s»?\nSe borran sus carpetas:\n%s\n\nNo se puede deshacer."
+msgstr "Uninstall “%s”?\nThese folders are deleted:\n%s\n\nThis can't be undone."
+
+msgid "Corre Claude Code, Codex y otros agentes de IA dentro del editor, con herramientas del editor por MCP."
+msgstr "Runs Claude Code, Codex and other AI agents inside the editor, with editor tools over MCP."
+
+msgid "Tareas, hitos y playtests del proyecto en archivos JSON versionados con git, con un dock en el editor y una web local."
+msgstr "The project's tasks, milestones and playtests in JSON files versioned with git, with an editor dock and a local web app."
+
+msgid "Editor"
+msgstr "Editor"
+
+msgid "IA"
+msgstr "AI"
+
+msgid "MCP"
+msgstr "MCP"
+
+msgid "Productividad"
+msgstr "Productivity"
+
+msgid "%s y %d más"
+msgstr "%s and %d more"

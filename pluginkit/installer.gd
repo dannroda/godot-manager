@@ -65,7 +65,10 @@ static func plan(zip_path: String, project: String, entry: Dictionary = {}, owne
 		result.files.append({"zip": pair[0], "path": relative, "sha256": hash, "write": write})
 		if relative.begins_with("addons/") and relative.get_file() == "plugin.cfg":
 			result.plugins.append(relative)
-		var folder := addon_folder(relative)
+		# Las carpetas del plugin: addons/<x>; si el zip no trae addons/ (arte, sonido…), va con
+		# las mismas rutas del zip, como lo instala Godot (así no se rompen sus res://), y las
+		# carpetas son las de primer nivel.
+		var folder := addon_folder(relative) if has_addons else top_folder(relative)
 		if not folder.is_empty() and not folder in result.folders:
 			result.folders.append(folder)
 	reader.close()
@@ -163,6 +166,12 @@ static func addon_folder(relative: String) -> String:
 	if parts.size() < 3 or parts[0] != "addons":
 		return ""
 	return "addons/" + parts[1]
+
+
+## La carpeta de primer nivel de `relative` ("" si está en la raíz).
+static func top_folder(relative: String) -> String:
+	var slash := relative.find("/")
+	return relative.left(slash) if slash > 0 else ""
 
 
 static func safe_path(relative: String) -> bool:

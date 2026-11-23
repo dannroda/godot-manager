@@ -128,7 +128,7 @@ godot-manager remove 4.5.1-stable
 
 godot-manager plugins                   # plugins del proyecto actual
 godot-manager plugins disable roto      # desactiva uno sin abrir el editor
-godot-manager plugins search dialogue   # busca en el Asset Store de Godot
+godot-manager plugins search dialogue   # busca en el Asset Store de Godot (sin texto: los mejor puntuados)
 godot-manager plugins add nathanhoad/dialogue-manager
 godot-manager plugins add github:dannroda/godot-agent@v0.1.32   # fijado en esa versión
 godot-manager plugins outdated          # versiones nuevas que andan con el Godot del proyecto

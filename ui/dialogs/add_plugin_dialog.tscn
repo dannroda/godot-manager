@@ -1,28 +1,17 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://dialogs/add_plugin_dialog.gd" id="1_apd"]
+[ext_resource type="Script" path="res://app/thumbnail_loader.gd" id="2_thl"]
 
 [node name="AddPluginDialog" type="AcceptDialog"]
 title = "Agregar plugin"
-size = Vector2i(720, 600)
-min_size = Vector2i(560, 440)
+size = Vector2i(860, 680)
+min_size = Vector2i(600, 460)
 ok_button_text = "Cerrar"
 script = ExtResource("1_apd")
 
 [node name="Content" type="VBoxContainer" parent="."]
 theme_override_constants/separation = 8
-
-[node name="FeaturedLabel" type="Label" parent="Content"]
-layout_mode = 2
-theme_type_variation = &"DimLabel"
-text = "Nuestros plugins:"
-
-[node name="Featured" type="HBoxContainer" parent="Content"]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="Sep" type="HSeparator" parent="Content"]
-layout_mode = 2
 
 [node name="SearchRow" type="HBoxContainer" parent="Content"]
 layout_mode = 2
@@ -43,7 +32,7 @@ text = "Buscar"
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"DimLabel"
-text_overrun_behavior = 3
+autowrap_mode = 3
 
 [node name="ListPanel" type="PanelContainer" parent="Content"]
 custom_minimum_size = Vector2(0, 220)
@@ -63,7 +52,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 2
+theme_override_constants/separation = 6
 
 [node name="More" type="Button" parent="Content/ListPanel/Scroll/List"]
 unique_name_in_owner = true
@@ -95,3 +84,7 @@ unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Queda en esa versión: Actualizar no lo toca (sirve si el proyecto usa un Godot fijo)"
 text = "Fijar la versión que se instale"
+
+[node name="Thumbnails" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_thl")

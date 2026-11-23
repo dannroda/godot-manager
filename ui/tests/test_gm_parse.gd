@@ -239,6 +239,15 @@ func test_parse_plugins() -> void:
 	assert_eq(gone.display_name(), "gone", "sin name usa la carpeta")
 	assert_true(gone.missing)
 	assert_true(gone.has_problems())
+	var with_assets := GmParse.parse_plugins('{"project":"/p","plugins":[],"pending":[],"assets":[{"name":"sprites","source":"store:a/sprites","version":"1.0","pinned":true,"folders":["addons/sprites","assets/sprites"]}]}')
+	if not assert_true(with_assets.ok, str(with_assets.error)):
+		return
+	var sprites: ProjectPlugin = with_assets.value[0]
+	assert_true(sprites.asset, "instalado sin plugin.cfg: recursos")
+	assert_eq([sprites.display_name(), sprites.source, sprites.locked_version], ["sprites", "store:a/sprites", "1.0"])
+	assert_true(sprites.pinned)
+	assert_true(sprites.is_managed())
+	assert_eq(sprites.folders, PackedStringArray(["addons/sprites", "assets/sprites"]))
 
 
 func test_parse_plugins_errors() -> void:
@@ -332,6 +341,15 @@ func test_parse_plugin_search() -> void:
 	var a: StoreAsset = r.value.assets[0]
 	assert_eq([a.source, a.name, a.publisher, a.score], ["store:n/dm", "Dialogue Manager", "Nathan", 62])
 	assert_false(GmParse.parse_plugin_search('{"ok":true,"assets":[{"name":"sin fuente"}]}').ok)
+	var full := GmParse.parse_plugin_search('{"ok":true,"count":1,"pages":1,"assets":[{"source":"store:a/b","name":"B","tags":["2D","Pixel Art"],"thumbnail":"https://t/b.webp","kind":"content","store_url":"https://s/b"}]}')
+	assert_true(full.ok, str(full.error))
+	var b: StoreAsset = full.value.assets[0]
+	assert_eq(b.tags, PackedStringArray(["2D", "Pixel Art"]))
+	assert_eq(b.thumbnail, "https://t/b.webp")
+	assert_eq(b.kind, StoreAsset.Kind.CONTENT)
+	assert_eq(b.page_url, "https://s/b")
+	var old: StoreAsset = r.value.assets[0]
+	assert_eq(old.kind, StoreAsset.Kind.UNKNOWN, "un CLI 2.4.4 no manda kind")
 
 
 func test_parse_presets() -> void:

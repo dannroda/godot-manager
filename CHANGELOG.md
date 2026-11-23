@@ -4,6 +4,20 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+### Changed
+
+- **A new Add plugin window.**
+  - It opens with suggestions: our plugins (Godot Agent and Scope Compass) next to the top-rated Asset Store items that work with the project's Godot. Before, it was empty until you searched, and ours were a row of buttons above it.
+  - Each result is a card with its image, name, author, license, review score, description and Store tags. A **View in the Store** (or **View on GitHub**) button opens its page.
+  - Cards are labeled **Plugin** or **Assets** (art, sound and other files) so you can tell them apart. The Asset Store doesn't say which is which, so the label is a guess from the item's tags and description.
+- **`godot-manager plugins search`** with no text lists the top-rated Asset Store items, and each result now includes its tags, image and that plugin/assets guess.
+
+### Fixed
+
+- **Right-click menus open where you click.** Since 2.4.1 they opened at the top-left corner of the screen.
+- **Updating from the GUI works again.** In 2.4.4 the update banner didn't load, so the GUI never offered new versions and Settings → **Check now** didn't work either. **If you're on 2.4.4**, update once from a terminal with `godot-manager self-update` (in the folder where you extracted it), or download the archive again; from 2.4.5 on, the GUI does it.
+- **Asset Store items that aren't editor plugins** (music, sprites and other packs) show up in the project's details as **Assets** once installed, and can be updated, pinned and uninstalled. Before, they showed as "not installed" forever. They're still installed with the same paths as in their zip, as Godot does, so their `res://` references keep working.
+
 ## [2.4.4] - 2026-11-23
 
 ### Fixed

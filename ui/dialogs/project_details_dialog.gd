@@ -148,9 +148,13 @@ func show_plugins(list: Array) -> void:
 	var active := 0
 	var broken := 0
 	var pending := 0
+	var assets := 0
 	for p in plugins:
 		if p.pending:
 			pending += 1
+			continue
+		if p.asset:
+			assets += 1
 			continue
 		installed += 1
 		if p.enabled:
@@ -164,6 +168,8 @@ func show_plugins(list: Array) -> void:
 		text = tr("Plugins: %d · activos: %d · con problemas: %d") % [installed, active, broken]
 	else:
 		text = tr("Plugins: %d · activos: %d") % [installed, active]
+	if assets > 0:
+		text += " · " + tr("recursos: %d") % assets
 	if pending > 0:
 		text += " · " + tr("sin instalar: %d") % pending
 	_set_status(text)
@@ -189,7 +195,7 @@ func set_enabled(p: ProjectPlugin, enable: bool) -> CliJob:
 
 
 func remove_plugin(p: ProjectPlugin) -> CliJob:
-	var target := p.managed_name if p.pending else p.id
+	var target := p.managed_name if p.pending or p.asset else p.id
 	return await _write(GmCommands.plugin_remove(project.path, target),
 		tr("Se desinstaló «%s».") % p.display_name())
 
@@ -264,6 +270,9 @@ func ask_remove(p: ProjectPlugin) -> void:
 		_remove_dialog.dialog_text = tr("¿Sacar «%s» de plugins.json?\nTodavía no está instalado.") % p.display_name()
 	elif p.missing:
 		_remove_dialog.dialog_text = tr("¿Quitar «%s» de project.godot?\nSu carpeta ya no existe.") % p.display_name()
+	elif p.asset:
+		_remove_dialog.dialog_text = tr("¿Desinstalar «%s»?\nSe borran sus carpetas:\n%s\n\nNo se puede deshacer.") % [
+			p.display_name(), "\n".join(p.folders)]
 	else:
 		_remove_dialog.dialog_text = tr("¿Desinstalar «%s»?\nSe desactiva y se borra la carpeta:\n%s\n\nNo se puede deshacer.") % [
 			p.display_name(), p.path]
@@ -326,7 +335,7 @@ func _make_row(p: ProjectPlugin) -> Control:
 	box.add_child(info)
 	var title := Label.new()
 	title.name = "Title"
-	var version := p.locked_version if p.pending else p.version
+	var version := p.locked_version if p.pending or p.asset else p.version
 	title.text = p.display_name() + ("  " + version if not version.is_empty() else "")
 	info.add_child(title)
 	var meta := Label.new()
@@ -335,6 +344,9 @@ func _make_row(p: ProjectPlugin) -> Control:
 	var bits: PackedStringArray = []
 	if p.pending:
 		bits.append(tr("sin instalar"))
+	elif p.asset:
+		bits.append(tr("Recursos (sin plugin de editor)"))
+		bits.append(folders_summary(p.folders))
 	else:
 		bits.append("addons/" + p.id)
 		if not p.author.is_empty():
@@ -344,8 +356,11 @@ func _make_row(p: ProjectPlugin) -> Control:
 		if p.pinned:
 			bits.append(tr("fijado"))
 	meta.text = " · ".join(bits)
-	meta.tooltip_text = p.path
+	meta.tooltip_text = p.path if not p.asset else tr("No trae plugin.cfg: son archivos para el proyecto (arte, sonido, scripts…), no hay nada que activar.") + "\n\n" + "\n".join(p.folders)
 	meta.mouse_filter = Control.MOUSE_FILTER_PASS
+	# Una línea larga se corta (con el texto entero en el tooltip): no ensancha la ventana.
+	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	meta.custom_minimum_size.x = 300
 	info.add_child(meta)
 	if not p.description.is_empty():
 		var desc := Label.new()
@@ -382,7 +397,7 @@ func _make_row(p: ProjectPlugin) -> Control:
 	var actions := VBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(actions)
-	if not p.pending:
+	if not p.pending and not p.asset:
 		var toggle := CheckButton.new()
 		toggle.name = "Enabled"
 		toggle.text = tr("Activo")
@@ -410,7 +425,10 @@ func _make_row(p: ProjectPlugin) -> Control:
 		actions.add_child(pin)
 	var remove := Button.new()
 	remove.name = "Remove"
-	if p.pending:
+	if p.asset:
+		remove.text = tr("Desinstalar…")
+		remove.tooltip_text = tr("Borra sus carpetas")
+	elif p.pending:
 		remove.text = tr("Quitar")
 		remove.tooltip_text = tr("Lo saca de plugins.json")
 	else:
@@ -419,6 +437,13 @@ func _make_row(p: ProjectPlugin) -> Control:
 	remove.pressed.connect(func() -> void: ask_remove(p))
 	actions.add_child(remove)
 	return panel
+
+
+## Las primeras carpetas y cuántas más ("A, B y 5 más").
+static func folders_summary(folders: PackedStringArray, shown := 2) -> String:
+	if folders.size() <= shown + 1:
+		return ", ".join(folders)
+	return TranslationServer.translate("%s y %d más") % [", ".join(folders.slice(0, shown)), folders.size() - shown]
 
 
 func _set_busy(value: bool) -> void:
