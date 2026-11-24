@@ -4,6 +4,8 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+## [2.4.6] - 2026-11-24
+
 ### Fixed
 
 - **Download tab: uninstall installed versions and update buttons.** Selecting an installed release now shows **Uninstall…** (also in the right-click menu and via Delete, with an edition picker when both standard and Mono are installed). **Install…** stays enabled with the missing edition preselected when only one edition is installed, disables once all editions of the release are installed, and refreshes automatically after installing or uninstalling.
