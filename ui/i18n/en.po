@@ -927,6 +927,12 @@ msgstr "Details…"
 msgid "Elegir otra versión…"
 msgstr "Choose another version…"
 
+msgid "Usar %s"
+msgstr "Use %s"
+
+msgid "Fija el proyecto a %s"
+msgstr "Pins the project to %s"
+
 msgid "«%s» usa la versión default, %s, que no está instalada."
 msgstr "“%s” uses the default version, %s, which is not installed."
 

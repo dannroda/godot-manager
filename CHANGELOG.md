@@ -4,6 +4,10 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+### Changed
+
+- **Missing version dialog suggests a newer installed build of the same minor.** When a project is pinned to an uninstalled version (e.g. `4.8-beta3`) and a newer build of the same minor is already installed (e.g. `4.8-beta5`), the dialog offers **Use 4.8-beta5** as the primary action while keeping **Install 4.8-beta3** as a secondary button. Matches standard/Mono and never suggests an older version.
+
 ## [2.4.6] - 2026-11-24
 
 ### Fixed

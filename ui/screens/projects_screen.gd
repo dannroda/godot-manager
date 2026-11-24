@@ -33,10 +33,12 @@ var _which_running := 0
 ## Abrir (o correr) un proyecto después de cambiarle la versión, si el cambio
 ## vino de un Abrir/Correr con la versión sin instalar: {path, edit}.
 var _open_after := {}
-## Para el diálogo de versión no instalada: el proyecto, las instaladas y la default.
+## Para el diálogo de versión no instalada: el proyecto, las instaladas, la
+## default y la más nueva instalada del mismo minor.
 var _missing_for: ProjectEntry
 var _missing_installed: Array[InstalledVersion] = []
 var _missing_default := ""
+var _missing_suggested := ""
 
 @onready var _search: LineEdit = %Search
 @onready var _sort: OptionButton = %Sort
@@ -302,8 +304,10 @@ func ask_missing(e: ProjectEntry, then_open := -1) -> void:
 			if v.is_default:
 				_missing_default = v.name
 	_missing_for = e
+	var suggested := MissingVersionDialog.best_same_minor(st.missing_version(), _missing_installed)
+	_missing_suggested = suggested.name if suggested != null else ""
 	%MissingVersionDialog.open_for(e.name, st.missing_version(), _missing_default,
-		_missing_installed.size(), st.missing_source() == "default")
+		_missing_installed.size(), st.missing_source() == "default", _missing_suggested)
 
 
 func _on_missing_choice(kind: StringName) -> void:
@@ -312,6 +316,9 @@ func _on_missing_choice(kind: StringName) -> void:
 	if st == null:
 		return
 	match kind:
+		MissingVersionDialog.SUGGESTED:
+			if not _missing_suggested.is_empty():
+				change_version(GmCommands.set_local(e.path, _missing_suggested))
 		MissingVersionDialog.INSTALL:
 			_open_after = {}
 			_on_install_requested(st.missing_version())

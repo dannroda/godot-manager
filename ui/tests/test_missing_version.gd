@@ -4,6 +4,7 @@ extends TestCase
 ## que elegir la default quita el .godot-version.
 
 const DIALOG := preload("res://dialogs/missing_version_dialog.tscn")
+const MissingVersionDialog := preload("res://dialogs/missing_version_dialog.gd")
 const SCREEN := preload("res://screens/projects_screen.tscn")
 const ProjectsScreen := preload("res://screens/projects_screen.gd")
 const CFG := "user://test_missing_version.cfg"
@@ -74,6 +75,76 @@ func test_choice_signal() -> void:
 	dialog.custom_action.emit(&"other")
 	dialog.confirmed.emit()
 	assert_eq(got, [&"other", &"install"] as Array[StringName])
+
+
+func _installed(name: String, tag: String, mono := false) -> InstalledVersion:
+	var v := InstalledVersion.new()
+	v.name = name
+	v.tag = tag
+	v.mono = mono
+	return v
+
+
+func test_best_same_minor() -> void:
+	var list: Array[InstalledVersion] = [
+		_installed("4.7.2-stable", "4.7.2-stable"),
+		_installed("4.8-beta4", "4.8-beta4"),
+		_installed("4.8-beta5", "4.8-beta5"),
+		_installed("4.8-beta5-mono", "4.8-beta5", true),
+	]
+	var pick := MissingVersionDialog.best_same_minor("4.8-beta3", list)
+	assert_true(pick != null)
+	assert_eq(pick.name, "4.8-beta5", "elige la más nueva instalada del mismo minor 4.8")
+
+	var pick_mono := MissingVersionDialog.best_same_minor("4.8-beta3-mono", list)
+	assert_true(pick_mono != null)
+	assert_eq(pick_mono.name, "4.8-beta5-mono", "respeta mono")
+
+	var only_mono: Array[InstalledVersion] = [_installed("4.8-beta5-mono", "4.8-beta5", true)]
+	assert_true(MissingVersionDialog.best_same_minor("4.8-beta3", only_mono) == null,
+		"no mezcla mono con normal")
+
+	var pick_patch := MissingVersionDialog.best_same_minor("4.7.1-stable", list)
+	assert_true(pick_patch != null)
+	assert_eq(pick_patch.name, "4.7.2-stable")
+
+	assert_true(MissingVersionDialog.best_same_minor("mi-build", list) == null,
+		"builds sin número de versión no matchean")
+
+	var only_older: Array[InstalledVersion] = [_installed("4.8-beta3", "4.8-beta3")]
+	assert_true(MissingVersionDialog.best_same_minor("4.8-beta5", only_older) == null,
+		"no sugiere una beta más vieja")
+	assert_true(MissingVersionDialog.best_same_minor("4.8-stable", list) == null,
+		"no sugiere una beta para una stable")
+	var older_mono: Array[InstalledVersion] = [_installed("4.8-beta3-mono", "4.8-beta3", true)]
+	assert_true(MissingVersionDialog.best_same_minor("4.8-beta5-mono", older_mono) == null,
+		"no sugiere una mono más vieja")
+	var same_tag_other_build: Array[InstalledVersion] = [_installed("4.8-beta3-custom", "4.8-beta3")]
+	var pick_same := MissingVersionDialog.best_same_minor("4.8-beta3", same_tag_other_build)
+	assert_true(pick_same != null)
+	assert_eq(pick_same.name, "4.8-beta3-custom", "misma versión con otra build no rompe")
+
+
+func test_dialog_with_same_minor_suggestion() -> void:
+	var got: Array[StringName] = []
+	dialog.choice.connect(func(k: StringName) -> void: got.append(k))
+	dialog.fill("pvs_culling", "4.8-beta3", "4.7.2-stable", 2, false, "4.8-beta5")
+	assert_eq(dialog.get_ok_button().text, "Usar 4.8-beta5")
+	var b := _buttons()
+	assert_has(b, "Instalar 4.8-beta3")
+	assert_true((b["Instalar 4.8-beta3"] as Button).visible)
+	dialog.confirmed.emit()
+	dialog.custom_action.emit(&"install")
+	assert_eq(got, [&"suggested", &"install"] as Array[StringName])
+
+	# Sin sugerida: OK vuelve a ser Instalar y el botón secundario se oculta.
+	dialog.fill("Mi Juego", "4.3-stable", "4.7.2-stable", 2)
+	assert_eq(dialog.get_ok_button().text, "Instalar 4.3-stable")
+	var alt_visible := false
+	for btn in dialog.find_children("*", "Button", true, false):
+		if btn != dialog.get_ok_button() and (btn as Button).text.begins_with("Instalar"):
+			alt_visible = (btn as Button).visible
+	assert_false(alt_visible)
 
 
 func _status(source: String) -> ProjectStatus:
