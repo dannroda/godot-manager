@@ -49,8 +49,9 @@ func _ready() -> void:
 			install_requested.emit(options.command(), title_for(options)))
 
 
-## Llena el diálogo para instalar `r`, con todo sin tildar.
-func fill(r: RemoteVersion) -> void:
+## Llena el diálogo para instalar `r`, con todo sin tildar. Si `default_mono`
+## es true (y la release trae Mono), arranca con Mono marcada.
+func fill(r: RemoteVersion, default_mono := false) -> void:
 	release = r
 	options = InstallOptions.new()
 	options.version = r.tag
@@ -58,8 +59,9 @@ func fill(r: RemoteVersion) -> void:
 	title = tr("Instalar %s") % r.tag
 	ok_button_text = tr("Instalar")
 	_set_install_mode(true)
-	_normal.set_pressed_no_signal(true)
-	_mono.set_pressed_no_signal(false)
+	var want_mono := default_mono and r.mono
+	_normal.set_pressed_no_signal(not want_mono)
+	_mono.set_pressed_no_signal(want_mono)
 	_symbols.set_pressed_no_signal(false)
 	_templates.set_pressed_no_signal(false)
 	_set_available(_mono, r.mono)
@@ -88,8 +90,8 @@ func fill_templates(v: InstalledVersion) -> void:
 	_read_ui()
 
 
-func open_install(r: RemoteVersion) -> void:
-	fill(r)
+func open_install(r: RemoteVersion, default_mono := false) -> void:
+	fill(r, default_mono)
 	_popup()
 
 

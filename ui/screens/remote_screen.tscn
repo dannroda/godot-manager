@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://c03xvl5y0g5ec" path="res://screens/remote_screen.gd" id="1_qgcvk"]
 [ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="2_5isvt"]
 [ext_resource type="PackedScene" uid="uid://nuqhd7dy8x" path="res://rows/list_state.tscn" id="2_638rj"]
+[ext_resource type="PackedScene" uid="uid://c2gv1sy2ptwwa" path="res://dialogs/delete_version_dialog.tscn" id="3_del"]
 
 [node name="RemoteScreen" type="PanelContainer" unique_id=1642537091]
 anchors_preset = 15
@@ -75,6 +76,13 @@ layout_mode = 2
 disabled = true
 text = "Instalar…"
 
+[node name="Uninstall" type="Button" parent="Layout/Body/Actions" unique_id=1482910457]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+disabled = true
+text = "Desinstalar…"
+
 [node name="ReleaseNotes" type="Button" parent="Layout/Body/Actions" unique_id=953523076]
 unique_name_in_owner = true
 layout_mode = 2
@@ -82,4 +90,7 @@ disabled = true
 text = "Ver en GitHub"
 
 [node name="InstallDialog" parent="." unique_id=1165000065 instance=ExtResource("2_5isvt")]
+unique_name_in_owner = true
+
+[node name="DeleteDialog" parent="." unique_id=1937462815 instance=ExtResource("3_del")]
 unique_name_in_owner = true

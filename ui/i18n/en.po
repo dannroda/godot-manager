@@ -558,6 +558,10 @@ msgstr "Loading versions from GitHub…"
 msgid "No se pudo traer la lista de GitHub:\n%s"
 msgstr "Couldn't get the list from GitHub:\n%s"
 
+#: screens/remote_screen.gd
+msgid "Esta versión ya está instalada."
+msgstr "This version is already installed."
+
 #: screens/remote_screen.tscn
 msgid "Stable: versiones estables. Dev: betas, release candidates y dev snapshots."
 msgstr "Stable: stable releases. Dev: betas, release candidates and dev snapshots."
@@ -818,7 +822,7 @@ msgstr "Installed"
 msgid "Mono instalada"
 msgstr "Mono installed"
 
-#: rows/remote_row.gd
+#: rows/remote_row.gd screens/remote_screen.gd
 msgid "godot-manager no instala el editor de esta versión en este sistema."
 msgstr "godot-manager doesn't install the editor for this version on this system."
 
@@ -904,6 +908,7 @@ msgstr "Enabled"
 msgid "Activa o desactiva el plugin en project.godot"
 msgstr "Enables or disables the plugin in project.godot"
 
+#: screens/remote_screen.tscn
 msgid "Desinstalar…"
 msgstr "Uninstall…"
 

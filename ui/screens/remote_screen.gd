@@ -9,6 +9,7 @@ signal selection_changed(release: RemoteVersion)
 signal install_requested(args: PackedStringArray, title: String)
 
 const ROW_SCENE := preload("res://rows/remote_row.tscn")
+const EDITION_MENU_NAME := &"EditionPickerMenu"
 
 var releases: Array[RemoteVersion] = []
 var installed: Array[InstalledVersion] = []
@@ -20,6 +21,8 @@ var _loading_remote: CliJob
 var _loading_installed: CliJob
 var _marks := {}
 var _load_error: CliError
+## Escrituras de esta pantalla en curso (desinstalar).
+var _busy := 0
 
 @onready var _search: LineEdit = %Search
 @onready var _channel: OptionButton = %Channel
@@ -37,10 +40,10 @@ func _ready() -> void:
 	%ReleaseNotes.pressed.connect(func() -> void:
 		if selected != null:
 			OS.shell_open(RemoteFilter.release_url(selected)))
-	%Install.pressed.connect(func() -> void:
-		if selected != null and selected.editor:
-			%InstallDialog.open_install(selected))
+	%Install.pressed.connect(_on_install_pressed)
+	%Uninstall.pressed.connect(_on_uninstall_pressed)
 	%InstallDialog.install_requested.connect(install_requested.emit)
+	%DeleteDialog.delete_requested.connect(_write_and_refresh)
 	visibility_changed.connect(_on_shown)
 	GmCli.versions_changed.connect(func() -> void:
 		if is_visible_in_tree() and _loaded:
@@ -65,6 +68,11 @@ func handle_shortcut(action: StringName) -> bool:
 			ListFocus.focus_search(_search)
 		&"gm_refresh":
 			refresh()
+		&"gm_delete":
+			var uninstall: Button = %Uninstall
+			if not uninstall.visible or uninstall.disabled:
+				return false
+			uninstall.pressed.emit()
 		_:
 			return false
 	return true
@@ -112,6 +120,7 @@ func refresh_installed() -> void:
 		_marks = RemoteFilter.installed_marks(installed)
 	if not _is_running(_loading_remote):
 		_rebuild()
+	_update_actions()
 
 
 ## Las releases que se ven ahora, en orden.
@@ -191,7 +200,7 @@ func _clear_filters() -> void:
 ## Clic derecho en una fila: la selecciona y muestra sus acciones.
 func _on_row_context(row: Control, at: Vector2) -> PopupMenu:
 	_on_row_selected(row)
-	return RowMenu.popup(self, [%Install, %ReleaseNotes], at)
+	return RowMenu.popup(self, [%Install, %ReleaseNotes, null, %Uninstall], at)
 
 
 func _on_row_selected(row: Control) -> void:
@@ -215,12 +224,104 @@ func _select(rel: RemoteVersion) -> void:
 		selection_changed.emit(rel)
 
 
-## Instalar solo si el CLI puede instalar el editor acá.
+## Versiones oficiales instaladas que corresponden a `rel` (normal antes que mono).
+func _installed_for(rel: RemoteVersion) -> Array[InstalledVersion]:
+	var out: Array[InstalledVersion] = []
+	if rel == null:
+		return out
+	for v in installed:
+		if not v.tag.is_empty() and v.tag == rel.tag:
+			out.append(v)
+	out.sort_custom(func(a: InstalledVersion, b: InstalledVersion) -> bool:
+		if a.mono != b.mono:
+			return not a.mono
+		return a.name < b.name)
+	return out
+
+
+## Todas las ediciones disponibles de `rel` (normal, y mono si la trae) están instaladas.
+func _all_editions_installed(rel: RemoteVersion) -> bool:
+	if rel == null:
+		return false
+	var m: RemoteFilter.Marks = _marks.get(rel.tag)
+	if m == null:
+		return false
+	return m.normal and (not rel.mono or m.mono)
+
+
+func _on_install_pressed() -> void:
+	if selected == null or not selected.editor or _all_editions_installed(selected):
+		return
+	var m: RemoteFilter.Marks = _marks.get(selected.tag)
+	var want_mono := m != null and m.normal and not m.mono and selected.mono
+	%InstallDialog.open_install(selected, want_mono)
+
+
+func _on_uninstall_pressed() -> void:
+	if selected == null:
+		return
+	_pick_installed(%Uninstall, func(v: InstalledVersion) -> void: %DeleteDialog.open_for(v))
+
+
+## Si hay una sola edición instalada del release seleccionado, corre `action`
+## directo con ella; si están la normal y la mono, muestra un menú para elegir.
+func _pick_installed(anchor: Control, action: Callable) -> PopupMenu:
+	var matches := _installed_for(selected)
+	if matches.is_empty():
+		return null
+	if matches.size() == 1:
+		action.call(matches[0])
+		return null
+	var menu := get_node_or_null(NodePath(EDITION_MENU_NAME)) as PopupMenu
+	if menu == null:
+		menu = PopupMenu.new()
+		menu.name = EDITION_MENU_NAME
+		add_child(menu)
+		menu.id_pressed.connect(func(id: int) -> void:
+			var list: Array = menu.get_meta(&"versions", [])
+			var cb: Callable = menu.get_meta(&"action", Callable())
+			if id >= 0 and id < list.size() and cb.is_valid():
+				cb.call(list[id]))
+	menu.clear()
+	menu.set_meta(&"versions", matches)
+	menu.set_meta(&"action", action)
+	for i in matches.size():
+		menu.add_item(matches[i].name, i)
+	menu.reset_size()
+	var at := anchor.get_global_rect().position + Vector2(0.0, anchor.size.y)
+	menu.popup(Rect2i(RowMenu.popup_position(self, menu, at), Vector2i.ZERO))
+	return menu
+
+
+## Corre una escritura (desinstalar); al terminar GmCli.versions_changed
+## recarga lo instalado. Si falla, el aviso con el error del CLI lo muestra main.
+func _write_and_refresh(args: PackedStringArray) -> CliJob:
+	_busy += 1
+	_update_actions()
+	var job := GmCli.write(args)
+	await job.finished
+	_busy -= 1
+	_update_actions()
+	return job
+
+
+## Actualiza las acciones según la selección y si la versión ya está instalada.
 func _update_actions() -> void:
 	%ReleaseNotes.disabled = selected == null
-	%Install.disabled = selected == null or not selected.editor
-	%Install.tooltip_text = "godot-manager no instala el editor de esta versión en este sistema." \
-		if selected != null and not selected.editor else ""
+	var has_installed := selected != null and _marks.has(selected.tag)
+	var all_installed := _all_editions_installed(selected)
+	var install: Button = %Install
+	var uninstall: Button = %Uninstall
+	install.text = tr("Instalar…")
+	install.disabled = selected == null or not selected.editor or all_installed
+	if selected != null and not selected.editor:
+		install.tooltip_text = tr("godot-manager no instala el editor de esta versión en este sistema.")
+	elif all_installed:
+		install.tooltip_text = tr("Esta versión ya está instalada.")
+	else:
+		install.tooltip_text = ""
+	uninstall.visible = has_installed
+	uninstall.disabled = not has_installed or _busy > 0
 
 
 static func _is_running(job: CliJob) -> bool:
