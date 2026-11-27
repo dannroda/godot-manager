@@ -14,6 +14,7 @@ signal job_started(job: CliJob, title: String)
 
 const ROW_SCENE := preload("res://rows/project_row.tscn")
 const MissingVersionDialog := preload("res://dialogs/missing_version_dialog.gd")
+const ERROR_COLOR := preload("res://rows/project_row.gd").ERROR_COLOR
 ## Cuántos `which` corren a la vez.
 const WHICH_PARALLEL := 4
 
@@ -571,11 +572,16 @@ func _update_inspector() -> void:
 	%InspName.text = selected.name
 	%InspPath.text = selected.path
 	var st: ProjectStatus = statuses.get(selected.path)
+	var has_version := st != null and st.resolution != null
 	%InspUses.visible = st != null
 	if st != null:
-		%InspUses.text = tr("Abre con %s") % st.text()
-	var ready := st != null and st.resolution != null
-	%Open.text = tr("Abrir en %s") % st.resolution.version if ready else tr("Abrir")
+		# Sin versión resuelta (buscando, no instalada, error) va el estado solo.
+		%InspUses.text = tr("Abre con %s") % st.text() if has_version else st.text()
+		if st.is_error():
+			%InspUses.add_theme_color_override(&"font_color", ERROR_COLOR)
+		else:
+			%InspUses.remove_theme_color_override(&"font_color")
+	%Open.text = tr("Abrir en %s") % st.resolution.version if has_version else tr("Abrir")
 
 
 func _set_busy(busy: bool) -> void:

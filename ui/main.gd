@@ -113,7 +113,9 @@ func current_screen() -> int:
 
 
 func _show_screen(index: int) -> void:
-	_nav[index].set_pressed_no_signal(true)
+	# button_pressed suelta las otras del grupo (set_pressed_no_signal no) y no
+	# emite `pressed`, así que no vuelve a entrar acá.
+	_nav[index].button_pressed = true
 	for i in _screens.size():
 		_screens[i].visible = i == index
 	# Al cambiar de sección con el teclado, el foco va a su lista (o búsqueda).
