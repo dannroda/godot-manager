@@ -19,6 +19,9 @@ func before_each() -> void:
 func after_each() -> void:
 	main.queue_free()
 	await wait_frames(1)
+	# El _init de main pone el idioma del sistema (inglés en CI); los tests
+	# corren en español.
+	TranslationServer.set_locale("es")
 
 
 func test_does_not_run_the_cli() -> void:
