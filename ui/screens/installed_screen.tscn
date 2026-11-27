@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://cs105eaytibkt" path="res://dialogs/add_build_dialog.tscn" id="3_yxyyf"]
 [ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="4_tp014"]
 [ext_resource type="PackedScene" path="res://dialogs/prune_dialog.tscn" id="5_prune"]
+[ext_resource type="Texture2D" path="res://theme/icons/projects.svg" id="6_fold"]
 
 [node name="InstalledScreen" type="PanelContainer" unique_id=1455426914]
 anchors_preset = 15
@@ -17,7 +18,28 @@ script = ExtResource("1_7ed15")
 
 [node name="Layout" type="VBoxContainer" parent="." unique_id=994385591]
 layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="HBoxContainer" parent="Layout" unique_id=994385592]
+layout_mode = 2
 theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Layout/Header" unique_id=994385593]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ScreenTitle"
+text = "Versiones instaladas"
+
+[node name="AddBuild" type="Button" parent="Layout/Header" unique_id=2073527464]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Agregar build propio"
+
+[node name="Prune" type="Button" parent="Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Borra las versiones que no usa la default ni ningún proyecto"
+text = "Liberar espacio…"
 
 [node name="Toolbar" type="HBoxContainer" parent="Layout" unique_id=1550014353]
 layout_mode = 2
@@ -42,7 +64,7 @@ text = "Refrescar"
 [node name="Body" type="HBoxContainer" parent="Layout" unique_id=363956396]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 10
+theme_override_constants/separation = 14
 
 [node name="ListPanel" type="PanelContainer" parent="Layout/Body" unique_id=600238482]
 layout_mode = 2
@@ -64,25 +86,54 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="Actions" type="VBoxContainer" parent="Layout/Body" unique_id=91225017]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 0)
+[node name="Inspector" type="PanelContainer" parent="Layout/Body" unique_id=91225018]
+custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_type_variation = &"Inspector"
 
-[node name="Launch" type="Button" parent="Layout/Body/Actions" unique_id=1867319693]
+[node name="Empty" type="Label" parent="Layout/Body/Inspector" unique_id=91225019]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 1
+theme_type_variation = &"DimLabel"
+text = "Elegí una versión de la lista para ver sus acciones."
+autowrap_mode = 3
+
+[node name="Actions" type="VBoxContainer" parent="Layout/Body/Inspector" unique_id=91225017]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InspName" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=91225020]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+autowrap_mode = 3
+
+[node name="InspPath" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=91225021]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+autowrap_mode = 3
+
+[node name="InspInfo" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=91225022]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Gap" type="Control" parent="Layout/Body/Inspector/Actions" unique_id=91225023]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+
+[node name="Launch" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=1867319693]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AccentButton"
 disabled = true
 text = "Abrir editor"
 
-[node name="SetDefault" type="Button" parent="Layout/Body/Actions" unique_id=433237644]
-unique_name_in_owner = true
-layout_mode = 2
-disabled = true
-text = "Usar por defecto"
-
-[node name="Upgrade" type="Button" parent="Layout/Body/Actions"]
+[node name="Upgrade" type="Button" parent="Layout/Body/Inspector/Actions"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -90,44 +141,42 @@ disabled = true
 text = "Actualizar"
 text_overrun_behavior = 3
 
-[node name="Templates" type="Button" parent="Layout/Body/Actions" unique_id=429655831]
+[node name="SetDefault" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=433237644]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Usar por defecto"
+
+[node name="Templates" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=429655831]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Instala export templates oficiales de esta versión"
 disabled = true
 text = "Export templates…"
 
-[node name="Symbols" type="Button" parent="Layout/Body/Actions" unique_id=616397846]
+[node name="Symbols" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=616397846]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Agrega los símbolos de debug del editor de esta versión"
 text = "Símbolos de debug"
 
-[node name="ShowFolder" type="Button" parent="Layout/Body/Actions" unique_id=138188554]
+[node name="ShowFolder" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=138188554]
 unique_name_in_owner = true
 layout_mode = 2
 disabled = true
 text = "Mostrar carpeta"
+icon = ExtResource("6_fold")
 
-[node name="Delete" type="Button" parent="Layout/Body/Actions" unique_id=2092234764]
+[node name="Spacer" type="Control" parent="Layout/Body/Inspector/Actions" unique_id=91225024]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Delete" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=2092234764]
 unique_name_in_owner = true
 layout_mode = 2
+flat = true
 disabled = true
 text = "Borrar"
-
-[node name="Sep" type="HSeparator" parent="Layout/Body/Actions" unique_id=1888619525]
-layout_mode = 2
-
-[node name="AddBuild" type="Button" parent="Layout/Body/Actions" unique_id=2073527464]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Agregar build propio"
-
-[node name="Prune" type="Button" parent="Layout/Body/Actions"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Borra las versiones que no usa la default ni ningún proyecto"
-text = "Liberar espacio…"
 
 [node name="DeleteDialog" parent="." unique_id=1588215784 instance=ExtResource("2_1xri8")]
 unique_name_in_owner = true

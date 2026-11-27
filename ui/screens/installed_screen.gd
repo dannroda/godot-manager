@@ -1,5 +1,5 @@
 extends PanelContainer
-## Pestaña Versiones: las versiones instaladas (`list`), con búsqueda, filtro y
+## Sección Versiones: las versiones instaladas (`list`), con búsqueda, filtro y
 ## las acciones de la seleccionada. Recarga al mostrarse y con Refrescar; la
 ## búsqueda y el filtro trabajan sobre lo ya cargado.
 
@@ -290,11 +290,12 @@ func _update_actions() -> void:
 	%Symbols.tooltip_text = tr("Esta versión ya tiene los símbolos de debug.") \
 		if not none and selected.debug_symbols else tr("Agrega los símbolos de debug del editor de esta versión")
 	var u := update_for(selected)
+	_update_inspector(u)
 	var upgrade: Button = %Upgrade
 	upgrade.visible = u != null
 	upgrade.disabled = u == null or u.installed
 	if u != null:
-		upgrade.text = tr("Actualizar")
+		upgrade.text = tr("Actualizar a %s") % u.latest
 		upgrade.tooltip_text = tr("%s ya está instalada.") % u.latest if u.installed \
 			else tr("Instala %s con lo mismo que tiene esta (mono, export templates, símbolos). Esta queda instalada.") % u.latest
 	if _busy > 0:
@@ -303,3 +304,28 @@ func _update_actions() -> void:
 	else:
 		%AddBuild.disabled = false
 		%Prune.disabled = false
+
+
+## El panel de la derecha: nombre, carpeta y qué tiene la seleccionada.
+func _update_inspector(u: VersionUpdate) -> void:
+	%Empty.visible = selected == null
+	%Actions.visible = selected != null
+	if selected == null:
+		return
+	%InspName.text = selected.name
+	%InspPath.text = selected.path
+	var info := PackedStringArray()
+	if selected.is_default:
+		info.append(tr("Versión por defecto"))
+	if selected.mono:
+		info.append(tr("Mono"))
+	if selected.custom:
+		info.append(tr("Build propio"))
+	if selected.debug_symbols:
+		info.append(tr("Símbolos"))
+	if not selected.template_platforms.is_empty():
+		info.append(tr("Templates: %s") % ", ".join(selected.template_platforms))
+	if u != null and not u.installed:
+		info.append(tr("Nueva: %s") % u.latest)
+	%InspInfo.text = " · ".join(info)
+	%InspInfo.visible = not info.is_empty()

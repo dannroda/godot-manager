@@ -1492,3 +1492,15 @@ msgstr "Opens with %s"
 #: screens/projects_screen.gd
 msgid "Abrir en %s"
 msgstr "Open in %s"
+
+#: screens/installed_screen.tscn
+msgid "Versiones instaladas"
+msgstr "Installed versions"
+
+#: screens/installed_screen.tscn
+msgid "Elegí una versión de la lista para ver sus acciones."
+msgstr "Pick a version from the list to see its actions."
+
+#: screens/installed_screen.gd
+msgid "Actualizar a %s"
+msgstr "Update to %s"
