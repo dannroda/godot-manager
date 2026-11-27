@@ -1,0 +1,82 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://dialogs/install_form.gd" id="1_form"]
+
+[node name="InstallForm" type="VBoxContainer" unique_id=1033666166]
+theme_override_constants/separation = 8
+script = ExtResource("1_form")
+
+[node name="VersionName" type="Label" parent="." unique_id=1541910074]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+
+[node name="EditionRow" type="HBoxContainer" parent="." unique_id=629958615]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EditionLabel" type="Label" parent="EditionRow" unique_id=1894139592]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Editor:"
+
+[node name="Normal" type="CheckBox" parent="EditionRow" unique_id=1658201291]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Normal"
+
+[node name="Mono" type="CheckBox" parent="EditionRow" unique_id=185522726]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Mono (.NET)"
+
+[node name="Symbols" type="CheckBox" parent="." unique_id=92628921]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Símbolos de debug"
+
+[node name="Templates" type="CheckBox" parent="." unique_id=289582561]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Export templates"
+
+[node name="PlatformMargin" type="MarginContainer" parent="." unique_id=722392039]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+
+[node name="PlatformGrid" type="GridContainer" parent="PlatformMargin" unique_id=206633688]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+columns = 4
+
+[node name="Separator" type="HSeparator" parent="." unique_id=884871674]
+layout_mode = 2
+
+[node name="CommandLabel" type="Label" parent="." unique_id=1486064959]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Se va a correr:"
+
+[node name="CommandPanel" type="PanelContainer" parent="." unique_id=2097269038]
+layout_mode = 2
+theme_type_variation = &"ListPanel"
+
+[node name="Command" type="Label" parent="CommandPanel" unique_id=1974616316]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Size" type="Label" parent="." unique_id=1304819907]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+
+[node name="Hint" type="Label" parent="." unique_id=1522962461]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.7058824, 0.3019608, 1)

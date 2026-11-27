@@ -78,14 +78,14 @@ func test_actions_follow_installed_state() -> void:
 
 	# Sin selección.
 	assert_true(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_false(uninstall.visible)
 	assert_true(notes.disabled)
 
 	# Release no instalada.
 	screen._on_row_selected(_row_for("4.7.2-stable"))
 	assert_false(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_eq(install.tooltip_text, "")
 	assert_false(uninstall.visible)
 	assert_false(notes.disabled)
@@ -93,14 +93,14 @@ func test_actions_follow_installed_state() -> void:
 	# Release sin editor en esta plataforma.
 	screen._on_row_selected(_row_for("3.6-stable"))
 	assert_true(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_false(install.tooltip_text.is_empty())
 	assert_false(uninstall.visible)
 
 	# Solo normal instalada en release con mono: Instalar… sigue habilitado y aparece Desinstalar….
 	screen._on_row_selected(_row_for("4.7.1-stable"))
 	assert_false(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_eq(install.tooltip_text, "")
 	assert_true(uninstall.visible)
 	assert_false(uninstall.disabled)
@@ -109,7 +109,7 @@ func test_actions_follow_installed_state() -> void:
 	# Release sin mono con la normal instalada: todas las ediciones instaladas → Instalar… deshabilitado con tooltip.
 	screen._on_row_selected(_row_for("4.7.0-stable"))
 	assert_true(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_eq(install.tooltip_text, "Esta versión ya está instalada.")
 	assert_true(uninstall.visible)
 	assert_false(uninstall.disabled)
@@ -127,30 +127,25 @@ func test_partial_edition_installs_missing_edition() -> void:
 
 	var install: Button = screen.get_node("%Install")
 	var uninstall: Button = screen.get_node("%Uninstall")
-	var install_dlg: ConfirmationDialog = screen.get_node("%InstallDialog")
+	var form: InstallForm = screen.get_node("%InstallForm")
 
-	# Solo normal instalada → Instalar… abre en modo INSTALL con mono marcada, Desinstalar… visible.
+	# Solo normal instalada → el panel arranca en modo INSTALL con mono marcada, Desinstalar… visible.
 	screen._on_row_selected(_row_for("4.7.1-stable"))
 	assert_false(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_true(uninstall.visible)
-	install.pressed.emit()
-	assert_true(install_dlg.visible)
-	assert_eq(install_dlg.options.mode, InstallOptions.Mode.INSTALL)
-	assert_eq(install_dlg.options.version, "4.7.1-stable")
-	assert_true(install_dlg.options.mono, "marca mono porque ya está instalada la normal")
-	install_dlg.hide()
+	assert_true(form.visible)
+	assert_eq(form.options.mode, InstallOptions.Mode.INSTALL)
+	assert_eq(form.options.version, "4.7.1-stable")
+	assert_true(form.options.mono, "marca mono porque ya está instalada la normal")
 
-	# Solo mono instalada → Instalar… abre en modo INSTALL con normal marcada.
+	# Solo mono instalada → arranca con normal marcada.
 	screen._on_row_selected(_row_for("4.7.0-stable"))
 	assert_false(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_true(uninstall.visible)
-	install.pressed.emit()
-	assert_true(install_dlg.visible)
-	assert_eq(install_dlg.options.mode, InstallOptions.Mode.INSTALL)
-	assert_false(install_dlg.options.mono, "marca normal porque ya está instalada la mono")
-	install_dlg.hide()
+	assert_eq(form.options.mode, InstallOptions.Mode.INSTALL)
+	assert_false(form.options.mono, "marca normal porque ya está instalada la mono")
 
 	# Con las dos instaladas → Instalar… queda deshabilitado con tooltip.
 	_populate(
@@ -161,7 +156,7 @@ func test_partial_edition_installs_missing_edition() -> void:
 		])
 	screen._on_row_selected(_row_for("4.7.1-stable"))
 	assert_true(install.disabled)
-	assert_eq(install.text, "Instalar…")
+	assert_eq(install.text, "Instalar")
 	assert_eq(install.tooltip_text, "Esta versión ya está instalada.")
 	assert_true(uninstall.visible)
 
@@ -172,12 +167,12 @@ func test_context_menu_includes_uninstall_only_when_installed() -> void:
 		[_installed("4.7.1-stable", "4.7.1-stable")])
 
 	var menu: PopupMenu = screen._on_row_context(_row_for("4.7.2-stable"), Vector2(10, 10))
-	assert_eq(_menu_texts(menu), PackedStringArray(["Instalar…", "Ver en GitHub"]))
+	assert_eq(_menu_texts(menu), PackedStringArray(["Instalar", "Ver en GitHub"]))
 	assert_false(menu.is_item_disabled(0))
 	menu.hide()
 
 	menu = screen._on_row_context(_row_for("4.7.1-stable"), Vector2(10, 10))
-	assert_eq(_menu_texts(menu), PackedStringArray(["Instalar…", "Ver en GitHub", "---", "Desinstalar…"]))
+	assert_eq(_menu_texts(menu), PackedStringArray(["Instalar", "Ver en GitHub", "---", "Desinstalar…"]))
 	assert_true(menu.is_item_disabled(0))
 	assert_false(menu.is_item_disabled(3))
 	menu.hide()
@@ -188,17 +183,21 @@ func test_single_installed_opens_dialogs_directly() -> void:
 		[_release("4.7.2-stable"), _release("4.7.1-stable", true, false)],
 		[_installed("4.7.1-stable", "4.7.1-stable")])
 
-	var install_dlg: ConfirmationDialog = screen.get_node("%InstallDialog")
 	var delete_dlg: ConfirmationDialog = screen.get_node("%DeleteDialog")
+	var asked: Array = []
+	screen.install_requested.connect(func(args: PackedStringArray, title: String) -> void:
+		asked.append([args, title]))
 
-	# No instalada → InstallDialog en modo INSTALL.
+	# No instalada → Instalar instala directo con lo elegido en el panel.
 	screen._on_row_selected(_row_for("4.7.2-stable"))
 	(screen.get_node("%Install") as Button).pressed.emit()
-	assert_true(install_dlg.visible)
-	assert_eq(install_dlg.options.mode, InstallOptions.Mode.INSTALL)
-	assert_eq(install_dlg.options.version, "4.7.2-stable")
-	assert_false(install_dlg.options.mono)
-	install_dlg.hide()
+	assert_eq(asked.size(), 1)
+	assert_eq(asked[0][0], PackedStringArray(["--json", "install", "4.7.2-stable"]))
+	assert_eq(asked[0][1], "Instalando 4.7.2-stable")
+
+	# Doble clic / Enter en la fila no instala: solo lleva al botón.
+	screen._on_row_activated(_row_for("4.7.2-stable"))
+	assert_eq(asked.size(), 1, "activar la fila no arranca otra descarga")
 
 	# Instalada (una sola edición) → borrar abre directo sin menú intermedio.
 	screen._on_row_selected(_row_for("4.7.1-stable"))
@@ -248,5 +247,5 @@ func test_buttons_refresh_when_installed_changes_and_delete_shortcut() -> void:
 	assert_eq(screen.selected.tag, "4.7.1-stable", "se mantiene la selección")
 	assert_false((screen.get_node("%Uninstall") as Button).visible)
 	assert_false((screen.get_node("%Install") as Button).disabled)
-	assert_eq((screen.get_node("%Install") as Button).text, "Instalar…")
+	assert_eq((screen.get_node("%Install") as Button).text, "Instalar")
 	assert_false(screen.handle_shortcut(&"gm_delete"), "Supr no hace nada si ya no está instalada")

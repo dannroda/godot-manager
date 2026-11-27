@@ -42,7 +42,7 @@ func _ready() -> void:
 			OS.shell_open(RemoteFilter.release_url(selected)))
 	%Install.pressed.connect(_on_install_pressed)
 	%Uninstall.pressed.connect(_on_uninstall_pressed)
-	%InstallDialog.install_requested.connect(install_requested.emit)
+	%InstallForm.changed.connect(_update_actions)
 	%DeleteDialog.delete_requested.connect(_write_and_refresh)
 	visibility_changed.connect(_on_shown)
 	GmCli.versions_changed.connect(func() -> void:
@@ -209,16 +209,22 @@ func _on_row_selected(row: Control) -> void:
 	_select(row.release)
 
 
+## Doble clic o Enter: lleva al botón Instalar (no instala directo: las
+## opciones están en el panel y una descarga se arranca a propósito).
 func _on_row_activated(row: Control) -> void:
 	_on_row_selected(row)
 	var install: Button = %Install
 	if not install.disabled:
-		install.pressed.emit()
+		install.grab_focus()
 
 
 func _select(rel: RemoteVersion) -> void:
 	var changed := rel != selected
+	# Por tag: Refrescar trae objetos nuevos y no tiene que borrar lo elegido.
+	var other := rel == null or selected == null or rel.tag != selected.tag
 	selected = rel
+	if other:
+		_fill_form()
 	_update_actions()
 	if changed:
 		selection_changed.emit(rel)
@@ -249,12 +255,22 @@ func _all_editions_installed(rel: RemoteVersion) -> bool:
 	return m.normal and (not rel.mono or m.mono)
 
 
-func _on_install_pressed() -> void:
-	if selected == null or not selected.editor or _all_editions_installed(selected):
+## Llena las opciones del panel para la seleccionada. Si ya está la normal
+## instalada (y la release trae Mono), arranca con Mono marcada.
+func _fill_form() -> void:
+	var form: InstallForm = %InstallForm
+	if selected == null or not selected.editor:
 		return
 	var m: RemoteFilter.Marks = _marks.get(selected.tag)
-	var want_mono := m != null and m.normal and not m.mono and selected.mono
-	%InstallDialog.open_install(selected, want_mono)
+	form.fill(selected, m != null and m.normal and not m.mono and selected.mono)
+
+
+func _on_install_pressed() -> void:
+	var form: InstallForm = %InstallForm
+	if selected == null or not selected.editor or _all_editions_installed(selected) \
+			or not form.problem().is_empty():
+		return
+	install_requested.emit(form.options.command(), InstallForm.title_for(form.options))
 
 
 func _on_uninstall_pressed() -> void:
@@ -312,8 +328,10 @@ func _update_actions() -> void:
 	var all_installed := _all_editions_installed(selected)
 	var install: Button = %Install
 	var uninstall: Button = %Uninstall
-	install.text = tr("Instalar…")
-	install.disabled = selected == null or not selected.editor or all_installed
+	var form: InstallForm = %InstallForm
+	var can_install := selected != null and selected.editor and not all_installed
+	form.visible = can_install
+	install.disabled = not can_install or not form.problem().is_empty()
 	if selected != null and not selected.editor:
 		install.tooltip_text = tr("godot-manager no instala el editor de esta versión en este sistema.")
 	elif all_installed:

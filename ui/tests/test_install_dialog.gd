@@ -26,18 +26,18 @@ func _release(tag: String) -> RemoteVersion:
 
 
 func _box(name: String) -> CheckBox:
-	return dialog.get_node("%" + name)
+	return dialog.form.get_node("%" + name)
 
 
 func _platform(p: String) -> CheckBox:
-	for box: CheckBox in dialog.get_node("%PlatformGrid").get_children():
+	for box: CheckBox in dialog.form.get_node("%PlatformGrid").get_children():
 		if box.text == p:
 			return box
 	return null
 
 
 func _preview() -> String:
-	return (dialog.get_node("%Command") as Label).text
+	return (dialog.form.get_node("%Command") as Label).text
 
 
 func test_task_example_preview() -> void:
@@ -46,7 +46,7 @@ func test_task_example_preview() -> void:
 	_box("Mono").button_pressed = true
 	_box("Symbols").button_pressed = true
 	_box("Templates").button_pressed = true
-	assert_true((dialog.get_node("%PlatformGrid") as Control).visible)
+	assert_true((dialog.form.get_node("%PlatformGrid") as Control).visible)
 	assert_eq(_preview(), "godot-manager --json install 4.8-beta3 --mono --debugsymbols --templates",
 		"al activar templates arrancan todas")
 	for p in GmCommands.PLATFORMS:
@@ -63,7 +63,7 @@ func test_no_platform_disables_ok() -> void:
 	for p in GmCommands.PLATFORMS:
 		_platform(p).button_pressed = false
 	assert_true(dialog.get_ok_button().disabled)
-	assert_true((dialog.get_node("%Hint") as Label).visible)
+	assert_true((dialog.form.get_node("%Hint") as Label).visible)
 	_platform("web").button_pressed = true
 	assert_false(dialog.get_ok_button().disabled)
 
@@ -79,7 +79,7 @@ func test_fill_resets_and_size() -> void:
 	dialog.fill(_release("4.8-beta3"))
 	_box("Mono").button_pressed = true
 	_box("Templates").button_pressed = true
-	assert_true((dialog.get_node("%Size") as Label).text.begins_with("Descarga: "))
+	assert_true((dialog.form.get_node("%Size") as Label).text.begins_with("Descarga: "))
 	dialog.fill(_release("4.8-beta2"))
 	assert_false(_box("Mono").button_pressed)
 	assert_false(_box("Templates").button_pressed)
@@ -91,7 +91,7 @@ func test_unknown_fields_leave_everything_enabled() -> void:
 	dialog.fill(r)
 	for box in ["Mono", "Symbols", "Templates"]:
 		assert_false(_box(box).disabled, box)
-	assert_false((dialog.get_node("%Size") as Label).visible, "sin tamaños no se muestra")
+	assert_false((dialog.form.get_node("%Size") as Label).visible, "sin tamaños no se muestra")
 
 
 func test_mono_without_mono_templates() -> void:
@@ -114,9 +114,9 @@ func test_templates_mode() -> void:
 	var got: Array = []
 	dialog.install_requested.connect(func(args: PackedStringArray, t: String) -> void: got.append([args, t]))
 	dialog.fill_templates(v)
-	assert_false((dialog.get_node("%EditionRow") as Control).visible, "la edición sale de la versión")
+	assert_false((dialog.form.get_node("%EditionRow") as Control).visible, "la edición sale de la versión")
 	assert_false(_box("Templates").visible)
-	assert_true((dialog.get_node("%PlatformGrid") as Control).visible)
+	assert_true((dialog.form.get_node("%PlatformGrid") as Control).visible)
 	assert_eq(_platform("linux (instalado)").button_pressed, false, "la que ya tiene, marcada y sin tildar")
 	for p in GmCommands.PLATFORMS:
 		if p != "linux":
@@ -126,7 +126,7 @@ func test_templates_mode() -> void:
 	dialog.confirmed.emit()
 	assert_eq(got[0][1], "Instalando templates de 4.7.2-stable (mono)")
 	dialog.fill(_release("4.8-beta3"))
-	assert_true((dialog.get_node("%EditionRow") as Control).visible, "volver a modo instalar")
+	assert_true((dialog.form.get_node("%EditionRow") as Control).visible, "volver a modo instalar")
 	assert_eq(_platform("linux").text, "linux")
 
 
