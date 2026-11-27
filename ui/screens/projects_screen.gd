@@ -1,5 +1,5 @@
 extends PanelContainer
-## Pestaña Proyectos: la lista propia de proyectos (`user://projects.cfg`),
+## Sección Proyectos: la lista propia de proyectos (`user://projects.cfg`),
 ## con agregar, escanear una carpeta (en un Thread, para no trabar la UI) y
 ## quitar de la lista (no borra nada). Búsqueda y orden sobre lo cargado.
 
@@ -196,6 +196,8 @@ func _update_row(path: String) -> void:
 	for row in _rows.get_children():
 		if row.project.path == path:
 			row.set_status(statuses.get(path))
+	if selected != null and selected.path == path:
+		_update_inspector()
 
 
 func _entry(path: String) -> ProjectEntry:
@@ -475,6 +477,9 @@ func _rebuild() -> void:
 		row.selected.connect(_on_row_selected)
 		row.activated.connect(_on_row_activated)
 		row.context_requested.connect(_on_row_context)
+		row.open_requested.connect(func(edit: bool) -> void:
+			_on_row_selected(row)
+			open_selected(edit))
 		row.install_requested.connect(func(_v: String) -> void:
 			_on_row_selected(row)
 			ask_missing(e))
@@ -554,6 +559,23 @@ func _update_actions() -> void:
 	%Remove.disabled = none
 	for button: Button in [%ShowFolder, %Open, %Run, %ChangeVersion, %Details]:
 		button.disabled = none or selected.missing
+	_update_inspector()
+
+
+## El panel de la derecha: nombre, carpeta y versión del seleccionado.
+func _update_inspector() -> void:
+	%Empty.visible = selected == null
+	%Actions.visible = selected != null
+	if selected == null:
+		return
+	%InspName.text = selected.name
+	%InspPath.text = selected.path
+	var st: ProjectStatus = statuses.get(selected.path)
+	%InspUses.visible = st != null
+	if st != null:
+		%InspUses.text = tr("Abre con %s") % st.text()
+	var ready := st != null and st.resolution != null
+	%Open.text = tr("Abrir en %s") % st.resolution.version if ready else tr("Abrir")
 
 
 func _set_busy(busy: bool) -> void:

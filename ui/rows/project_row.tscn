@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://3glp0a8u1np5"]
 
 [ext_resource type="Script" uid="uid://2ghpg6n06pky" path="res://rows/project_row.gd" id="1_qdu56"]
+[ext_resource type="Texture2D" path="res://theme/icons/play.svg" id="2_play"]
 
 [node name="ProjectRow" type="PanelContainer" unique_id=1929269838]
 focus_mode = 2
@@ -35,8 +36,12 @@ theme_override_constants/separation = 6
 
 [node name="Name" type="Label" parent="HBox/Info/Top" unique_id=1924533929]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
 theme_type_variation = &"TitleLabel"
+text_overrun_behavior = 3
 
 [node name="Tags" type="HBoxContainer" parent="HBox/Info/Top" unique_id=1771027042]
 unique_name_in_owner = true
@@ -67,3 +72,20 @@ layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
 text = "Instalar…"
+
+[node name="RunNow" type="Button" parent="HBox" unique_id=21927819]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+tooltip_text = "Correr"
+icon = ExtResource("2_play")
+
+[node name="OpenNow" type="Button" parent="HBox" unique_id=21927820]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+text = "Abrir"

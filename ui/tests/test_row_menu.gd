@@ -91,7 +91,7 @@ func test_right_click_and_keyboard_on_project_row() -> void:
 		return
 	var texts := _texts(menu)
 	assert_eq(texts[0], "Abrir")
-	assert_has(texts, "Detalles…")
+	assert_has(texts, "Plugins y detalles…")
 	assert_eq(texts[texts.size() - 1], "Quitar de la lista")
 	menu.hide()
 	await wait_frames(2)

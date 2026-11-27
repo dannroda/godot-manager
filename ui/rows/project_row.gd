@@ -9,11 +9,15 @@ const ERROR_COLOR := Color(1.0, 0.47, 0.42)
 
 ## Pide instalar la versión fijada que falta.
 signal install_requested(version: String)
+## Abrir en el editor (`edit`) o correr, desde los botones de la fila.
+signal open_requested(edit: bool)
 
 var project: ProjectEntry
 var status: ProjectStatus
 
 @onready var _install: Button = %Install
+@onready var _open_now: Button = %OpenNow
+@onready var _run_now: Button = %RunNow
 @onready var _icon: TextureRect = %Icon
 @onready var _name: Label = %Name
 @onready var _tags: HBoxContainer = %Tags
@@ -26,6 +30,8 @@ func _ready() -> void:
 	_install.pressed.connect(func() -> void:
 		if status != null and not status.missing_version().is_empty():
 			install_requested.emit(status.missing_version()))
+	_open_now.pressed.connect(open_requested.emit.bind(true))
+	_run_now.pressed.connect(open_requested.emit.bind(false))
 	if project != null:
 		_fill()
 
@@ -44,6 +50,10 @@ func set_status(s: ProjectStatus) -> void:
 		return
 	_uses.visible = s != null
 	_install.visible = s != null and not s.missing_version().is_empty()
+	# Abrir y Correr directo solo cuando ya se sabe con qué versión.
+	var can_open := s != null and s.resolution != null and project != null and not project.missing
+	_open_now.visible = can_open
+	_run_now.visible = can_open
 	if s == null:
 		return
 	_uses.text = s.text()

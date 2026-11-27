@@ -77,7 +77,16 @@ func _init() -> void:
 	top.content_margin_bottom = 6
 	t.set_stylebox("panel", "TopBar", top)
 	_variant(t, "ScreenPanel", "PanelContainer")
-	t.set_stylebox("panel", "ScreenPanel", _box(Color(0.1, 0.1, 0.1, 0.6), RADIUS, 12, 12))
+	t.set_stylebox("panel", "ScreenPanel", StyleBoxEmpty.new())
+	_variant(t, "ScreenTitle", "Label")
+	t.set_font_size("font_size", "ScreenTitle", 22)
+	t.set_color("font_color", "ScreenTitle", TEXT)
+	# Panel de la derecha con lo seleccionado y sus acciones.
+	_variant(t, "Inspector", "PanelContainer")
+	var insp := _box(SIDEBAR, RADIUS + 5, 16, 16)
+	insp.set_border_width_all(1)
+	insp.border_color = LINE
+	t.set_stylebox("panel", "Inspector", insp)
 	_variant(t, "ListPanel", "PanelContainer")
 	t.set_stylebox("panel", "ListPanel", _box(Color(0, 0, 0, 0.25), RADIUS, 6, 6))
 	_variant(t, "RowPanel", "PanelContainer")
@@ -85,9 +94,9 @@ func _init() -> void:
 	_variant(t, "RowPanelHover", "PanelContainer")
 	t.set_stylebox("panel", "RowPanelHover", _box(Color(1, 1, 1, 0.05), RADIUS, 12, 8))
 	_variant(t, "RowPanelSelected", "PanelContainer")
-	var sel := _box(Color(1, 1, 1, 0.12), RADIUS, 12, 8)
-	sel.border_width_left = 2
-	sel.border_color = Color(1, 1, 1, 0.6)
+	var sel := _box(Color("#222833"), RADIUS, 12, 8)
+	sel.set_border_width_all(1)
+	sel.border_color = Color("#3b5674")
 	t.set_stylebox("panel", "RowPanelSelected", sel)
 	_variant(t, "SettingsSection", "PanelContainer")
 	t.set_stylebox("panel", "SettingsSection", _box(Color(1, 1, 1, 0.04), RADIUS + 1, 14, 12))

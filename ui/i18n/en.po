@@ -921,8 +921,8 @@ msgstr "Disables it and deletes its folder"
 msgid "Carpeta, versión y plugins del proyecto; desde ahí se desactiva un plugin que no deja abrir el editor"
 msgstr "The project's folder, version and plugins; disable a plugin there if it keeps the editor from opening"
 
-msgid "Detalles…"
-msgstr "Details…"
+msgid "Plugins y detalles…"
+msgstr "Plugins and details…"
 
 msgid "Elegir otra versión…"
 msgstr "Choose another version…"
@@ -1336,8 +1336,8 @@ msgstr "Creating %s"
 msgid "Crea un proyecto vacío con la versión de Godot y los plugins (un preset) que elijas"
 msgstr "Creates an empty project with the Godot version and the plugins (a preset) you choose"
 
-msgid "Nuevo…"
-msgstr "New…"
+msgid "Nuevo proyecto"
+msgstr "New project"
 
 msgid "Godot %s a %s"
 msgstr "Godot %s to %s"
@@ -1480,3 +1480,15 @@ msgstr "Productivity"
 
 msgid "%s y %d más"
 msgstr "%s and %d more"
+
+#: screens/projects_screen.tscn
+msgid "Elegí un proyecto de la lista para ver sus acciones."
+msgstr "Pick a project from the list to see its actions."
+
+#: screens/projects_screen.gd
+msgid "Abre con %s"
+msgstr "Opens with %s"
+
+#: screens/projects_screen.gd
+msgid "Abrir en %s"
+msgstr "Open in %s"
