@@ -1,66 +1,16 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://dialogs/project_details_dialog.gd" id="1_pdd"]
+[ext_resource type="Script" path="res://dialogs/project_plugins.gd" id="1_pdd"]
 [ext_resource type="PackedScene" path="res://dialogs/add_plugin_dialog.tscn" id="2_apd"]
 
-[node name="ProjectDetailsDialog" type="AcceptDialog"]
-title = "Detalles del proyecto"
-size = Vector2i(780, 720)
-min_size = Vector2i(560, 440)
-ok_button_text = "Cerrar"
+[node name="ProjectPlugins" type="VBoxContainer"]
+theme_override_constants/separation = 8
 script = ExtResource("1_pdd")
 
-[node name="Content" type="VBoxContainer" parent="."]
-theme_override_constants/separation = 8
-
-[node name="ProjectName" type="Label" parent="Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"TitleLabel"
-text_overrun_behavior = 3
-
-[node name="Info" type="GridContainer" parent="Content"]
-layout_mode = 2
-theme_override_constants/h_separation = 12
-columns = 2
-
-[node name="FolderLabel" type="Label" parent="Content/Info"]
-layout_mode = 2
-theme_type_variation = &"DimLabel"
-text = "Carpeta:"
-
-[node name="Folder" type="Label" parent="Content/Info"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 1
-text_overrun_behavior = 3
-
-[node name="CreatedLabel" type="Label" parent="Content/Info"]
-layout_mode = 2
-theme_type_variation = &"DimLabel"
-text = "Guardado con:"
-
-[node name="CreatedWith" type="Label" parent="Content/Info"]
-unique_name_in_owner = true
+[node name="PluginsHeader" type="HBoxContainer" parent="."]
 layout_mode = 2
 
-[node name="OpensLabel" type="Label" parent="Content/Info"]
-layout_mode = 2
-theme_type_variation = &"DimLabel"
-text = "Abre con:"
-
-[node name="OpensWith" type="Label" parent="Content/Info"]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="Sep" type="HSeparator" parent="Content"]
-layout_mode = 2
-
-[node name="PluginsHeader" type="HBoxContainer" parent="Content"]
-layout_mode = 2
-
-[node name="PluginsStatus" type="Label" parent="Content/PluginsHeader"]
+[node name="PluginsStatus" type="Label" parent="PluginsHeader"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -68,69 +18,68 @@ mouse_filter = 1
 theme_type_variation = &"DimLabel"
 text_overrun_behavior = 3
 
-[node name="Reload" type="Button" parent="Content/PluginsHeader"]
+[node name="Reload" type="Button" parent="PluginsHeader"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Vuelve a leer los plugins del proyecto"
 text = "Recargar"
 
-[node name="PluginActions" type="HBoxContainer" parent="Content"]
+[node name="PluginActions" type="HFlowContainer" parent="."]
 layout_mode = 2
 
-[node name="AddPlugin" type="Button" parent="Content/PluginActions"]
+[node name="AddPlugin" type="Button" parent="PluginActions"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Busca en el Asset Store de Godot o instala desde GitHub; lo anota en plugins.json y plugins.lock"
 text = "Agregar plugin…"
 
-[node name="CheckUpdates" type="Button" parent="Content/PluginActions"]
+[node name="CheckUpdates" type="Button" parent="PluginActions"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Busca versiones nuevas de los plugins instalados con «Agregar plugin» que anden con el Godot del proyecto"
 text = "Buscar actualizaciones"
 
-[node name="UpdateAll" type="Button" parent="Content/PluginActions"]
+[node name="UpdateAll" type="Button" parent="PluginActions"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 tooltip_text = "Actualiza los que tienen una versión nueva y no están fijados"
 text = "Actualizar todo"
 
-[node name="InstallPending" type="Button" parent="Content/PluginActions"]
+[node name="InstallPending" type="Button" parent="PluginActions"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 tooltip_text = "Instala lo que pide plugins.json en las versiones de plugins.lock"
 text = "Instalar faltantes"
 
-[node name="Presets" type="MenuButton" parent="Content/PluginActions"]
+[node name="Presets" type="MenuButton" parent="PluginActions"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Presets de plugins: los que solés usar, para sumarlos a un proyecto de una vez"
 text = "Presets"
 flat = false
 
-[node name="ListPanel" type="PanelContainer" parent="Content"]
-custom_minimum_size = Vector2(0, 240)
+[node name="ListPanel" type="PanelContainer" parent="."]
 layout_mode = 2
-size_flags_vertical = 3
 theme_type_variation = &"ListPanel"
 
-[node name="Scroll" type="ScrollContainer" parent="Content/ListPanel"]
+[node name="Scroll" type="ScrollContainer" parent="ListPanel"]
 layout_mode = 2
 horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
 
-[node name="Plugins" type="VBoxContainer" parent="Content/ListPanel/Scroll"]
+[node name="Plugins" type="VBoxContainer" parent="ListPanel/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="Note" type="Label" parent="Content"]
-custom_minimum_size = Vector2(520, 0)
+[node name="Note" type="Label" parent="."]
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_type_variation = &"DimLabel"
-text = "Los cambios se guardan en project.godot. Si el proyecto está abierto en el editor, cerralo antes: Godot puede volver a escribir la lista de plugins al guardar."
+text = "Cerrá el proyecto en el editor antes de cambiar plugins: Godot puede volver a escribir la lista al guardar."
 autowrap_mode = 3
 
 [node name="RemoveDialog" type="ConfirmationDialog" parent="."]

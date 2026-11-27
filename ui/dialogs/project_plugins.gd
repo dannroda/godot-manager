@@ -1,12 +1,13 @@
-extends AcceptDialog
-## Detalles de un proyecto: carpeta, con qué Godot se guardó, con qué versión
-## abre, y sus plugins de editor con botones para activarlos, desactivarlos o
-## desinstalarlos. Sirve para destrabar un proyecto que no abre por un plugin
-## roto. Además (2.4+) agrega plugins del Asset Store o de GitHub, busca y
-## aplica versiones nuevas que anden con el Godot del proyecto, fija o suelta
-## versiones, instala lo que falta de plugins.json y aplica o guarda presets.
+class_name ProjectPlugins
+extends VBoxContainer
+## Plugins de un proyecto, en el panel de Proyectos: sus plugins de editor con
+## botones para activarlos, desactivarlos o desinstalarlos (sirve para
+## destrabar un proyecto que no abre por un plugin roto). Además (2.4+) agrega
+## plugins del Asset Store o de GitHub, busca y aplica versiones nuevas que
+## anden con el Godot del proyecto, fija o suelta versiones, instala lo que
+## falta de plugins.json y aplica o guarda presets.
 ## Los plugins los lee y los cambia el CLI (`--dir <p> plugins …`), no la UI.
-## `open_for(project, status)` lo llena, lo muestra y pide la lista.
+## `open_for(project)` lo llena y pide la lista.
 
 ## Un plugin se activó, desactivó, instaló o desinstaló (lo usan los tests).
 signal plugins_changed
@@ -19,10 +20,6 @@ var busy := false
 var updates := {}
 var presets: Array[PluginPreset] = []
 
-@onready var _name: Label = %ProjectName
-@onready var _folder: Label = %Folder
-@onready var _created: Label = %CreatedWith
-@onready var _opens: Label = %OpensWith
 @onready var _status: Label = %PluginsStatus
 @onready var _rows: VBoxContainer = %Plugins
 @onready var _reload: Button = %Reload
@@ -45,6 +42,12 @@ const MENU_SAVE := 1000
 
 func _ready() -> void:
 	_reload.pressed.connect(func() -> void: load_plugins())
+	# El panel se llena al elegir un proyecto, que puede ser antes de que el
+	# CLI esté listo (al arrancar): cuando lo está, se vuelve a pedir.
+	GmCli.availability_changed.connect(func(ok: bool, _m: String) -> void:
+		if ok and project != null:
+			load_presets()
+			load_plugins())
 	_remove_dialog.confirmed.connect(func() -> void:
 		if _to_remove != null:
 			remove_plugin(_to_remove))
@@ -66,24 +69,16 @@ func _ready() -> void:
 		_save_dialog.confirmed.emit())
 
 
-## Llena los datos del proyecto (sin pedir los plugins).
-func fill(p: ProjectEntry, status: ProjectStatus) -> void:
+## Pasa a `p` (sin pedir los plugins).
+func fill(p: ProjectEntry) -> void:
 	project = p
 	updates = {}
-	_name.text = p.name
-	_folder.text = p.path
-	_folder.tooltip_text = p.path
-	var made := p.created_with()
-	_created.text = made if not made.is_empty() else tr("no se sabe")
-	_opens.text = status.text() if status != null else "…"
 	show_plugins([])
 	_set_status(tr("Leyendo plugins…"))
 
 
-func open_for(p: ProjectEntry, status: ProjectStatus) -> void:
-	fill(p, status)
-	popup_centered_clamped(Vector2i(780, 720))
-	get_ok_button().grab_focus()
+func open_for(p: ProjectEntry) -> void:
+	fill(p)
 	load_presets()
 	load_plugins()
 
@@ -97,9 +92,13 @@ func load_plugins() -> void:
 		return
 	_set_busy(true)
 	_set_status(tr("Leyendo plugins…"))
-	var job := GmCli.read(GmCommands.plugins(project.path))
+	var path := project.path
+	var job := GmCli.read(GmCommands.plugins(path))
 	job.notify_on_error = false
 	await job.finished
+	# Se eligió otro proyecto mientras tanto: esta respuesta ya no va.
+	if project == null or project.path != path:
+		return
 	_set_busy(false)
 	var r := GmParse.parse_plugins(job.stdout) if job.start_error == null else null
 	if r != null and r.ok and job.succeeded():
@@ -337,6 +336,10 @@ func _make_row(p: ProjectPlugin) -> Control:
 	title.name = "Title"
 	var version := p.locked_version if p.pending or p.asset else p.version
 	title.text = p.display_name() + ("  " + version if not version.is_empty() else "")
+	title.tooltip_text = title.text
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.custom_minimum_size.x = 60
 	info.add_child(title)
 	var meta := Label.new()
 	meta.name = "Meta"
@@ -358,15 +361,14 @@ func _make_row(p: ProjectPlugin) -> Control:
 	meta.text = " · ".join(bits)
 	meta.tooltip_text = p.path if not p.asset else tr("No trae plugin.cfg: son archivos para el proyecto (arte, sonido, scripts…), no hay nada que activar.") + "\n\n" + "\n".join(p.folders)
 	meta.mouse_filter = Control.MOUSE_FILTER_PASS
-	# Una línea larga se corta (con el texto entero en el tooltip): no ensancha la ventana.
+	# Una línea larga se corta (con el texto entero en el tooltip): no ensancha el panel.
 	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	meta.custom_minimum_size.x = 300
+	meta.custom_minimum_size.x = 60
 	info.add_child(meta)
 	if not p.description.is_empty():
 		var desc := Label.new()
 		desc.text = p.description
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.custom_minimum_size.x = 300
 		info.add_child(desc)
 	var u: PluginUpdate = updates.get(p.managed_name) if p.is_managed() else null
 	if u != null:
@@ -382,7 +384,6 @@ func _make_row(p: ProjectPlugin) -> Control:
 			note.name = "UpdateNote"
 			note.text = " · ".join(notes)
 			note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			note.custom_minimum_size.x = 300
 			note.add_theme_color_override("font_color", Color(0.4392157, 0.7294118, 0.9803922))
 			info.add_child(note)
 	for problem in p.problems:
@@ -390,7 +391,6 @@ func _make_row(p: ProjectPlugin) -> Control:
 		warn.name = "Problem"
 		warn.text = "⚠ " + problem
 		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		warn.custom_minimum_size.x = 300
 		warn.add_theme_color_override("font_color", Color(1, 0.7058824, 0.3019608))
 		info.add_child(warn)
 

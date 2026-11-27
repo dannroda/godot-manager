@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://nuqhd7dy8x" path="res://rows/list_state.tscn" id="2_cqxe7"]
 [ext_resource type="PackedScene" uid="uid://8gjfrs1achjg" path="res://dialogs/install_dialog.tscn" id="2_okxhh"]
 [ext_resource type="PackedScene" uid="uid://1b1bcuu1v8hw" path="res://dialogs/change_version_dialog.tscn" id="3_igeof"]
-[ext_resource type="PackedScene" path="res://dialogs/project_details_dialog.tscn" id="4_pdets"]
+[ext_resource type="PackedScene" path="res://dialogs/project_plugins.tscn" id="4_plug"]
 [ext_resource type="PackedScene" path="res://dialogs/missing_version_dialog.tscn" id="5_mvd"]
 [ext_resource type="PackedScene" path="res://dialogs/new_project_dialog.tscn" id="6_npd"]
 [ext_resource type="Texture2D" path="res://theme/icons/play.svg" id="7_play"]
@@ -114,7 +114,7 @@ theme_type_variation = &"DimLabel"
 text_overrun_behavior = 3
 
 [node name="Inspector" type="PanelContainer" parent="Layout/Body" unique_id=2010798052]
-custom_minimum_size = Vector2(260, 0)
+custom_minimum_size = Vector2(340, 0)
 layout_mode = 2
 theme_type_variation = &"Inspector"
 
@@ -126,34 +126,40 @@ theme_type_variation = &"DimLabel"
 text = "Elegí un proyecto de la lista para ver sus acciones."
 autowrap_mode = 3
 
-[node name="Actions" type="VBoxContainer" parent="Layout/Body/Inspector" unique_id=2010798053]
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/Inspector" unique_id=2010798062]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Actions" type="VBoxContainer" parent="Layout/Body/Inspector/Scroll" unique_id=2010798053]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="InspName" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=2010798055]
+[node name="InspName" type="Label" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=2010798055]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"SectionTitle"
 autowrap_mode = 3
 
-[node name="InspPath" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=2010798056]
+[node name="InspPath" type="Label" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=2010798056]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"DimLabel"
 autowrap_mode = 3
 
-[node name="InspUses" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=2010798057]
+[node name="InspUses" type="Label" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=2010798057]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="Gap" type="Control" parent="Layout/Body/Inspector/Actions" unique_id=2010798058]
+[node name="Gap" type="Control" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=2010798058]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
 
-[node name="Open" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=1110543596]
+[node name="Open" type="Button" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=1110543596]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Abre el proyecto en el editor con su versión"
@@ -161,10 +167,10 @@ theme_type_variation = &"AccentButton"
 disabled = true
 text = "Abrir"
 
-[node name="Quick" type="HBoxContainer" parent="Layout/Body/Inspector/Actions" unique_id=2010798059]
+[node name="Quick" type="HBoxContainer" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=2010798059]
 layout_mode = 2
 
-[node name="Run" type="Button" parent="Layout/Body/Inspector/Actions/Quick" unique_id=85162903]
+[node name="Run" type="Button" parent="Layout/Body/Inspector/Scroll/Actions/Quick" unique_id=85162903]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -173,7 +179,7 @@ disabled = true
 text = "Correr"
 icon = ExtResource("7_play")
 
-[node name="ShowFolder" type="Button" parent="Layout/Body/Inspector/Actions/Quick" unique_id=1680188527]
+[node name="ShowFolder" type="Button" parent="Layout/Body/Inspector/Scroll/Actions/Quick" unique_id=1680188527]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -181,25 +187,21 @@ disabled = true
 text = "Mostrar carpeta"
 icon = ExtResource("8_fold")
 
-[node name="ChangeVersion" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=1711565690]
+[node name="ChangeVersion" type="Button" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=1711565690]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Fija con qué versión se abre el proyecto (.godot-version)"
 disabled = true
 text = "Cambiar versión…"
 
-[node name="Details" type="Button" parent="Layout/Body/Inspector/Actions"]
+[node name="PluginsSep" type="HSeparator" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=2010798061]
+layout_mode = 2
+
+[node name="Plugins" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=2010798060 instance=ExtResource("4_plug")]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Carpeta, versión y plugins del proyecto; desde ahí se desactiva un plugin que no deja abrir el editor"
-disabled = true
-text = "Plugins y detalles…"
 
-[node name="Spacer" type="Control" parent="Layout/Body/Inspector/Actions" unique_id=2010798060]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="Remove" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=369455049]
+[node name="Remove" type="Button" parent="Layout/Body/Inspector/Scroll/Actions" unique_id=369455049]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Lo saca de esta lista; no borra nada del disco"
@@ -246,10 +248,6 @@ unique_name_in_owner = true
 
 [node name="ChangeVersionDialog" parent="." unique_id=110441867 instance=ExtResource("3_igeof")]
 unique_name_in_owner = true
-
-[node name="ProjectDetailsDialog" parent="." instance=ExtResource("4_pdets")]
-unique_name_in_owner = true
-visible = false
 
 [node name="MissingVersionDialog" parent="." instance=ExtResource("5_mvd")]
 unique_name_in_owner = true

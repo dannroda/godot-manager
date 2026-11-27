@@ -1,10 +1,10 @@
 extends TestCase
-## Detalles del proyecto (m3-06): filas de plugins y, contra el CLI real
+## Plugins del proyecto (m3-06, en el panel de Proyectos): filas de plugins y, contra el CLI real
 ## (GM_BIN), activar, desactivar y desinstalar en un proyecto temporal.
 
-const DIALOG := preload("res://dialogs/project_details_dialog.tscn")
+const DIALOG := preload("res://dialogs/project_plugins.tscn")
 
-var dialog: AcceptDialog
+var dialog: ProjectPlugins
 var fx: CliFixture
 var project_dir := ""
 var _old_binary := ""
@@ -64,7 +64,7 @@ func test_rows_and_status() -> void:
 func test_empty() -> void:
 	dialog.show_plugins([])
 	assert_eq(_status(), "El proyecto no tiene plugins en addons/.")
-	assert_false((dialog.get_node("Content/ListPanel") as Control).visible)
+	assert_false((dialog.get_node("ListPanel") as Control).visible)
 
 
 func test_busy_disables_rows() -> void:
@@ -105,7 +105,7 @@ func _project_godot() -> String:
 func test_disable_and_remove_with_cli() -> void:
 	if not _setup_cli():
 		return
-	dialog.fill(ProjectEntry.read(project_dir), null)
+	dialog.fill(ProjectEntry.read(project_dir))
 	await dialog.load_plugins()
 	assert_eq(dialog.plugins.size(), 2)
 	assert_eq(_status(), "Plugins: 2 · activos: 2 · con problemas: 1")
@@ -133,7 +133,7 @@ func test_not_a_project_with_cli() -> void:
 	var e := ProjectEntry.new()
 	e.path = project_dir
 	e.name = "x"
-	dialog.fill(e, null)
+	dialog.fill(e)
 	await dialog.load_plugins()
 	assert_true(_status().contains("no es un proyecto"), _status())
 
@@ -237,7 +237,7 @@ func test_save_preset_and_pending_with_cli() -> void:
 		fail(fx.last_error)
 		return
 	_write("plugins.json", '{"plugins": {"later": {"source": "github:a/later"}}}')
-	dialog.fill(ProjectEntry.read(project_dir), null)
+	dialog.fill(ProjectEntry.read(project_dir))
 	await dialog.load_plugins()
 	var pending: Array = dialog.plugins.filter(func(p: ProjectPlugin) -> bool: return p.pending)
 	assert_eq(pending.size(), 1)

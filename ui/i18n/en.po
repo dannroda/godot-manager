@@ -860,8 +860,8 @@ msgstr "Reads the project's plugins again"
 msgid "Recargar"
 msgstr "Reload"
 
-msgid "Los cambios se guardan en project.godot. Si el proyecto está abierto en el editor, cerralo antes: Godot puede volver a escribir la lista de plugins al guardar."
-msgstr "Changes are saved to project.godot. If the project is open in the editor, close it first: Godot may write the plugin list again when it saves."
+msgid "Cerrá el proyecto en el editor antes de cambiar plugins: Godot puede volver a escribir la lista al guardar."
+msgstr "Close the project in the editor before changing plugins: Godot may write the list again when it saves."
 
 msgid "Desinstalar plugin"
 msgstr "Uninstall plugin"
@@ -920,9 +920,6 @@ msgstr "Disables it and deletes its folder"
 
 msgid "Carpeta, versión y plugins del proyecto; desde ahí se desactiva un plugin que no deja abrir el editor"
 msgstr "The project's folder, version and plugins; disable a plugin there if it keeps the editor from opening"
-
-msgid "Plugins y detalles…"
-msgstr "Plugins and details…"
 
 msgid "Elegir otra versión…"
 msgstr "Choose another version…"

@@ -93,7 +93,6 @@ func _ready() -> void:
 	%Run.pressed.connect(func() -> void: open_selected(false))
 	%ImportPM.pressed.connect(func() -> void: import_from_pm(ProjectList.pm_config_path()))
 	%ChangeVersion.pressed.connect(open_change_version)
-	%Details.pressed.connect(open_details)
 	%ChangeVersionDialog.change_requested.connect(change_version)
 	%ChangeVersionDialog.canceled.connect(func() -> void: _open_after = {})
 	%MissingVersionDialog.choice.connect(_on_missing_choice)
@@ -260,13 +259,6 @@ func open_change_version() -> void:
 	var installed: Array[InstalledVersion] = []
 	installed.assign(r.value)
 	%ChangeVersionDialog.open_for(e, installed, statuses.get(e.path))
-
-
-## Detalles del seleccionado, con sus plugins.
-func open_details() -> void:
-	if selected == null or selected.missing:
-		return
-	%ProjectDetailsDialog.open_for(selected, statuses.get(selected.path))
 
 
 ## Corre `set-local` / `set-local --unset` por la cola de escrituras; al
@@ -534,7 +526,7 @@ func _on_row_context(row: Control, at: Vector2) -> PopupMenu:
 	_on_row_selected(row)
 	# Instalar… de la fila solo se ve si a su versión le falta instalar.
 	return RowMenu.popup(self, [row.get_node("%Install"), null, %Open, %Run, null, %ChangeVersion,
-		%Details, %ShowFolder, null, %Remove], at)
+		%ShowFolder, null, %Remove], at)
 
 
 func _on_row_selected(row: Control) -> void:
@@ -555,13 +547,18 @@ func _select(e: ProjectEntry) -> void:
 	selected = e
 	_update_actions()
 	if changed:
+		# Los plugins del seleccionado, en el panel (no los de uno que falta).
+		var plugins: ProjectPlugins = %Plugins
+		plugins.visible = e != null and not e.missing
+		if plugins.visible:
+			plugins.open_for(e)
 		selection_changed.emit(e)
 
 
 func _update_actions() -> void:
 	var none := selected == null
 	%Remove.disabled = none
-	for button: Button in [%ShowFolder, %Open, %Run, %ChangeVersion, %Details]:
+	for button: Button in [%ShowFolder, %Open, %Run, %ChangeVersion]:
 		button.disabled = none or selected.missing
 	_update_inspector()
 
