@@ -6,6 +6,15 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ### Changed
 
+- **A redesigned GUI.**
+  - A sidebar replaces the tabs: Projects, Versions and Download, with the app's logo, how many projects you have, a badge with how many installed versions have a newer release of their series, and the default version. Settings is at the bottom.
+  - Progress of installs and other long operations is a card in the sidebar, with Cancel, instead of a bar at the bottom of the window.
+  - Each screen has a header with its actions (New project, Add build, Free up space…) and a panel on the right for what's selected, instead of a column of buttons.
+  - **Projects:** each row has its own **Open** and **Run** buttons, and the panel shows the project's folder, the version it opens with and its plugins. Activating, updating, pinning and uninstalling plugins, adding plugins and presets are all there; the separate Details window is gone.
+  - **Versions:** grouped by series (4.8, 4.7…), with custom builds at the end. **Update** says which version it installs.
+  - **Download:** the install options (standard or Mono, debug symbols, export templates per platform) are in the panel, so **Install** installs right away. Double-click or Enter on a release moves to the **Install** button instead of starting a download.
+  - New look: a darker theme with the logo's blue as the accent, and the [Inter](https://github.com/rsms/inter) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) fonts (SIL Open Font License; their licenses ship with the GUI).
+- **Versions loads when the GUI starts**, not when you first open it, so the sidebar shows the default version and available updates right away. This makes one more request to GitHub per start (`godot-manager outdated`).
 - **Missing version dialog suggests a newer installed build of the same minor.** When a project is pinned to an uninstalled version (e.g. `4.8-beta3`) and a newer build of the same minor is already installed (e.g. `4.8-beta5`), the dialog offers **Use 4.8-beta5** as the primary action while keeping **Install 4.8-beta3** as a secondary button. Matches standard/Mono and never suggests an older version.
 
 ## [2.4.6] - 2026-11-24
