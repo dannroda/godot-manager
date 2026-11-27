@@ -3,11 +3,20 @@ extends SceneTree
 ## variaciones propias de la app (filas, títulos, el botón de acento...).
 ## Uso: godot --headless --path . --script res://theme/build_theme.gd
 ## Los tipos base (Button, LineEdit, TabBar...) no se tocan: quedan como los
-## trae el motor. Las variaciones usan los mismos grises semitransparentes.
+## trae el motor. Las variaciones propias usan la paleta de abajo; el acento es
+## el azul del logo (icon.svg).
 
 const OUT := "res://theme/app_theme.tres"
 
 const RADIUS := 3
+const BG := Color("#15171b")
+const SIDEBAR := Color("#1b1e23")
+const LINE := Color("#272b31")
+const NAV_ACTIVE := Color("#262b33")
+const TEXT := Color("#e8eaed")
+const TEXT_DIM := Color("#b8bec7")
+const ACCENT := Color("#70bafa")
+const ON_ACCENT := Color("#0f1a24")
 
 
 func _init() -> void:
@@ -23,9 +32,42 @@ func _init() -> void:
 	t.set_color("font_color", "SectionTitle", Color(1, 1, 1, 1))
 
 	_variant(t, "AccentButton", "Button")
-	t.set_stylebox("normal", "AccentButton", _box(Color(1, 1, 1, 0.2), RADIUS, 10, 5))
-	t.set_stylebox("hover", "AccentButton", _box(Color(1, 1, 1, 0.3), RADIUS, 10, 5))
-	t.set_stylebox("pressed", "AccentButton", _box(Color(1, 1, 1, 0.1), RADIUS, 10, 5))
+	t.set_stylebox("normal", "AccentButton", _box(ACCENT, RADIUS + 3, 12, 6))
+	t.set_stylebox("hover", "AccentButton", _box(ACCENT.lightened(0.15), RADIUS + 3, 12, 6))
+	t.set_stylebox("pressed", "AccentButton", _box(ACCENT.darkened(0.15), RADIUS + 3, 12, 6))
+	for c: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
+			"font_hover_pressed_color", "icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+		t.set_color(c, "AccentButton", ON_ACCENT)
+
+	_variant(t, "AppBackground", "Panel")
+	t.set_stylebox("panel", "AppBackground", _box(BG, 0))
+	_variant(t, "Sidebar", "PanelContainer")
+	var side := _box(SIDEBAR, 0, 12, 18)
+	side.border_width_right = 1
+	side.border_color = LINE
+	t.set_stylebox("panel", "Sidebar", side)
+	_variant(t, "BrandLabel", "Label")
+	t.set_font_size("font_size", "BrandLabel", 16)
+	t.set_color("font_color", "BrandLabel", TEXT)
+
+	# Entradas de la barra lateral: planas, la activa (pressed) con fondo.
+	_variant(t, "NavButton", "Button")
+	t.set_stylebox("normal", "NavButton", _box(Color.TRANSPARENT, RADIUS + 5, 10, 9))
+	t.set_stylebox("hover", "NavButton", _box(Color(1, 1, 1, 0.05), RADIUS + 5, 10, 9))
+	t.set_stylebox("pressed", "NavButton", _box(NAV_ACTIVE, RADIUS + 5, 10, 9))
+	t.set_stylebox("hover_pressed", "NavButton", _box(NAV_ACTIVE, RADIUS + 5, 10, 9))
+	var nav_focus := _box(Color.TRANSPARENT, RADIUS + 5)
+	nav_focus.draw_center = false
+	nav_focus.set_border_width_all(1)
+	nav_focus.border_color = ACCENT
+	t.set_stylebox("focus", "NavButton", nav_focus)
+	t.set_constant("h_separation", "NavButton", 10)
+	for c: String in ["font_color", "icon_normal_color"]:
+		t.set_color(c, "NavButton", TEXT_DIM)
+	for c: String in ["font_hover_color", "font_pressed_color", "font_hover_pressed_color",
+			"font_focus_color", "icon_hover_color", "icon_pressed_color", "icon_hover_pressed_color",
+			"icon_focus_color"]:
+		t.set_color(c, "NavButton", Color.WHITE)
 
 	_variant(t, "TopBar", "PanelContainer")
 	var top := StyleBoxEmpty.new()

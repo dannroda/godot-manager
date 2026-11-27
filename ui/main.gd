@@ -1,5 +1,6 @@
 extends Control
-## Ventana principal: barra de pestañas arriba y la pantalla activa debajo.
+## Ventana principal: barra lateral con el logo y las secciones, y la pantalla
+## activa a la derecha.
 ## Al arrancar carga los Ajustes, los pasa a GmCli y prueba el binario; si
 ## falla, muestra la franja de error y las pantallas no llaman al CLI
 ## (escuchan GmCli.availability_changed).
@@ -10,13 +11,13 @@ const SCREEN_SHORTCUTS: Array[StringName] = [&"gm_search", &"gm_refresh", &"gm_d
 
 var settings: AppSettings
 
-@onready var _tabs: TabBar = %Tabs
 @onready var _screens: Array[Control] = [%ProjectsScreen, %InstalledScreen, %RemoteScreen]
+@onready var _nav: Array[Button] = [%NavProjects, %NavInstalled, %NavRemote]
 @onready var _banner: PanelContainer = %Banner
 @onready var _banner_text: Label = %BannerText
 @onready var _banner_retry: Button = %BannerRetry
 @onready var _settings_dialog: ConfirmationDialog = $SettingsDialog
-@onready var _output_panel: PanelContainer = $Layout/OutputPanel
+@onready var _output_panel: PanelContainer = %OutputPanel
 @onready var _error_dialog: AcceptDialog = %ErrorDialog
 @onready var _error_text: Label = %ErrorText
 
@@ -34,8 +35,9 @@ static func ui_locale(os_language: String) -> String:
 
 func _ready() -> void:
 	_setup_window()
-	_tabs.tab_changed.connect(_show_screen)
-	_show_screen(_tabs.current_tab)
+	for i in _nav.size():
+		_nav[i].pressed.connect(_show_screen.bind(i))
+	_show_screen(0)
 
 	%Settings.pressed.connect(_open_settings)
 	%BannerSettings.pressed.connect(_open_settings)
@@ -57,7 +59,7 @@ func _ready() -> void:
 		var target: Control = {&"projects": %ProjectsScreen, &"installed": %InstalledScreen,
 			&"remote": %RemoteScreen}.get(tab)
 		if target != null:
-			_tabs.current_tab = _screens.find(target))
+			_show_screen(_screens.find(target)))
 	_error_dialog.add_button(tr("Ver salida"), true, "show_output")
 	_error_dialog.custom_action.connect(func(action: StringName) -> void:
 		if action == &"show_output":
@@ -69,7 +71,7 @@ func _ready() -> void:
 	_check_cli()
 
 
-## Ctrl+Tab / Ctrl+Shift+Tab (también Ctrl+RePág/AvPág) cambian de pestaña.
+## Ctrl+Tab / Ctrl+Shift+Tab (también Ctrl+RePág/AvPág) cambian de sección.
 ## Va en _input porque si no la navegación de foco se come el Tab.
 func _input(event: InputEvent) -> void:
 	if _dialog_open() or not event is InputEventKey:
@@ -80,18 +82,18 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"gm_prev_tab", true, true):
 		step = -1
 	if step != 0:
-		_tabs.current_tab = posmod(_tabs.current_tab + step, _tabs.tab_count)
+		_show_screen(posmod(current_screen() + step, _screens.size()))
 		get_viewport().set_input_as_handled()
 
 
-## Ctrl+F, F5 y Supr: los maneja la pestaña visible (`handle_shortcut`). En
+## Ctrl+F, F5 y Supr: los maneja la sección visible (`handle_shortcut`). En
 ## _unhandled_input, así un campo de texto con foco se queda con Supr.
 func _unhandled_input(event: InputEvent) -> void:
 	if _dialog_open() or not event is InputEventKey:
 		return
 	for action: StringName in SCREEN_SHORTCUTS:
 		if event.is_action_pressed(action, false, true):
-			var screen := _screens[_tabs.current_tab]
+			var screen := _screens[current_screen()]
 			if screen.has_method(&"handle_shortcut") and screen.handle_shortcut(action):
 				get_viewport().set_input_as_handled()
 			return
@@ -106,10 +108,15 @@ func _dialog_open() -> bool:
 	return false
 
 
+func current_screen() -> int:
+	return _nav.find(_nav[0].button_group.get_pressed_button())
+
+
 func _show_screen(index: int) -> void:
+	_nav[index].set_pressed_no_signal(true)
 	for i in _screens.size():
 		_screens[i].visible = i == index
-	# Al cambiar de pestaña con el teclado, el foco va a su lista (o búsqueda).
+	# Al cambiar de sección con el teclado, el foco va a su lista (o búsqueda).
 	var screen := _screens[index]
 	if screen.has_method(&"focus_list"):
 		screen.focus_list.call_deferred()
