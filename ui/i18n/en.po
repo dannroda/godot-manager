@@ -1525,3 +1525,11 @@ msgstr "Export templates: %s"
 #: main.gd
 msgid "Default: %s"
 msgstr "Default: %s"
+
+#: screens/settings_screen.gd
+msgid "Guardado."
+msgstr "Saved."
+
+#: screens/settings_screen.gd
+msgid "No se pudo guardar."
+msgstr "Couldn't save."

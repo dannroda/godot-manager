@@ -1,9 +1,10 @@
-extends ConfirmationDialog
-## Ajustes: binario de godot-manager, GITHUB_TOKEN y GODOT_DIR (la carpeta de
-## versiones: muestra la por defecto, que se guarda como vacía); y si
+extends PanelContainer
+## Sección Ajustes: binario de godot-manager, GITHUB_TOKEN y GODOT_DIR (la
+## carpeta de versiones: muestra la por defecto, que se guarda como vacía); y si
 ## godot-manager está en el PATH (eso se aplica enseguida, no al Guardar).
-## `open_with(settings)` lo llena; al Guardar escribe settings.cfg, aplica a
-## GmCli y emite `saved`.
+## `open_with(settings)` la llena con lo guardado (main lo hace cada vez que se
+## muestra: lo que no se guardó se descarta); Guardar escribe settings.cfg,
+## aplica a GmCli y emite `saved`.
 
 signal saved(settings: AppSettings)
 
@@ -68,7 +69,7 @@ func _ready() -> void:
 		_update_dir())
 	_path_button.pressed.connect(_toggle_path)
 	%CheckNow.pressed.connect(check_updates_now)
-	confirmed.connect(_save)
+	%Save.pressed.connect(_save)
 
 
 func open_with(settings: AppSettings) -> void:
@@ -87,7 +88,7 @@ func open_with(settings: AppSettings) -> void:
 	_update_enabled()
 	%UpdateResult.text = ""
 	%CheckNow.disabled = not GmCli.available or update_banner == null
-	popup_centered()
+	%SaveResult.text = ""
 	refresh_path()
 	refresh_dirs()
 
@@ -255,4 +256,6 @@ func _save() -> void:
 	if err != OK:
 		push_error("No se pudieron guardar los ajustes en %s: %s" % [settings_path, error_string(err)])
 	s.apply_to(GmCli)
+	_opened_with = s
+	%SaveResult.text = tr("Guardado.") if err == OK else tr("No se pudo guardar.")
 	saved.emit(s)

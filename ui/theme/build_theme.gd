@@ -146,7 +146,10 @@ func _init() -> void:
 	sel.border_color = Color("#3b5674")
 	t.set_stylebox("panel", "RowPanelSelected", sel)
 	_variant(t, "SettingsSection", "PanelContainer")
-	t.set_stylebox("panel", "SettingsSection", _box(Color(1, 1, 1, 0.04), RADIUS + 1, 14, 12))
+	var section := _box(SIDEBAR, RADIUS + 5, 16, 14)
+	section.set_border_width_all(1)
+	section.border_color = LINE
+	t.set_stylebox("panel", "SettingsSection", section)
 	_variant(t, "ErrorBanner", "PanelContainer")
 	var banner := _box(Color("#4a2328"), 0, 12, 8)
 	banner.border_width_bottom = 1

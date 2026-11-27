@@ -338,8 +338,8 @@ func _make_row(p: ProjectPlugin) -> Control:
 	title.name = "Title"
 	var version := p.locked_version if p.pending or p.asset else p.version
 	title.text = p.display_name() + ("  " + version if not version.is_empty() else "")
-	title.tooltip_text = title.text
-	title.mouse_filter = Control.MOUSE_FILTER_PASS
+	# La descripción va en el tooltip de la fila: en el panel ocupaba media pantalla.
+	panel.tooltip_text = title.text + ("\n\n" + p.description if not p.description.is_empty() else "")
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.custom_minimum_size.x = 60
 	info.add_child(title)
@@ -367,11 +367,6 @@ func _make_row(p: ProjectPlugin) -> Control:
 	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	meta.custom_minimum_size.x = 60
 	info.add_child(meta)
-	if not p.description.is_empty():
-		var desc := Label.new()
-		desc.text = p.description
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		info.add_child(desc)
 	var u: PluginUpdate = updates.get(p.managed_name) if p.is_managed() else null
 	if u != null:
 		var notes: PackedStringArray = []

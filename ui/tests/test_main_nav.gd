@@ -31,12 +31,12 @@ func test_does_not_run_the_cli() -> void:
 
 
 func test_show_screen_marks_only_that_section() -> void:
-	for index in [2, 1, 0]:
+	for index in [3, 2, 1, 0]:
 		main._show_screen(index)
 		var pressed: Array[bool] = []
 		for b: Button in main._nav:
 			pressed.append(b.button_pressed)
-		var expected: Array[bool] = [index == 0, index == 1, index == 2]
+		var expected: Array[bool] = [index == 0, index == 1, index == 2, index == 3]
 		assert_eq(pressed, expected, "sección %d" % index)
 		assert_eq(main.current_screen(), index)
 		assert_true(main._screens[index].visible)

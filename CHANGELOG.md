@@ -4,6 +4,11 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+### Changed
+
+- **Settings is a section of the sidebar**, like Projects, Versions and Download, instead of a separate window, and matches the new look. Each time you open it, it shows what's saved; changes you don't **Save** are discarded.
+- **Shorter plugin rows in Projects.** A plugin's description is in the row's tooltip, with its full name, instead of taking several lines of the panel.
+
 ## [2.5.0] - 2026-11-27
 
 ### Changed

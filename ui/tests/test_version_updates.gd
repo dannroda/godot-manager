@@ -3,10 +3,10 @@ extends TestCase
 ## una más nueva de la serie, y Ajustes con el estado del PATH.
 
 const INSTALLED := preload("res://screens/installed_screen.tscn")
-const SETTINGS := preload("res://dialogs/settings_dialog.tscn")
+const SETTINGS := preload("res://screens/settings_screen.tscn")
 
 var screen: Control
-var settings: ConfirmationDialog
+var settings: Control
 
 
 func after_each() -> void:

@@ -1,0 +1,271 @@
+[gd_scene format=3 uid="uid://w4yb1vi2icjc"]
+
+[ext_resource type="Script" uid="uid://bc0mftulobfn1" path="res://screens/settings_screen.gd" id="1_aoggo"]
+
+[node name="SettingsScreen" type="PanelContainer" unique_id=1602077598]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_vertical = 3
+theme_type_variation = &"ScreenPanel"
+script = ExtResource("1_aoggo")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=979944463]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="HBoxContainer" parent="Layout" unique_id=979944464]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Layout/Header" unique_id=979944465]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ScreenTitle"
+text = "Ajustes"
+
+[node name="SaveResult" type="Label" parent="Layout/Header" unique_id=979944466]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+
+[node name="Save" type="Button" parent="Layout/Header" unique_id=979944467]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AccentButton"
+text = "Guardar"
+
+[node name="Scroll" type="ScrollContainer" parent="Layout" unique_id=979944468]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Layout/Scroll" unique_id=979944462]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="BinarySection" type="PanelContainer" parent="Layout/Scroll/Content"]
+layout_mode = 2
+theme_type_variation = &"SettingsSection"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/Scroll/Content/BinarySection"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BinaryTitle" type="Label" parent="Layout/Scroll/Content/BinarySection/VBox" unique_id=1888504104]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Binario de godot-manager"
+
+[node name="UsePath" type="CheckBox" parent="Layout/Scroll/Content/BinarySection/VBox" unique_id=957404161]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Buscar en el PATH"
+
+[node name="FixedRow" type="HBoxContainer" parent="Layout/Scroll/Content/BinarySection/VBox" unique_id=1963307164]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="UseFixed" type="CheckBox" parent="Layout/Scroll/Content/BinarySection/VBox/FixedRow" unique_id=803607939]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ruta fija:"
+
+[node name="BinaryPath" type="LineEdit" parent="Layout/Scroll/Content/BinarySection/VBox/FixedRow" unique_id=1384118609]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "/ruta/a/godot-manager"
+
+[node name="BrowseBinary" type="Button" parent="Layout/Scroll/Content/BinarySection/VBox/FixedRow" unique_id=1097156744]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Elegir…"
+
+[node name="TestRow" type="HBoxContainer" parent="Layout/Scroll/Content/BinarySection/VBox" unique_id=2143398095]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TestBinary" type="Button" parent="Layout/Scroll/Content/BinarySection/VBox/TestRow" unique_id=1829571079]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+size_flags_vertical = 0
+text = "Probar"
+
+[node name="TestResult" type="Label" parent="Layout/Scroll/Content/BinarySection/VBox/TestRow" unique_id=1210197442]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="DirSection" type="PanelContainer" parent="Layout/Scroll/Content"]
+layout_mode = 2
+theme_type_variation = &"SettingsSection"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/Scroll/Content/DirSection"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DirTitle" type="Label" parent="Layout/Scroll/Content/DirSection/VBox" unique_id=56188796]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Carpeta de versiones"
+
+[node name="DirRow" type="HBoxContainer" parent="Layout/Scroll/Content/DirSection/VBox" unique_id=775974707]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GodotDir" type="LineEdit" parent="Layout/Scroll/Content/DirSection/VBox/DirRow" unique_id=558451676]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "La carpeta por defecto del CLI"
+
+[node name="BrowseDir" type="Button" parent="Layout/Scroll/Content/DirSection/VBox/DirRow" unique_id=1756719669]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Elegir…"
+
+[node name="ResetDir" type="Button" parent="Layout/Scroll/Content/DirSection/VBox/DirRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Vuelve a la carpeta por defecto"
+disabled = true
+text = "Restaurar"
+
+[node name="DirHelp" type="Label" parent="Layout/Scroll/Content/DirSection/VBox" unique_id=1117556363]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Donde godot-manager instala las versiones (GODOT_DIR)."
+autowrap_mode = 3
+
+[node name="TokenSection" type="PanelContainer" parent="Layout/Scroll/Content"]
+layout_mode = 2
+theme_type_variation = &"SettingsSection"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/Scroll/Content/TokenSection"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TokenTitle" type="Label" parent="Layout/Scroll/Content/TokenSection/VBox" unique_id=374654540]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Token de GitHub (opcional)"
+
+[node name="TokenRow" type="HBoxContainer" parent="Layout/Scroll/Content/TokenSection/VBox" unique_id=1802912527]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Token" type="LineEdit" parent="Layout/Scroll/Content/TokenSection/VBox/TokenRow" unique_id=1795545572]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "ghp_…"
+secret = true
+
+[node name="ShowToken" type="Button" parent="Layout/Scroll/Content/TokenSection/VBox/TokenRow" unique_id=1407598367]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+toggle_mode = true
+text = "Ver"
+
+[node name="TokenHelp" type="Label" parent="Layout/Scroll/Content/TokenSection/VBox" unique_id=331827054]
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "Sin token, GitHub permite 60 pedidos por hora (cada «Refrescar» de Descargar usa unos 4). Se guarda sin cifrar en los ajustes de la app."
+autowrap_mode = 3
+
+[node name="PathSection" type="PanelContainer" parent="Layout/Scroll/Content"]
+layout_mode = 2
+theme_type_variation = &"SettingsSection"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/Scroll/Content/PathSection"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PathTitle" type="Label" parent="Layout/Scroll/Content/PathSection/VBox"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Terminal"
+
+[node name="PathRow" type="HBoxContainer" parent="Layout/Scroll/Content/PathSection/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PathStatus" type="Label" parent="Layout/Scroll/Content/PathSection/VBox/PathRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"DimLabel"
+autowrap_mode = 3
+
+[node name="PathButton" type="Button" parent="Layout/Scroll/Content/PathSection/VBox/PathRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+text = "Agregar al PATH"
+
+[node name="UpdatesSection" type="PanelContainer" parent="Layout/Scroll/Content"]
+layout_mode = 2
+theme_type_variation = &"SettingsSection"
+
+[node name="VBox" type="VBoxContainer" parent="Layout/Scroll/Content/UpdatesSection"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="UpdatesTitle" type="Label" parent="Layout/Scroll/Content/UpdatesSection/VBox"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "Actualizaciones"
+
+[node name="CheckUpdates" type="CheckBox" parent="Layout/Scroll/Content/UpdatesSection/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Como mucho una vez por día, pregunta a GitHub si hay una release nueva de godot-manager"
+text = "Buscar actualizaciones de godot-manager al abrir"
+button_pressed = true
+
+[node name="CheckRow" type="HBoxContainer" parent="Layout/Scroll/Content/UpdatesSection/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CheckNow" type="Button" parent="Layout/Scroll/Content/UpdatesSection/VBox/CheckRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+tooltip_text = "Pregunta a GitHub ahora si hay una release nueva de godot-manager"
+text = "Buscar ahora"
+
+[node name="UpdateResult" type="Label" parent="Layout/Scroll/Content/UpdatesSection/VBox/CheckRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"DimLabel"
+autowrap_mode = 3
+
+[node name="BinaryFileDialog" type="FileDialog" parent="." unique_id=961948214]
+unique_name_in_owner = true
+title = "Elegir godot-manager"
+size = Vector2i(700, 450)
+file_mode = 0
+access = 2
+use_native_dialog = true
+
+[node name="DirFileDialog" type="FileDialog" parent="." unique_id=489771739]
+unique_name_in_owner = true
+title = "Elegir la carpeta de versiones"
+size = Vector2i(700, 450)
+file_mode = 2
+access = 2
+use_native_dialog = true

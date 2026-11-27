@@ -13,12 +13,12 @@ var settings: AppSettings
 ## false: no carga los Ajustes ni prueba el CLI al arrancar (tests).
 var check_cli_on_ready := true
 
-@onready var _screens: Array[Control] = [%ProjectsScreen, %InstalledScreen, %RemoteScreen]
-@onready var _nav: Array[Button] = [%NavProjects, %NavInstalled, %NavRemote]
+@onready var _screens: Array[Control] = [%ProjectsScreen, %InstalledScreen, %RemoteScreen, %SettingsScreen]
+@onready var _nav: Array[Button] = [%NavProjects, %NavInstalled, %NavRemote, %Settings]
 @onready var _banner: PanelContainer = %Banner
 @onready var _banner_text: Label = %BannerText
 @onready var _banner_retry: Button = %BannerRetry
-@onready var _settings_dialog: ConfirmationDialog = $SettingsDialog
+@onready var _settings_screen: Control = %SettingsScreen
 @onready var _output_panel: PanelContainer = %OutputPanel
 @onready var _error_dialog: AcceptDialog = %ErrorDialog
 @onready var _error_text: Label = %ErrorText
@@ -41,11 +41,10 @@ func _ready() -> void:
 		_nav[i].pressed.connect(_show_screen.bind(i))
 	_show_screen(0)
 
-	%Settings.pressed.connect(_open_settings)
 	%BannerSettings.pressed.connect(_open_settings)
 	_banner_retry.pressed.connect(_check_cli)
-	_settings_dialog.update_banner = %UpdateBanner
-	_settings_dialog.saved.connect(func(s: AppSettings) -> void:
+	_settings_screen.update_banner = %UpdateBanner
+	_settings_screen.saved.connect(func(s: AppSettings) -> void:
 		settings = s
 		_check_cli())
 	GmCli.availability_changed.connect(_on_availability_changed)
@@ -126,6 +125,10 @@ func _show_screen(index: int) -> void:
 	# button_pressed suelta las otras del grupo (set_pressed_no_signal no) y no
 	# emite `pressed`, así que no vuelve a entrar acá.
 	_nav[index].button_pressed = true
+	# Ajustes se llena con lo guardado cada vez que se entra: lo que no se
+	# guardó se descarta.
+	if _screens[index] == _settings_screen and settings != null:
+		_settings_screen.open_with(settings)
 	for i in _screens.size():
 		_screens[i].visible = i == index
 	# Al cambiar de sección con el teclado, el foco va a su lista (o búsqueda).
@@ -135,7 +138,7 @@ func _show_screen(index: int) -> void:
 
 
 func _open_settings() -> void:
-	_settings_dialog.open_with(settings)
+	_show_screen(_screens.find(_settings_screen))
 
 
 func _check_cli() -> void:

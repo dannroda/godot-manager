@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://c6t6g7cbwaf6m" path="res://screens/installed_screen.tscn" id="4_7mycd"]
 [ext_resource type="PackedScene" uid="uid://b7rbi3mrwkb61" path="res://screens/remote_screen.tscn" id="5_272bh"]
 [ext_resource type="PackedScene" uid="uid://cmsi88i3qiokf" path="res://panels/job_panel.tscn" id="6_5vw27"]
-[ext_resource type="PackedScene" uid="uid://w4yb1vi2icjc" path="res://dialogs/settings_dialog.tscn" id="6_7mycd"]
+[ext_resource type="PackedScene" uid="uid://w4yb1vi2icjc" path="res://screens/settings_screen.tscn" id="6_7mycd"]
 [ext_resource type="PackedScene" uid="uid://dvcqk8rf7uvq4" path="res://panels/output_panel.tscn" id="6_272bh"]
 [ext_resource type="PackedScene" path="res://panels/update_banner.tscn" id="9_updb"]
 [ext_resource type="Texture2D" path="res://icon.svg" id="10_logo"]
@@ -153,6 +153,8 @@ text_overrun_behavior = 3
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"NavButton"
+toggle_mode = true
+button_group = SubResource("ButtonGroup_nav")
 text = "Ajustes"
 icon = ExtResource("14_sett")
 alignment = 0
@@ -215,11 +217,15 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
+[node name="SettingsScreen" parent="Layout/Content/Screens" unique_id=1602077598 instance=ExtResource("6_7mycd")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
 [node name="OutputPanel" parent="Layout/Content" unique_id=1329205976 instance=ExtResource("6_272bh")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="SettingsDialog" parent="." unique_id=1602077598 instance=ExtResource("6_7mycd")]
 
 [node name="ErrorDialog" type="AcceptDialog" parent="." unique_id=510327874]
 unique_name_in_owner = true
