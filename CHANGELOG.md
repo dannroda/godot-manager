@@ -4,6 +4,8 @@ All notable changes to godot-manager. The release workflow (Actions → Release 
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-27
+
 ### Changed
 
 - **A redesigned GUI.**
