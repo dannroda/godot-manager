@@ -23,6 +23,8 @@ var _marks := {}
 var _load_error: CliError
 ## Escrituras de esta pantalla en curso (desinstalar).
 var _busy := 0
+## Con qué se llenó el formulario del panel: tag y lo instalado de esa versión.
+var _form_key := ""
 
 @onready var _search: LineEdit = %Search
 @onready var _channel: OptionButton = %Channel
@@ -220,10 +222,13 @@ func _on_row_activated(row: Control) -> void:
 
 func _select(rel: RemoteVersion) -> void:
 	var changed := rel != selected
-	# Por tag: Refrescar trae objetos nuevos y no tiene que borrar lo elegido.
-	var other := rel == null or selected == null or rel.tag != selected.tag
 	selected = rel
-	if other:
+	# Por tag y lo instalado: Refrescar o buscar no borran lo elegido, pero
+	# después de instalar una edición el formulario pasa a la otra.
+	var m: RemoteFilter.Marks = _marks.get(rel.tag) if rel != null else null
+	var key := "" if rel == null else "%s|%s|%s" % [rel.tag, m != null and m.normal, m != null and m.mono]
+	if key != _form_key:
+		_form_key = key
 		_fill_form()
 	_update_actions()
 	if changed:

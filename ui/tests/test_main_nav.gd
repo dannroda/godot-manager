@@ -5,25 +5,27 @@ extends TestCase
 const MAIN := preload("res://main.tscn")
 
 var main: Control
-## Lo que main pisa en GmCli al arrancar (los Ajustes reales y el chequeo del
-## binario); se restaura para que los tests siguientes no vean el CLI real.
-var _saved := {}
+var _history_before := 0
 
 
 func before_each() -> void:
-	_saved = {"available": GmCli.available, "binary": GmCli.binary, "env": GmCli.env.duplicate(),
-		"cli_version": GmCli.cli_version, "availability_message": GmCli.availability_message}
+	_history_before = GmCli.history.size()
 	main = MAIN.instantiate()
+	# Sin los Ajustes reales ni el CLI: los tests no corren comandos de verdad.
+	main.check_cli_on_ready = false
 	tree.root.add_child(main)
 
 
 func after_each() -> void:
-	# El chequeo es asíncrono: se espera a que termine antes de restaurar.
-	await wait_until(func() -> bool: return not (main.get_node("%BannerRetry") as Button).disabled)
 	main.queue_free()
 	await wait_frames(1)
-	for key: String in _saved:
-		GmCli.set(key, _saved[key])
+
+
+func test_does_not_run_the_cli() -> void:
+	# Con check_cli_on_ready apagado, levantar main no lanza comandos.
+	await wait_frames(3)
+	assert_eq(GmCli.history.size(), _history_before)
+	assert_false(GmCli.available)
 
 
 func test_show_screen_marks_only_that_section() -> void:

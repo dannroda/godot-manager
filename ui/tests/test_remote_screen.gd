@@ -249,3 +249,16 @@ func test_buttons_refresh_when_installed_changes_and_delete_shortcut() -> void:
 	assert_false((screen.get_node("%Install") as Button).disabled)
 	assert_eq((screen.get_node("%Install") as Button).text, "Instalar")
 	assert_false(screen.handle_shortcut(&"gm_delete"), "Supr no hace nada si ya no está instalada")
+
+
+func test_after_installing_an_edition_the_panel_offers_the_other() -> void:
+	var asked: Array = []
+	screen.install_requested.connect(func(args: PackedStringArray, _t: String) -> void: asked.append(args))
+	_populate([_release("4.7.1-stable", true, true)], [])
+	screen._on_row_selected(_row_for("4.7.1-stable"))
+	assert_false(screen.get_node("%InstallForm").options.mono)
+	# Terminó la instalación de la normal: refresh_installed trae la lista nueva.
+	_populate([_release("4.7.1-stable", true, true)], [_installed("4.7.1-stable", "4.7.1-stable", false)])
+	assert_true(screen.get_node("%InstallForm").options.mono, "pasa a la Mono, que es la que falta")
+	(screen.get_node("%Install") as Button).pressed.emit()
+	assert_eq(asked, [PackedStringArray(["--json", "install", "4.7.1-stable", "--mono"])])

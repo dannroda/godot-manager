@@ -10,6 +10,8 @@ const MIN_WINDOW_SIZE := Vector2i(820, 480)
 const SCREEN_SHORTCUTS: Array[StringName] = [&"gm_search", &"gm_refresh", &"gm_delete"]
 
 var settings: AppSettings
+## false: no carga los Ajustes ni prueba el CLI al arrancar (tests).
+var check_cli_on_ready := true
 
 @onready var _screens: Array[Control] = [%ProjectsScreen, %InstalledScreen, %RemoteScreen]
 @onready var _nav: Array[Button] = [%NavProjects, %NavInstalled, %NavRemote]
@@ -71,6 +73,9 @@ func _ready() -> void:
 			_error_dialog.hide()
 			_output_panel.expand())
 
+	if not check_cli_on_ready:
+		settings = AppSettings.new()
+		return
 	settings = AppSettings.load_from()
 	settings.apply_to(GmCli)
 	_check_cli()

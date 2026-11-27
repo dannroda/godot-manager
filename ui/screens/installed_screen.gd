@@ -178,6 +178,7 @@ func _rebuild() -> void:
 		_rows.remove_child(child)
 		child.queue_free()
 	if not _load_error.is_empty():
+		summary_changed.emit("", 0)
 		_show_placeholder(tr("No se pudo cargar la lista:\n%s") % _load_error, ListState.Kind.ERROR,
 			[[tr("Reintentar"), refresh]])
 		_select(null)

@@ -45,9 +45,13 @@ func _ready() -> void:
 	# El panel se llena al elegir un proyecto, que puede ser antes de que el
 	# CLI esté listo (al arrancar): cuando lo está, se vuelve a pedir.
 	GmCli.availability_changed.connect(func(ok: bool, _m: String) -> void:
-		if ok and project != null:
-			load_presets()
+		if not ok:
+			return
+		load_presets()
+		if project != null:
 			load_plugins())
+	# Los presets son los mismos para todos los proyectos: una vez, no por proyecto.
+	load_presets()
 	_remove_dialog.confirmed.connect(func() -> void:
 		if _to_remove != null:
 			remove_plugin(_to_remove))
@@ -79,7 +83,6 @@ func fill(p: ProjectEntry) -> void:
 
 func open_for(p: ProjectEntry) -> void:
 	fill(p)
-	load_presets()
 	load_plugins()
 
 
