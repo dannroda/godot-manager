@@ -231,3 +231,5 @@ The GUI's translations are in `ui/i18n/en.po`; the source strings are in Spanish
 ## License
 
 [MIT](LICENSE).
+
+The GUI bundles the [Inter](https://github.com/rsms/inter) (© The Inter Project Authors) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (© The JetBrains Mono Project Authors) fonts, both under the [SIL Open Font License 1.1](https://openfontlicense.org). Their licenses are in [`ui/theme/fonts/`](ui/theme/fonts/).

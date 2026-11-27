@@ -35,7 +35,7 @@ theme_override_constants/separation = 6
 [node name="Name" type="Label" parent="HBox/Info/Top" unique_id=1184519861]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"TitleLabel"
+theme_type_variation = &"VersionLabel"
 
 [node name="Tags" type="HBoxContainer" parent="HBox/Info/Top" unique_id=440952292]
 unique_name_in_owner = true

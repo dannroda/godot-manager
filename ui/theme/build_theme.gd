@@ -22,14 +22,31 @@ const ON_ACCENT := Color("#0f1a24")
 func _init() -> void:
 	var t := Theme.new()
 
+	# Inter en toda la app; los títulos, con peso 600 (es una fuente variable).
+	# JetBrains Mono para versiones y comandos. Licencias: theme/fonts/*-OFL.txt.
+	var inter: FontFile = load("res://theme/fonts/InterVariable.ttf")
+	t.default_font = inter
+	var strong := FontVariation.new()
+	strong.base_font = inter
+	strong.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 600}
+	var mono: FontFile = load("res://theme/fonts/JetBrainsMono-Regular.ttf")
+
 	_variant(t, "DimLabel", "Label")
 	t.set_color("font_color", "DimLabel", Color(1, 1, 1, 0.6))
 	_variant(t, "TitleLabel", "Label")
 	t.set_font_size("font_size", "TitleLabel", 18)
+	t.set_font("font", "TitleLabel", strong)
+	# Nombre de una versión (filas de Versiones y Descargar).
+	_variant(t, "VersionLabel", "Label")
+	t.set_font_size("font_size", "VersionLabel", 16)
+	t.set_font("font", "VersionLabel", mono)
+	_variant(t, "CommandLabel", "Label")
+	t.set_font("font", "CommandLabel", mono)
 
 	_variant(t, "SectionTitle", "Label")
 	t.set_font_size("font_size", "SectionTitle", 17)
 	t.set_color("font_color", "SectionTitle", Color(1, 1, 1, 1))
+	t.set_font("font", "SectionTitle", strong)
 
 	_variant(t, "AccentButton", "Button")
 	t.set_stylebox("normal", "AccentButton", _box(ACCENT, RADIUS + 3, 12, 6))
@@ -56,6 +73,7 @@ func _init() -> void:
 	t.set_stylebox("fill", "JobProgress", _box(ACCENT, 2, 0, 0))
 	_variant(t, "JobTitle", "Label")
 	t.set_font_size("font_size", "JobTitle", 14)
+	t.set_font("font", "JobTitle", strong)
 	t.set_color("font_color", "JobTitle", TEXT)
 	# Contador gris y badge ámbar (actualizaciones) a la derecha de la sección.
 	_variant(t, "NavCount", "Label")
@@ -67,6 +85,7 @@ func _init() -> void:
 	t.set_stylebox("normal", "NavBadge", _box(Color("#f0a24a"), 9, 7, 0))
 	_variant(t, "BrandLabel", "Label")
 	t.set_font_size("font_size", "BrandLabel", 16)
+	t.set_font("font", "BrandLabel", strong)
 	t.set_color("font_color", "BrandLabel", TEXT)
 
 	# Entradas de la barra lateral: planas, la activa (pressed) con fondo.
@@ -107,6 +126,7 @@ func _init() -> void:
 	t.set_stylebox("normal", "GroupTitle", group)
 	_variant(t, "ScreenTitle", "Label")
 	t.set_font_size("font_size", "ScreenTitle", 22)
+	t.set_font("font", "ScreenTitle", strong)
 	t.set_color("font_color", "ScreenTitle", TEXT)
 	# Panel de la derecha con lo seleccionado y sus acciones.
 	_variant(t, "Inspector", "PanelContainer")

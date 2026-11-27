@@ -231,3 +231,5 @@ Las traducciones de la interfaz están en `ui/i18n/en.po`; los textos fuente est
 ## Licencia
 
 [MIT](LICENSE).
+
+La interfaz incluye las fuentes [Inter](https://github.com/rsms/inter) (© The Inter Project Authors) y [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (© The JetBrains Mono Project Authors), las dos bajo la [SIL Open Font License 1.1](https://openfontlicense.org). Las licencias están en [`ui/theme/fonts/`](ui/theme/fonts/).

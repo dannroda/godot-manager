@@ -68,6 +68,7 @@ theme_type_variation = &"ListPanel"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
+theme_type_variation = &"CommandLabel"
 autowrap_mode = 3
 
 [node name="Size" type="Label" parent="." unique_id=1304819907]
