@@ -97,6 +97,14 @@ func _init() -> void:
 	t.set_stylebox("panel", "TopBar", top)
 	_variant(t, "ScreenPanel", "PanelContainer")
 	t.set_stylebox("panel", "ScreenPanel", StyleBoxEmpty.new())
+	_variant(t, "GroupTitle", "Label")
+	t.set_font_size("font_size", "GroupTitle", 13)
+	t.set_color("font_color", "GroupTitle", Color("#9aa1ab"))
+	var group := StyleBoxEmpty.new()
+	group.content_margin_left = 12
+	group.content_margin_top = 10
+	group.content_margin_bottom = 2
+	t.set_stylebox("normal", "GroupTitle", group)
 	_variant(t, "ScreenTitle", "Label")
 	t.set_font_size("font_size", "ScreenTitle", 22)
 	t.set_color("font_color", "ScreenTitle", TEXT)

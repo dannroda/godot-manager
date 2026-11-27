@@ -45,7 +45,7 @@ func _screen_with_updates() -> void:
 
 func _row(name: String) -> Control:
 	for r in screen.get_node("%Rows").get_children():
-		if r.version.name == name:
+		if r is SelectableRow and r.version.name == name:
 			return r
 	return null
 

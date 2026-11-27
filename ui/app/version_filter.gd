@@ -42,6 +42,37 @@ static func is_before(a: InstalledVersion, b: InstalledVersion) -> bool:
 	return a.name < b.name
 
 
+## La serie de una versión para agrupar la lista: "4.8" para 4.8-beta3 o
+## 4.8.1-stable; "" para un build propio, que no tiene versión oficial.
+static func series(v: InstalledVersion) -> String:
+	if v.custom or v.tag.is_empty() and v.name.is_empty():
+		return ""
+	var numbers := (v.tag if not v.tag.is_empty() else v.name).get_slice("-", 0).split(".")
+	if numbers.size() < 2 or not numbers[0].is_valid_int() or not numbers[1].is_valid_int():
+		return ""
+	return "%s.%s" % [numbers[0], numbers[1]]
+
+
+## `shown` partida por serie, en el orden en que aparece cada una; los builds
+## propios (serie "") van al final. [[serie, [versiones…]], …]
+static func group_by_series(shown: Array[InstalledVersion]) -> Array:
+	var groups := {}
+	var order: Array[String] = []
+	for v in shown:
+		var s := series(v)
+		if not groups.has(s):
+			groups[s] = []
+			order.append(s)
+		(groups[s] as Array).append(v)
+	if order.has(""):
+		order.erase("")
+		order.append("")
+	var out := []
+	for s in order:
+		out.append([s, groups[s]])
+	return out
+
+
 static func _matches_kind(v: InstalledVersion, kind: Kind) -> bool:
 	match kind:
 		Kind.MONO:

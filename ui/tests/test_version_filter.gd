@@ -43,3 +43,24 @@ func test_custom_builds_sort_by_name_as_version() -> void:
 	b.tag = "4.9-stable"
 	var list: Array[InstalledVersion] = [b, a]
 	assert_eq(_names(VersionFilter.apply(list, "", VersionFilter.Kind.ALL)), ["4.10-mio", "4.9-stable"])
+
+
+func test_series_and_groups() -> void:
+	var make := func(name: String, custom := false) -> InstalledVersion:
+		var v := InstalledVersion.new()
+		v.name = name
+		v.custom = custom
+		v.tag = "" if custom else name
+		return v
+	assert_eq(VersionFilter.series(make.call("4.8-beta3")), "4.8")
+	assert_eq(VersionFilter.series(make.call("4.7.2-stable")), "4.7")
+	assert_eq(VersionFilter.series(make.call("4.7.2-stable-mono")), "4.7")
+	assert_eq(VersionFilter.series(make.call("mi-build", true)), "")
+	var shown: Array[InstalledVersion] = [make.call("4.8-beta3"), make.call("mi-build", true),
+		make.call("4.7.2-stable"), make.call("4.7.1-stable")]
+	var groups := VersionFilter.group_by_series(shown)
+	var titles: Array[String] = []
+	for g: Array in groups:
+		titles.append(g[0])
+	assert_eq(titles, ["4.8", "4.7", ""] as Array[String], "los builds propios al final")
+	assert_eq((groups[1][1] as Array).size(), 2)

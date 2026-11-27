@@ -185,16 +185,21 @@ func _rebuild() -> void:
 	_emit_summary()
 	var shown := visible_versions()
 	var keep: InstalledVersion = null
-	for v in shown:
-		var row := ROW_SCENE.instantiate()
-		row.setup(v, update_for(v))
-		row.selected.connect(_on_row_selected)
-		row.activated.connect(_on_row_activated)
-		row.context_requested.connect(_on_row_context)
-		_rows.add_child(row)
-		if selected != null and v.name == selected.name:
-			keep = v
-			row.is_selected = true
+	var groups := VersionFilter.group_by_series(shown)
+	for g: Array in groups:
+		# Con una sola serie el título no agrega nada.
+		if groups.size() > 1:
+			_rows.add_child(_group_title(g[0]))
+		for v: InstalledVersion in g[1]:
+			var row := ROW_SCENE.instantiate()
+			row.setup(v, update_for(v))
+			row.selected.connect(_on_row_selected)
+			row.activated.connect(_on_row_activated)
+			row.context_requested.connect(_on_row_context)
+			_rows.add_child(row)
+			if selected != null and v.name == selected.name:
+				keep = v
+				row.is_selected = true
 	if shown.is_empty() and versions.is_empty():
 		_show_placeholder(tr("No hay versiones instaladas."), ListState.Kind.INFO, [
 			["Ir a Descargar", func() -> void: tab_requested.emit(&"remote")],
@@ -208,6 +213,14 @@ func _rebuild() -> void:
 	_select(keep)
 	if had_focus:
 		focus_list.call_deferred()
+
+
+## Título de un grupo de la lista: "4.8", o "Builds propios".
+func _group_title(series: String) -> Label:
+	var title := Label.new()
+	title.text = series if not series.is_empty() else tr("Builds propios")
+	title.theme_type_variation = &"GroupTitle"
+	return title
 
 
 func _show_placeholder(text: String, kind := ListState.Kind.INFO, actions: Array = []) -> void:
@@ -230,7 +243,8 @@ func _on_row_context(row: Control, at: Vector2) -> PopupMenu:
 
 func _on_row_selected(row: Control) -> void:
 	for r in _rows.get_children():
-		r.is_selected = r == row
+		if r is SelectableRow:
+			r.is_selected = r == row
 	_select(row.version)
 
 

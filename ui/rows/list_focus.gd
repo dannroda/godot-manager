@@ -9,7 +9,8 @@ extends RefCounted
 static func focus_rows(rows: Container, fallback: Control) -> void:
 	var first: Control = null
 	for row: Control in rows.get_children():
-		if not row.visible or row.is_queued_for_deletion():
+		# Los títulos de grupo (Versiones) no son filas.
+		if not row is SelectableRow or not row.visible or row.is_queued_for_deletion():
 			continue
 		if row.get("is_selected"):
 			row.grab_focus()
