@@ -80,6 +80,7 @@ layout_mode = 2
 size_flags_vertical = 4
 focus_mode = 0
 tooltip_text = "Correr"
+accessibility_name = "Correr"
 icon = ExtResource("2_play")
 
 [node name="OpenNow" type="Button" parent="HBox" unique_id=21927820]
