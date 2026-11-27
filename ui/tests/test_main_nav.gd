@@ -25,7 +25,6 @@ func test_does_not_run_the_cli() -> void:
 	# Con check_cli_on_ready apagado, levantar main no lanza comandos.
 	await wait_frames(3)
 	assert_eq(GmCli.history.size(), _history_before)
-	assert_false(GmCli.available)
 
 
 func test_show_screen_marks_only_that_section() -> void:

@@ -96,8 +96,8 @@ func load_plugins() -> void:
 	_set_busy(true)
 	_set_status(tr("Leyendo plugins…"))
 	var path := project.path
-	var job := GmCli.read(GmCommands.plugins(path))
-	job.notify_on_error = false
+	# De fondo: se pide solo al elegir un proyecto, no ensucia Salida.
+	var job := GmCli.read_background(GmCommands.plugins(path))
 	await job.finished
 	# Se eligió otro proyecto mientras tanto: esta respuesta ya no va.
 	if project == null or project.path != path:
@@ -117,8 +117,7 @@ func load_presets() -> void:
 	if not GmCli.available:
 		show_presets([])
 		return
-	var job := GmCli.read(GmCommands.presets())
-	job.notify_on_error = false
+	var job := GmCli.read_background(GmCommands.presets())
 	await job.finished
 	var r := GmParse.parse_presets(job.stdout) if job.start_error == null else null
 	show_presets(r.value if r != null and r.ok else [])
