@@ -1524,3 +1524,7 @@ msgstr "Mono: %s"
 #: screens/remote_screen.gd
 msgid "Export templates: %s"
 msgstr "Export templates: %s"
+
+#: main.gd
+msgid "Default: %s"
+msgstr "Default: %s"

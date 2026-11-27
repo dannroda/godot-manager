@@ -11,6 +11,8 @@ signal install_requested(args: PackedStringArray, title: String)
 signal error_reported(message: String)
 ## Una escritura larga ya lanzada (crear un proyecto) para el panel de progreso.
 signal job_started(job: CliJob, title: String)
+## Cuántos proyectos tiene la lista (para el contador de la barra lateral).
+signal count_changed(count: int)
 
 const ROW_SCENE := preload("res://rows/project_row.tscn")
 const MissingVersionDialog := preload("res://dialogs/missing_version_dialog.gd")
@@ -470,6 +472,7 @@ func _rebuild() -> void:
 	for child in _rows.get_children():
 		_rows.remove_child(child)
 		child.queue_free()
+	count_changed.emit(entries.size())
 	var shown := visible_projects()
 	var keep: ProjectEntry = null
 	for e in shown:

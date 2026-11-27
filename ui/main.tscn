@@ -77,6 +77,22 @@ text = "Proyectos"
 icon = ExtResource("11_proj")
 alignment = 0
 
+[node name="ProjectsCount" type="Label" parent="Layout/Sidebar/Nav/NavProjects" unique_id=1071522651]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -48.0
+offset_right = -10.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"NavCount"
+horizontal_alignment = 2
+vertical_alignment = 1
+
 [node name="NavInstalled" type="Button" parent="Layout/Sidebar/Nav" unique_id=1071522648]
 unique_name_in_owner = true
 layout_mode = 2
@@ -86,6 +102,26 @@ button_group = SubResource("ButtonGroup_nav")
 text = "Versiones"
 icon = ExtResource("12_vers")
 alignment = 0
+
+[node name="UpdatesBadge" type="Label" parent="Layout/Sidebar/Nav/NavInstalled" unique_id=1071522652]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -10.0
+offset_right = -10.0
+offset_bottom = 10.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"NavBadge"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="NavRemote" type="Button" parent="Layout/Sidebar/Nav" unique_id=1071522649]
 unique_name_in_owner = true
@@ -100,6 +136,18 @@ alignment = 0
 [node name="Spacer" type="Control" parent="Layout/Sidebar/Nav" unique_id=1071522650]
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="JobPanel" parent="Layout/Sidebar/Nav" unique_id=859153623 instance=ExtResource("6_5vw27")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DefaultVersion" type="Label" parent="Layout/Sidebar/Nav" unique_id=1071522653]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 1
+theme_type_variation = &"NavCount"
+text_overrun_behavior = 3
 
 [node name="Settings" type="Button" parent="Layout/Sidebar/Nav" unique_id=267605361]
 unique_name_in_owner = true
@@ -164,10 +212,6 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="RemoteScreen" parent="Layout/Content/Screens" unique_id=1642537091 instance=ExtResource("5_272bh")]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="JobPanel" parent="Layout/Content" unique_id=859153623 instance=ExtResource("6_5vw27")]
 unique_name_in_owner = true
 layout_mode = 2
 

@@ -9,6 +9,8 @@ signal selection_changed(version: InstalledVersion)
 signal install_requested(args: PackedStringArray, title: String)
 ## Pide ir a otra pestaña (&"remote", &"projects"…); main la cambia.
 signal tab_requested(tab: StringName)
+## La default y cuántas tienen una versión nueva sin instalar (barra lateral).
+signal summary_changed(default_name: String, updates: int)
 
 const ROW_SCENE := preload("res://rows/version_row.tscn")
 
@@ -144,6 +146,18 @@ func check_updates() -> void:
 	_rebuild()
 
 
+func _emit_summary() -> void:
+	var default_name := ""
+	var updates := 0
+	for v in versions:
+		if v.is_default:
+			default_name = v.name
+		var u := update_for(v)
+		if u != null and not u.installed:
+			updates += 1
+	summary_changed.emit(default_name, updates)
+
+
 ## La actualización disponible para `v` (null si no hay).
 func update_for(v: InstalledVersion) -> VersionUpdate:
 	return _updates.get(v.name) if v != null else null
@@ -168,6 +182,7 @@ func _rebuild() -> void:
 			[[tr("Reintentar"), refresh]])
 		_select(null)
 		return
+	_emit_summary()
 	var shown := visible_versions()
 	var keep: InstalledVersion = null
 	for v in shown:

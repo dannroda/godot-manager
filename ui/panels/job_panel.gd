@@ -1,5 +1,5 @@
 extends PanelContainer
-## Panel de abajo para las escrituras largas (install, templates, symbols):
+## Tarjeta de la barra lateral para las escrituras largas (install, templates, symbols):
 ## título, barra, la última línea del CLI, avisos y Cancelar. Con eventos
 ## `download` la barra muestra el avance real; si no, queda indeterminada.
 ## No llama al CLI por su cuenta salvo `run` (GmCli.write); `track` sigue un
@@ -141,7 +141,6 @@ func _refresh() -> void:
 		_title.text = _result["title"]
 		_queue.text = ""
 		_progress.indeterminate = false
-		_progress.show_percentage = true
 		_progress.value = 100.0
 		_status.text = _result["status"]
 		_show_warnings(_result["warnings"])
@@ -159,8 +158,8 @@ func _refresh() -> void:
 			more += 1
 	_queue.text = tr("(+%d en cola)") % more if more > 0 else ""
 	var p: float = e.get("progress", -1.0)
+	# Sin porcentaje en la barra: la tarjeta es angosta y el estado ya lo dice.
 	_progress.indeterminate = p < 0.0
-	_progress.show_percentage = p >= 0.0
 	if p >= 0.0:
 		_progress.value = p * 100.0
 	_status.text = tr("Esperando a que termine otra operación…") if waiting else e.get("status", tr("Arrancando…"))

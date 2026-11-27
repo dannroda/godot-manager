@@ -51,6 +51,11 @@ func _ready() -> void:
 	for screen: Control in [%RemoteScreen, %InstalledScreen, %ProjectsScreen]:
 		screen.install_requested.connect(func(args: PackedStringArray, title: String) -> void:
 			%JobPanel.run(args, title))
+	var show_count := func(n: int) -> void: %ProjectsCount.text = str(n) if n > 0 else ""
+	%ProjectsScreen.count_changed.connect(show_count)
+	# La lista ya se cargó en el _ready de la pantalla, antes de conectar.
+	show_count.call(%ProjectsScreen.entries.size())
+	%InstalledScreen.summary_changed.connect(_on_versions_summary)
 	%ProjectsScreen.error_reported.connect(show_cli_error)
 	%ProjectsScreen.job_started.connect(func(job: CliJob, title: String) -> void:
 		%JobPanel.track(job, title))
@@ -154,8 +159,22 @@ func show_cli_error(message: String) -> void:
 func _on_availability_changed(ok: bool, message: String) -> void:
 	_banner.visible = not ok
 	_banner_text.text = message
+	# Versiones carga sola al mostrarse; acá se pide antes para que la barra
+	# lateral tenga la default y las actualizaciones desde el arranque.
+	if ok:
+		%InstalledScreen.refresh()
 	if ok and not %UpdateBanner.updated:
 		%UpdateBanner.check_if_due(settings)
+
+
+## Barra lateral: la default abajo y un badge con las versiones que tienen
+## una más nueva de su serie.
+func _on_versions_summary(default_name: String, updates: int) -> void:
+	%DefaultVersion.visible = not default_name.is_empty()
+	%DefaultVersion.text = tr("Default: %s") % default_name
+	%DefaultVersion.tooltip_text = %DefaultVersion.text
+	%UpdatesBadge.visible = updates > 0
+	%UpdatesBadge.text = str(updates)
 
 
 ## Actualiza godot-manager en el panel de progreso; al terminar, el CLI ya es

@@ -3,12 +3,12 @@
 [ext_resource type="Script" uid="uid://bw0ycb1tx4unm" path="res://panels/job_panel.gd" id="1_ovxy5"]
 
 [node name="JobPanel" type="PanelContainer" unique_id=859153623]
-theme_type_variation = &"TopBar"
+theme_type_variation = &"JobCard"
 script = ExtResource("1_ovxy5")
 
-[node name="HBox" type="HBoxContainer" parent="." unique_id=1422973805]
+[node name="HBox" type="VBoxContainer" parent="." unique_id=1422973805]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 8
 
 [node name="Info" type="VBoxContainer" parent="HBox" unique_id=1372541854]
 layout_mode = 2
@@ -20,8 +20,12 @@ layout_mode = 2
 
 [node name="JobTitle" type="Label" parent="HBox/Info/Top" unique_id=637784048]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
-theme_type_variation = &"TitleLabel"
+size_flags_horizontal = 3
+mouse_filter = 1
+theme_type_variation = &"JobTitle"
+text_overrun_behavior = 3
 
 [node name="Queue" type="Label" parent="HBox/Info/Top" unique_id=865456743]
 unique_name_in_owner = true
@@ -30,8 +34,9 @@ theme_type_variation = &"DimLabel"
 
 [node name="Progress" type="ProgressBar" parent="HBox/Info" unique_id=728610225]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 18)
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
+theme_type_variation = &"JobProgress"
 show_percentage = false
 indeterminate = true
 editor_preview_indeterminate = false
@@ -41,12 +46,12 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_type_variation = &"DimLabel"
-text_overrun_behavior = 3
+autowrap_mode = 3
 
 [node name="Warnings" type="Label" parent="HBox/Info" unique_id=931176664]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.7058824, 0.3019608, 1)
 autowrap_mode = 3
@@ -54,7 +59,8 @@ autowrap_mode = 3
 [node name="Cancel" type="Button" parent="HBox" unique_id=1142088381]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 4
+size_flags_horizontal = 0
+flat = true
 text = "Cancelar"
 
 [node name="CancelDialog" type="ConfirmationDialog" parent="." unique_id=1436802311]
