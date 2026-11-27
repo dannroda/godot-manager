@@ -1,5 +1,5 @@
 extends PanelContainer
-## Pestaña Descargar: los releases de GitHub (`list-remote`, una sola vez por
+## Sección Descargar: los releases de GitHub (`list-remote`, una sola vez por
 ## sesión y después solo con Refrescar) cruzados con lo instalado (`list`, que
 ## es local y se vuelve a pedir cada vez que se muestra la pestaña). El canal y
 ## la búsqueda filtran en memoria, sin volver a pedir a GitHub.
@@ -322,6 +322,37 @@ func _update_actions() -> void:
 		install.tooltip_text = ""
 	uninstall.visible = has_installed
 	uninstall.disabled = not has_installed or _busy > 0
+	_update_inspector()
+
+
+## El panel de la derecha: tag, fecha, tamaños y qué ya está instalado.
+func _update_inspector() -> void:
+	%Empty.visible = selected == null
+	%Actions.visible = selected != null
+	if selected == null:
+		return
+	%InspName.text = selected.tag
+	var info := PackedStringArray()
+	var day := RemoteFilter.day_of(selected.published_at)
+	if not day.is_empty():
+		info.append(tr("Publicada: %s") % day)
+	if selected.editor_size > 0:
+		info.append(tr("Editor: %s") % String.humanize_size(selected.editor_size))
+	if selected.mono_size > 0:
+		info.append(tr("Mono: %s") % String.humanize_size(selected.mono_size))
+	if selected.templates_size > 0:
+		info.append(tr("Export templates: %s") % String.humanize_size(selected.templates_size))
+	if not selected.editor:
+		info.append(tr("godot-manager no instala el editor de esta versión en este sistema."))
+	%InspInfo.text = "\n".join(info)
+	var installed_now := PackedStringArray()
+	var m: RemoteFilter.Marks = _marks.get(selected.tag)
+	if m != null and m.normal:
+		installed_now.append(tr("Instalada"))
+	if m != null and m.mono:
+		installed_now.append(tr("Mono instalada"))
+	%InspInstalled.text = " · ".join(installed_now)
+	%InspInstalled.visible = not installed_now.is_empty()
 
 
 static func _is_running(job: CliJob) -> bool:

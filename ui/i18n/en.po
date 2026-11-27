@@ -1504,3 +1504,23 @@ msgstr "Pick a version from the list to see its actions."
 #: screens/installed_screen.gd
 msgid "Actualizar a %s"
 msgstr "Update to %s"
+
+#: screens/remote_screen.tscn
+msgid "Elegí una versión de la lista para instalarla."
+msgstr "Pick a version from the list to install it."
+
+#: screens/remote_screen.gd
+msgid "Publicada: %s"
+msgstr "Published: %s"
+
+#: screens/remote_screen.gd
+msgid "Editor: %s"
+msgstr "Editor: %s"
+
+#: screens/remote_screen.gd
+msgid "Mono: %s"
+msgstr "Mono: %s"
+
+#: screens/remote_screen.gd
+msgid "Export templates: %s"
+msgstr "Export templates: %s"

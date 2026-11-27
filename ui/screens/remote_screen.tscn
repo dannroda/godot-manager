@@ -15,7 +15,23 @@ script = ExtResource("1_qgcvk")
 
 [node name="Layout" type="VBoxContainer" parent="." unique_id=2074823379]
 layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="HBoxContainer" parent="Layout" unique_id=2074823380]
+layout_mode = 2
 theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Layout/Header" unique_id=2074823381]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ScreenTitle"
+text = "Descargar"
+
+[node name="Refresh" type="Button" parent="Layout/Header" unique_id=1093634057]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Vuelve a pedir la lista a GitHub"
+text = "Refrescar"
 
 [node name="Toolbar" type="HBoxContainer" parent="Layout" unique_id=1338638191]
 layout_mode = 2
@@ -33,16 +49,10 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 tooltip_text = "Stable: versiones estables. Dev: betas, release candidates y dev snapshots."
 
-[node name="Refresh" type="Button" parent="Layout/Toolbar" unique_id=1093634057]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Vuelve a pedir la lista a GitHub"
-text = "Refrescar"
-
 [node name="Body" type="HBoxContainer" parent="Layout" unique_id=1704454933]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 10
+theme_override_constants/separation = 14
 
 [node name="ListPanel" type="PanelContainer" parent="Layout/Body" unique_id=177566164]
 layout_mode = 2
@@ -64,30 +74,70 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="Actions" type="VBoxContainer" parent="Layout/Body" unique_id=1834590972]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 0)
+[node name="Inspector" type="PanelContainer" parent="Layout/Body" unique_id=1834590973]
+custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_type_variation = &"Inspector"
 
-[node name="Install" type="Button" parent="Layout/Body/Actions" unique_id=1341308431]
+[node name="Empty" type="Label" parent="Layout/Body/Inspector" unique_id=1834590974]
 unique_name_in_owner = true
 layout_mode = 2
-disabled = true
-text = "Instalar…"
+size_flags_vertical = 1
+theme_type_variation = &"DimLabel"
+text = "Elegí una versión de la lista para instalarla."
+autowrap_mode = 3
 
-[node name="Uninstall" type="Button" parent="Layout/Body/Actions" unique_id=1482910457]
+[node name="Actions" type="VBoxContainer" parent="Layout/Body/Inspector" unique_id=1834590972]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-disabled = true
-text = "Desinstalar…"
+theme_override_constants/separation = 8
 
-[node name="ReleaseNotes" type="Button" parent="Layout/Body/Actions" unique_id=953523076]
+[node name="InspName" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=1834590975]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+autowrap_mode = 3
+
+[node name="InspInfo" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=1834590976]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+autowrap_mode = 3
+
+[node name="InspInstalled" type="Label" parent="Layout/Body/Inspector/Actions" unique_id=1834590977]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Gap" type="Control" parent="Layout/Body/Inspector/Actions" unique_id=1834590978]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+
+[node name="Install" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=1341308431]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"AccentButton"
+disabled = true
+text = "Instalar…"
+
+[node name="ReleaseNotes" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=953523076]
 unique_name_in_owner = true
 layout_mode = 2
 disabled = true
 text = "Ver en GitHub"
+
+[node name="Spacer" type="Control" parent="Layout/Body/Inspector/Actions" unique_id=1834590979]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Uninstall" type="Button" parent="Layout/Body/Inspector/Actions" unique_id=1482910457]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+flat = true
+disabled = true
+text = "Desinstalar…"
 
 [node name="InstallDialog" parent="." unique_id=1165000065 instance=ExtResource("2_5isvt")]
 unique_name_in_owner = true
